@@ -26,12 +26,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
-      - name: Configure GitHub Pages
+      - name: Configure and enable GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Prepare static output
         run: |
           mkdir -p _site
-          cp index.html style.css script.js config.html theme_config.json _site/
+          cp index.html style.css script.js config.html _site/
+          if [ -f theme_config.json ]; then cp theme_config.json _site/; fi
           for asset in logo.jpg logo.png bg.webm bg.mp4; do
             if [ -f "$asset" ]; then cp "$asset" _site/; fi
           done
@@ -40,7 +43,13 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           OUTPUT_JSON: _site/data.json
-        run: python3 scripts/sync_telegram_snapshot.py
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
+            echo "Telegram secrets are not configured; deploying an empty catalog for now."
+            printf '{"schema_version":1,"products":[],"announcements":[],"updated_at":null}\n' > _site/data.json
+          else
+            python3 scripts/sync_telegram_snapshot.py
+          fi
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
