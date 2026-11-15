@@ -43,7 +43,7 @@ function renderAnnouncements(items) {
   items.slice(0, 5).forEach(item => {
     const text = typeof item === "string"
       ? item
-      : safeText(item.title ? item.title + (item.text || item.content ? "\n" : "") : item.text || item.content);
+      : [safeText(item.title), safeText(item.text || item.content)].filter(value => value.trim()).join("\n");
     if (!text.trim()) return;
     const row = document.createElement("p");
     row.textContent = text;
@@ -157,12 +157,7 @@ function applyTheme(themeConfig) {
   document.body.dataset.backgroundEffect = effect;
 
   const video = document.getElementById("vidage");
-  if (video) {
-    const showVideo = effect === "solid";
-    video.style.display = showVideo ? "block" : "none";
-    if (showVideo) video.play().catch(() => {});
-    else video.pause();
-  }
+  if (video) video.play().catch(() => {});
 }
 
 async function loadThemeConfig() {
