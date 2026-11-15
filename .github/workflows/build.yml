@@ -50,10 +50,16 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
           OUTPUT_JSON: _site/data.json
-        run: python scripts/sync_telegram.py
+        run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
+            echo "::warning::Telegram Secrets are missing; publishing an empty catalog until configured."
+            printf '{"schema_version":1,"products":[],"announcements":[],"updated_at":null}\\n' > "$OUTPUT_JSON"
+          else
+            python scripts/sync_telegram.py
+          fi
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: _site
 
