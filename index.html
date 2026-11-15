@@ -12,29 +12,50 @@
 </head>
 <body>
 <div class="vidage" aria-hidden="true">
-<video id="vidage" class="vidage-video" playsinline autoplay muted loop preload="metadata">
-<source src="./bg.webm" type="video/webm"><source src="./bg.mp4" type="video/mp4">
-</video></div>
+  <video id="vidage" class="vidage-video" playsinline autoplay muted loop preload="metadata">
+    <source src="./bg.webm" type="video/webm">
+    <source src="./bg.mp4" type="video/mp4">
+  </video>
+</div>
 <div class="screen-shade" aria-hidden="true"></div>
 <header class="topbar">
-<a class="brand" id="logoLink" href="#" aria-label="打开推广页面">
-<img src="./logo.jpg" alt="晴天 Logo" class="brand-logo">
-<span class="brand-name">QINGTIAN<span> / DIGITAL</span></span></a>
-<nav class="top-actions"><a class="nav-link" href="./config.html">视觉配置</a><a class="nav-link" href="#products">商品目录</a><a class="nav-cta" id="promoButton" href="#">访问推广页 ↗</a></nav>
+  <a class="brand" id="logoLink" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" aria-label="联系晴天客服">
+    <img src="./logo.jpg" alt="晴天 Logo" class="brand-logo">
+    <span class="brand-name">QINGTIAN<span> / DIGITAL</span></span>
+  </a>
+  <nav class="top-actions" aria-label="主导航">
+    <a class="nav-link" href="./config.html">视觉配置</a>
+    <a class="nav-link" href="#products">商品目录</a>
+    <a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系客服 ↗</a>
+  </nav>
 </header>
 <main>
-<section class="hero">
-<div class="eyebrow"><span class="pulse"></span> DIGITAL GOODS · SELF SERVICE</div>
-<h1>数字世界，<span>即刻连接。</span></h1>
-<p class="hero-copy">精选数字商品展示 · 全天候自助服务 · 清晰透明的商品信息</p>
-<div class="hero-actions"><a class="primary-button" href="#products">浏览商品 ↓</a><span class="status-note"><i></i> 商品信息定时同步</span></div>
-</section>
-<section class="catalog-section" id="products">
-<div class="section-heading"><div><div class="section-kicker">THE CATALOG</div><h2>商品目录<span class="heading-dot">.</span></h2></div><div class="sync-state" id="syncState">正在连接目录…</div></div>
-<div class="announcement" id="announcements" hidden></div>
-<div class="product-grid" id="productGrid" aria-live="polite"><div class="loading-card">正在载入商品数据…</div></div>
-</section></main>
-<footer class="footer"><span>© <span id="year"></span> QINGTIAN DIGITAL</span><span>商品信息以实际下单页面为准</span><a href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">CUSTOMER SUPPORT ↗</a></footer>
+  <section class="hero">
+    <div class="eyebrow"><span class="pulse"></span> DIGITAL GOODS · SELF SERVICE</div>
+    <h1>数字世界，<span>即刻连接。</span></h1>
+    <p class="hero-copy">精选数字商品展示 · 全天候自助服务 · 清晰透明的商品信息</p>
+    <div class="hero-actions">
+      <a class="primary-button" href="#products">浏览商品 ↓</a>
+      <span class="status-note"><i></i> 商品信息每小时自动同步</span>
+    </div>
+  </section>
+  <section class="catalog-section" id="products">
+    <div class="section-heading">
+      <div><div class="section-kicker">THE CATALOG</div><h2>商品目录<span class="heading-dot">.</span></h2></div>
+      <div class="sync-state" id="syncState" aria-live="polite">正在连接目录…</div>
+    </div>
+    <div class="announcement" id="announcements" hidden></div>
+    <div class="product-grid" id="productGrid" aria-live="polite">
+      <div class="loading-card">正在载入商品数据…</div>
+    </div>
+  </section>
+</main>
+<footer class="footer">
+  <span>© <span id="year"></span> QINGTIAN DIGITAL</span>
+  <span>商品信息以实际上架数据为准</span>
+  <a href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">CUSTOMER SUPPORT ↗</a>
+</footer>
 <script src="https://cdn.jsdelivr.net/npm/vidage@1.0.1/dist/vidage.js"></script>
 <script src="./script.js"></script>
-</body></html>
+</body>
+</html>
