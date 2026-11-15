@@ -36,6 +36,9 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Validate Telegram sync script
+        run: python -m py_compile scripts/sync_telegram.py
+
       - name: Prepare static output
         run: |
           mkdir -p _site
