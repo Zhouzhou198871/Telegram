@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "theme": {
+    "background_effect": "particles",
+    "accent_color": "#00d9ff",
+    "glass_card": true,
+    "card_radius": 16
+  }
+}
