@@ -101,7 +101,7 @@ def clean_products(rows):
         item = {
             "id": pick(row, "id", "product_id"),
             "name": pick(row, "name", "title", "product_name"),
-            "price": pick(row, "display_price", "price", "price_usdt", "price_cny"),
+            "price": pick(row, "display_price", "price"),
             "stock": pick(row, "stock", "supplier_stock", "inventory", "quantity"),
             "category": pick(row, "category_name", "category"),
             "description": pick(row, "public_description", "description", "brief"),
