@@ -88,7 +88,7 @@ function initParticleBackground(){
    ctx.shadowBlur=p.blue?7:4;ctx.shadowColor=p.blue?"#1E3A8A":"#94A3B8";ctx.fill();ctx.shadowBlur=0;
    for(let j=i+1;j<particles.length;j++){
     const q=particles[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);
-    if(d<125){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=p.blue||q.blue?"rgba(30,58,138,"+((1-d/125)*.28)+")":"rgba(100,116,139,"+((1-d/125)*.22)+")";ctx.lineWidth=.8;ctx.stroke();}
+    if(d<125){ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=p.blue||q.blue?"rgba(30,58,138,"+((1-d/125)*.40)+")":"rgba(100,116,139,"+((1-d/125)*.30)+")";ctx.lineWidth=.8;ctx.stroke();}
    }
   }
   if(pointer.active){const g=ctx.createRadialGradient(pointer.x,pointer.y,0,pointer.x,pointer.y,145);g.addColorStop(0,"rgba(30,58,138,.08)");g.addColorStop(1,"rgba(30,58,138,0)");ctx.fillStyle=g;ctx.fillRect(pointer.x-145,pointer.y-145,290,290);}
