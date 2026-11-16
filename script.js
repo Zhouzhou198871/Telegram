@@ -1,6 +1,6 @@
 "use strict";
 
-const API_BASE = "https://shop-api.lynli.me";
+const API_BASE = "https://qingtian-shop-api.chulingli1988.workers.dev";
 const TOKEN_KEY = "qingtian_shop_token";
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem(TOKEN_KEY) || "";
