@@ -61,6 +61,19 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
 @media(max-width:420px){body{padding:18px 14px 20px}.auth-panel{padding:28px 21px 24px;border-radius:22px}.auth-header{margin-bottom:24px}.brand-logo{width:62px;height:62px;margin-bottom:13px}h1{font-size:24px}.auth-form{gap:17px}.code-button{flex-basis:116px;font-size:12px}.primary-button{min-height:52px}}
 @media(max-width:340px){.auth-panel{padding-right:16px;padding-left:16px}.code-row{gap:7px}.code-button{flex-basis:108px;padding:0 7px;font-size:11px}.legal-check{font-size:11px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* Legal policy modal */
+.policy-modal[hidden]{display:none!important}
+.policy-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:5vh 5vw;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.policy-modal-card{position:relative;display:flex;flex-direction:column;width:90%;max-width:560px;max-height:80vh;overflow:hidden;background:#fff;border-radius:24px;box-shadow:0 24px 80px rgba(15,23,42,.24);color:#172033}
+.policy-modal-header{display:flex;align-items:center;justify-content:center;position:relative;padding:22px 56px 16px;border-bottom:1px solid #e8edf5}
+.policy-modal-title{margin:0;font-size:20px;font-weight:700;text-align:center}
+.policy-modal-close{position:absolute;right:16px;top:14px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(100,116,139,.12);color:#64748b;font-size:22px;line-height:1;cursor:pointer}
+.policy-modal-content{padding:20px 22px;overflow-y:auto;overscroll-behavior:contain;line-height:1.8;font-size:14px;color:#475569;white-space:pre-line}
+.policy-modal-footer{padding:14px 20px 20px;border-top:1px solid #e8edf5}
+.policy-modal-confirm{width:100%;min-height:46px;border:0;border-radius:14px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.policy-modal-confirm:active{transform:translateY(1px)}
+@media(max-width:480px){.policy-modal{padding:5vh 5vw}.policy-modal-card{width:100%;border-radius:20px}.policy-modal-content{padding:18px}}
 </style>
 </head>
 <body data-page="auth" data-auth-mode="register">
@@ -104,7 +117,7 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
       <div class="auth-legal">
         <label class="legal-check" for="agreeTerms">
           <input id="agreeTerms" type="checkbox">
-          <span class="legal-copy"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" target="_blank" rel="noopener" data-i18n="terms">《用户协议》</a> 和 <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacy">《隐私政策》</a></span>
+          <span class="legal-copy"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" data-policy="terms" data-i18n="terms">《用户协议》</a> 和 <a href="./privacy.html" data-policy="privacy" data-i18n="privacy">《隐私政策》</a></span>
         </label>
         <p class="field-error legal-error" id="legalError" aria-live="polite"></p>
       </div>
@@ -122,6 +135,20 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
   </section>
   <p class="footer-note">© 2026 晴天号铺 (lynli.me) 版权所有</p>
 </main>
+
+<div class="policy-modal" id="policyModal" hidden aria-hidden="true">
+  <section class="policy-modal-card" role="dialog" aria-modal="true" aria-labelledby="policyModalTitle">
+    <header class="policy-modal-header">
+      <h2 class="policy-modal-title" id="policyModalTitle">用户协议</h2>
+      <button class="policy-modal-close" id="policyModalClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="policy-modal-content" id="policyModalContent" tabindex="0">这里是用户协议内容占位文本。正式内容可在后续替换为完整的用户协议条款。</div>
+    <footer class="policy-modal-footer">
+      <button class="policy-modal-confirm" id="policyModalConfirm" type="button">我知道了</button>
+    </footer>
+  </section>
+</div>
+
 <script src="./script.js" defer></script>
 </body>
 </html>
