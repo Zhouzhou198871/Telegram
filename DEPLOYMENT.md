@@ -22,7 +22,8 @@ Worker API：https://qingtian-shop-api.chulingli1988.workers.dev
     SMTP_FROM=Boss@lynli.me
     SMTP_PASSWORD=阿里云企业邮箱SMTP客户端授权码
     INTERNAL_API_SECRET=随机生成的高强度密钥
-    ENABLE_LIVE_PURCHASES=false
+    ENABLE_LOCAL_DELIVERY=true
+    ENABLE_UPSTREAM_PURCHASES=false
     CORS_ORIGINS=https://zhouzhou198871.github.io
     FAKABOT_PROJECT_ROOT=/opt/fakabot-staging
     WEB_DB_PATH=/var/lib/qingtian-shop/web.sqlite3
@@ -39,7 +40,7 @@ Worker API：https://qingtian-shop-api.chulingli1988.workers.dev
 
 FastAPI 仅监听 127.0.0.1:8085，不直接暴露公网。
 
-注意：当前 167 尚未配置 supplier_session_private.pem 和有效的 Dahaoshang session 文件。真实上游采购必须在会话授权完成后才能开启。当前 ENABLE_LIVE_PURCHASES 默认关闭。
+注意：当前 167 尚未配置 supplier_session_private.pem 和有效的 Dahaoshang session 文件。本地库存交付开关已单独开启；真实上游采购仍保持关闭，必须在供应商登录会话及余额支付方式完成验证后才可将 ENABLE_UPSTREAM_PURCHASES 改为 true。
 
 ## 2. Cloudflare Tunnel 源站路由
 
