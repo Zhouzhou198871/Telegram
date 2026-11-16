@@ -89,6 +89,18 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
         <button class="secondary-button code-button" id="sendCode" type="button" data-i18n="sendCode">获取验证码</button>
       </div>
 
+      <div class="auth-field">
+        <label class="field-label" for="password" data-i18n="passwordLabel">设置密码</label>
+        <input class="text-input" id="password" name="password" type="password" autocomplete="new-password" placeholder="请设置6-20位包含字母和数字的密码" required minlength="6" maxlength="20" aria-describedby="passwordError">
+        <p class="field-error" id="passwordError" aria-live="polite"></p>
+      </div>
+
+      <div class="auth-field">
+        <label class="field-label" for="confirmPassword" data-i18n="confirmPasswordLabel">确认密码</label>
+        <input class="text-input" id="confirmPassword" name="confirmPassword" type="password" autocomplete="new-password" placeholder="请再次输入密码" required minlength="6" maxlength="20" aria-describedby="confirmPasswordError">
+        <p class="field-error" id="confirmPasswordError" aria-live="polite"></p>
+      </div>
+
       <div class="auth-legal">
         <label class="legal-check" for="agreeTerms">
           <input id="agreeTerms" type="checkbox">
