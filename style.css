@@ -613,3 +613,59 @@ body[data-page="auth"] .astronaut-stage {
     font-size: 16px !important;
   }
 }
+
+
+/* MOBILE ASTRONAUT HERO — centered, fully transparent stage, no clipping */
+body[data-page="auth"] .astronaut-stage,
+body[data-page="auth"] .astronaut-stage canvas {
+  background: transparent !important;
+}
+@media (max-width: 760px) {
+  body[data-page="auth"] .astronaut-stage {
+    position: absolute !important;
+    top: 6px !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: min(66vw, 252px) !important;
+    height: 224px !important;
+    min-width: 210px !important;
+    min-height: 210px !important;
+    transform: translateX(-50%) !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    filter: drop-shadow(0 12px 20px rgba(15,23,42,.16))
+            drop-shadow(0 3px 10px rgba(37,99,235,.14)) !important;
+    pointer-events: none !important;
+  }
+  body[data-page="auth"] .astronaut-stage canvas {
+    display: block !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+  }
+  body[data-page="auth"] .astronaut-stage:before {
+    inset: 8% !important;
+    background: radial-gradient(ellipse at 50% 48%,
+      rgba(147,197,253,.14),
+      rgba(219,234,254,.07) 44%,
+      rgba(249,249,246,0) 76%) !important;
+    filter: blur(28px) !important;
+  }
+  body[data-page="auth"] .auth-shell {
+    padding-top: 224px !important;
+  }
+}
+@media (max-width: 420px) {
+  body[data-page="auth"] .astronaut-stage {
+    top: 4px !important;
+    width: min(72vw, 238px) !important;
+    height: 214px !important;
+    min-width: 204px !important;
+    min-height: 204px !important;
+  }
+  body[data-page="auth"] .auth-shell {
+    padding-top: 214px !important;
+  }
+}
