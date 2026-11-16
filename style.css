@@ -400,3 +400,35 @@ body[data-page="auth"] .field-error { color: #ff8798 !important; }
   body[data-page="auth"]::before,
   body[data-page="auth"]::after { animation: none !important; }
 }
+
+
+/* MOBILE AUTH POSITION FIX — remove all legacy hero spacing */
+@media (max-width: 760px) {
+  body[data-page="auth"] {
+    min-height: 100svh !important;
+    justify-content: flex-start !important;
+  }
+  body[data-page="auth"] .auth-shell {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    min-height: 0 !important;
+    height: auto !important;
+    margin-top: 0 !important;
+    padding: 20px 16px 24px !important;
+    box-sizing: border-box !important;
+  }
+  body[data-page="auth"] .auth-panel {
+    margin-top: 0 !important;
+    align-self: stretch !important;
+  }
+  body[data-page="auth"] .auth-foot {
+    margin-top: 18px !important;
+  }
+}
+@media (max-width: 420px) {
+  body[data-page="auth"] .auth-shell {
+    padding-top: 18px !important;
+  }
+}
