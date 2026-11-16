@@ -122,3 +122,101 @@ body[data-page="auth"] .auth-foot span{padding:0 7px;color:#00bfe7}
 @media(max-width:600px){body[data-page="auth"] .auth-topbar{width:calc(100% - 32px);height:72px}body[data-page="auth"] .auth-shell{min-height:calc(100svh - 72px);padding:32px 16px 20px}body[data-page="auth"] .auth-panel{padding:30px 23px 24px;border-radius:18px}body[data-page="auth"] .brand-image-wrap,body[data-page="auth"] .brand-logo,body[data-page="auth"] .brand-fallback{width:36px;height:36px;flex-basis:36px}body[data-page="auth"] .brand-copy strong{font-size:13px}body[data-page="auth"] .brand-copy small{font-size:8px}body[data-page="auth"] .auth-header-actions{gap:9px}body[data-page="auth"] .auth-header-actions .nav-cta{padding:9px 10px;font-size:10px}body[data-page="auth"] .language-toggle{padding:7px 9px;font-size:11px}}
 @media(max-width:380px){body[data-page="auth"] .auth-header-actions .nav-cta{display:none}body[data-page="auth"] .code-row{grid-template-columns:minmax(0,1fr) 118px}}
 @media(prefers-reduced-motion:reduce){body[data-page="auth"] *,body[data-page="auth"] *:before{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+
+/* FINAL AUTH VISUAL FIX: keep the canvas visible above the deep-blue page base. */
+body[data-page="auth"]{
+ background:#020813 !important;
+ background-color:#020813 !important;
+ isolation:isolate;
+}
+body[data-page="auth"] .particle-canvas{
+ position:fixed !important;
+ inset:0 !important;
+ width:100vw !important;
+ height:100vh !important;
+ z-index:0 !important;
+ display:block !important;
+ opacity:1 !important;
+ pointer-events:none !important;
+}
+body[data-page="auth"] .auth-vignette{
+ position:fixed !important;
+ inset:0 !important;
+ z-index:0 !important;
+ pointer-events:none !important;
+ background:radial-gradient(ellipse at 50% 42%,rgba(2,8,19,.08),rgba(2,8,19,.24) 78%),linear-gradient(180deg,rgba(2,8,19,.10),rgba(2,8,19,.22)) !important;
+}
+body[data-page="auth"] .auth-topbar,
+body[data-page="auth"] .auth-shell{
+ position:relative !important;
+ z-index:2 !important;
+}
+body[data-page="auth"] .auth-legal{
+ display:flex !important;
+ flex-direction:column !important;
+ align-items:stretch !important;
+ gap:11px !important;
+ margin-top:20px !important;
+ width:100% !important;
+}
+body[data-page="auth"] .auth-legal .legal-check{
+ display:flex !important;
+ flex-direction:row !important;
+ align-items:center !important;
+ justify-content:flex-start !important;
+ gap:9px !important;
+ width:100% !important;
+ min-height:22px !important;
+ margin:0 !important;
+ padding:0 !important;
+ text-align:left !important;
+ line-height:1.5 !important;
+ white-space:normal !important;
+}
+body[data-page="auth"] .auth-legal .legal-check input{
+ display:block !important;
+ flex:0 0 16px !important;
+ width:16px !important;
+ height:16px !important;
+ margin:0 !important;
+ align-self:center !important;
+}
+body[data-page="auth"] .auth-legal .legal-check span,
+body[data-page="auth"] .auth-legal .legal-check a{
+ display:inline !important;
+ flex:0 0 auto !important;
+ line-height:1.5 !important;
+}
+body[data-page="auth"] .auth-legal .legal-error{margin:0 !important}
+body[data-page="auth"] .auth-topbar{
+ gap:18px !important;
+}
+body[data-page="auth"] .auth-brand{
+ flex:0 1 auto !important;
+ min-width:0 !important;
+ gap:11px !important;
+}
+body[data-page="auth"] .brand-copy{min-width:0}
+body[data-page="auth"] .auth-header-actions{
+ flex:0 0 auto !important;
+ display:flex !important;
+ align-items:center !important;
+ justify-content:flex-end !important;
+ gap:16px !important;
+ margin-left:auto !important;
+}
+@media(max-width:600px){
+ body[data-page="auth"] .auth-topbar{gap:12px !important}
+ body[data-page="auth"] .auth-header-actions{gap:12px !important}
+ body[data-page="auth"] .auth-brand{gap:8px !important}
+ body[data-page="auth"] .brand-copy strong{font-size:12px !important;letter-spacing:.04em !important}
+ body[data-page="auth"] .brand-copy small{font-size:7px !important;letter-spacing:.12em !important}
+ body[data-page="auth"] .language-toggle{padding:7px 9px !important}
+ body[data-page="auth"] .auth-header-actions .nav-cta{padding:9px 10px !important}
+}
+@media(max-width:380px){
+ body[data-page="auth"] .auth-topbar{gap:8px !important}
+ body[data-page="auth"] .auth-header-actions{gap:8px !important}
+ body[data-page="auth"] .brand-copy small{letter-spacing:.08em !important}
+}
