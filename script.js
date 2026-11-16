@@ -162,13 +162,8 @@ function initPolicyModal(){
   policyModalTitle.textContent = isTerms
    ? (authLanguage === "en" ? "Terms of Service" : "用户协议")
    : (authLanguage === "en" ? "Privacy Policy" : "隐私政策");
-  policyModalContent.textContent = isTerms
-   ? (authLanguage === "en"
-     ? "Terms of Service placeholder. Replace this text with the complete terms and conditions."
-     : "这里是用户协议内容占位文本。正式内容可在后续替换为完整的用户协议条款。")
-   : (authLanguage === "en"
-     ? "Privacy Policy placeholder. Replace this text with the complete privacy policy."
-     : "这里是隐私政策内容占位文本。正式内容可在后续替换为完整的隐私政策条款。");
+  const policyTemplate = $(isTerms ? "termsPolicyTemplate" : "privacyPolicyTemplate");
+  policyModalContent.innerHTML = policyTemplate ? policyTemplate.innerHTML : "";
   previousBodyOverflow = document.body.style.overflow;
   returnFocus = link;
   policyModal.hidden = false;
