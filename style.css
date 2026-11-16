@@ -33,3 +33,31 @@ body[data-background-effect="particles"] .screen-shade,body[data-background-effe
 .vidage { display: block !important; }
 .vidage-video { opacity: .38; }
 .product-description { margin: -10px 0 18px; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; white-space: pre-wrap; }
+
+
+/* Qingtian Shop authentication and checkout UI */
+:root{--shop-accent:#00d9ff;--shop-green:#79f2c0;--shop-panel:rgba(12,20,32,.78)}
+body[data-page="auth"],body[data-page="shop"]{background:#070b12;color:#edf6ff;min-height:100vh}
+.ambient{position:fixed;width:40vw;height:40vw;border-radius:50%;filter:blur(100px);opacity:.14;pointer-events:none;z-index:0}
+.ambient-one{background:#00bfff;top:-15vw;left:-12vw}.ambient-two{background:#4f46e5;right:-15vw;bottom:-18vw}
+.brand-mark{display:grid;place-items:center;width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#00d9ff,#4f46e5);color:#06111d;font-weight:900;font-size:20px;box-shadow:0 0 25px rgba(0,217,255,.25)}
+.auth-shell{position:relative;z-index:1;min-height:calc(100vh - 86px);display:grid;place-items:center;padding:40px 16px 24px}
+.auth-panel{width:min(100%,460px);padding:clamp(26px,5vw,42px);border:1px solid rgba(122,178,220,.2);border-radius:22px;background:rgba(10,18,30,.78);box-shadow:0 28px 90px rgba(0,0,0,.38);backdrop-filter:blur(18px)}
+.auth-panel h1{font-size:clamp(36px,7vw,54px);margin:22px 0 10px}.auth-panel h1 span{color:var(--accent)}
+.field-label{display:block;margin:22px 0 9px;color:#b7c9d9;font-size:12px;font-weight:700;letter-spacing:.04em}
+.text-input{width:100%;height:48px;padding:0 14px;border:1px solid rgba(133,166,195,.25);border-radius:10px;outline:none;background:rgba(4,10,18,.72);color:#edf6ff;font:inherit;transition:border-color .2s,box-shadow .2s}
+.text-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,217,255,.1)}.text-input::placeholder{color:#60758a}
+.code-row{display:grid;grid-template-columns:1fr auto;align-items:end;gap:10px}.code-field{min-width:0}.code-button{height:48px;white-space:nowrap}
+.secondary-button{padding:11px 15px;border:1px solid rgba(0,217,255,.38);border-radius:10px;background:rgba(0,217,255,.08);color:#c9f7ff;font-weight:700;cursor:pointer;transition:.2s}
+.secondary-button:hover{border-color:var(--accent);background:rgba(0,217,255,.14)}.secondary-button:disabled,.primary-button:disabled{opacity:.55;cursor:not-allowed}
+.full-button{width:100%;justify-content:center;margin-top:24px;min-height:48px;cursor:pointer}.form-message{min-height:22px;margin:14px 0 0;color:#9cb2c6;font-size:12px;line-height:1.6}.form-message.error{color:#ff9eaa}.form-message.success{color:#79f2c0}
+.legal-note{margin:20px 0 0;color:#71869b;font-size:11px;line-height:1.7}.auth-foot{margin-top:28px;color:#52677c;font-size:9px;letter-spacing:.18em;text-align:center}
+.shop-main{position:relative;z-index:1;width:min(1180px,calc(100% - 48px));margin:0 auto}.shop-hero{padding:86px 0 60px}.shop-hero h1{font-size:clamp(38px,6vw,68px)}.shop-hero h1 span{color:var(--accent)}
+.top-actions{display:flex;align-items:center;gap:12px}.account-pill,.balance-pill{padding:8px 11px;border:1px solid rgba(122,178,220,.18);border-radius:999px;background:rgba(10,18,30,.65);color:#9fb4c8;font-size:11px}.balance-pill strong{color:var(--shop-green);font-variant-numeric:tabular-nums}.text-button{border:0;background:transparent;color:#9fb4c8;font-size:12px;cursor:pointer}.text-button:hover{color:#fff}
+.shop-product-card{display:flex;flex-direction:column}.shop-product-card .product-meta{margin-top:auto}.buy-button{width:100%;justify-content:center;margin-top:22px;cursor:pointer}
+.modal-backdrop{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:rgba(1,5,10,.78);backdrop-filter:blur(12px)}.modal-backdrop[hidden]{display:none}
+.delivery-modal{position:relative;width:min(100%,560px);max-height:88vh;overflow:auto;padding:30px;border:1px solid rgba(0,217,255,.28);border-radius:18px;background:#0c1624;box-shadow:0 30px 100px rgba(0,0,0,.5)}
+.delivery-modal h2{margin:12px 0 6px}.modal-copy{color:#9bb0c4;font-size:13px}.modal-close{position:absolute;top:12px;right:16px;border:0;background:transparent;color:#9bb0c4;font-size:28px;cursor:pointer}
+.delivery-content{max-height:38vh;overflow:auto;padding:16px;border:1px solid rgba(122,178,220,.2);border-radius:10px;background:#050b13;color:#bdf5ff;font:13px/1.8 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+@media(max-width:760px){.topbar{width:calc(100% - 32px)}.shop-main{width:calc(100% - 32px)}.top-actions{gap:6px}.account-pill{display:none}.balance-pill{font-size:10px;padding:7px 9px}.top-actions .nav-cta{font-size:10px;padding:9px 10px}.text-button{font-size:11px}.shop-hero{padding:68px 0 42px}}
+@media(max-width:480px){.code-row{grid-template-columns:1fr}.code-button{width:100%}.auth-panel{padding:24px 20px}.delivery-modal{padding:24px 18px}}
