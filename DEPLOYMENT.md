@@ -4,7 +4,7 @@
 
 GitHub 仓库：Zhouzhou198871/Telegram
 GitHub Pages：https://zhouzhou198871.github.io/telegram/
-Worker API：https://shop-api.lynli.me
+Worker API：https://qingtian-shop-api.chulingli1988.workers.dev
 167 源站：https://shop-origin.lynli.me
 
 ## 1. 167 服务器
