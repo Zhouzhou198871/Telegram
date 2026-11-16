@@ -69,7 +69,6 @@ function initAuth(){
  if(token()){location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
- $("brandLogo").addEventListener("error",function(){if(this.dataset.triedJpg!=="1"){this.dataset.triedJpg="1";this.src="./logo.jpg";return;}this.hidden=true;$("brandFallback").hidden=false;});
  $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  email.addEventListener("input",()=>setFieldError(email,emailError,""));code.addEventListener("input",()=>setFieldError(code,codeError,""));
