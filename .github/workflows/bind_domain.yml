@@ -7,13 +7,24 @@ on:
 
 permissions:
   pages: write
+  administration: write
 
 jobs:
   bind:
     runs-on: ubuntu-latest
     steps:
-      - name: Bind Domain via GitHub CLI
+      - name: Inspect current Pages certificate
+        run: |
+          gh api repos/Zhouzhou198871/Telegram/pages --jq '{cname, https_protocol_domain, https_certificate, https_enforced}'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Bind Domain
         run: |
           gh api -X PUT repos/Zhouzhou198871/Telegram/pages -f cname="shop.lynli.me" -F https_enforced=true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify Pages certificate state
+        run: |
+          gh api repos/Zhouzhou198871/Telegram/pages --jq '{cname, https_protocol_domain, https_certificate, https_enforced}'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
