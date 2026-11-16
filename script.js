@@ -109,9 +109,44 @@ function initAuth(){
  const emailError=$("emailError"),codeError=$("codeError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
- email.addEventListener("input",()=>setFieldError(email,emailError,""));code.addEventListener("input",()=>setFieldError(code,codeError,""));
- send.addEventListener("click",async()=>{if(cooldown>0||send.disabled)return;if(!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}send.disabled=true;send.textContent=authText("sending");message(msg,"");try{await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;const tick=()=>{send.textContent=cooldown+authText("retry");};tick();timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);}catch(error){message(msg,error.message==="too_many_requests"?authText("tooMany"):authText("sendFailed"),"error");send.disabled=false;send.textContent=authText("sendCode");}});
- form.addEventListener("submit",async e=>{e.preventDefault();message(msg,"");if(!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}if(!/^\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}if(!$("agreeTerms").checked){legalError.textContent=authText("needAgreement");return;}legalError.textContent="";login.disabled=true;login.classList.add("loading");login.querySelector(".login-button-text").textContent=authText("logging");try{const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim()})});if(!result.token)throw new Error("login_failed");localStorage.setItem(TOKEN_KEY,result.token);location.replace("./shop.html");}catch(error){const text=error.message==="invalid_code"?authText("wrongCode"):error.message==="code_expired"?authText("expired"):error.message==="too_many_attempts"?authText("tooManyAttempts"):authText("loginFailed");message(msg,text,"error");login.disabled=false;login.classList.remove("loading");login.querySelector(".login-button-text").textContent=authText("login");}});
+ // 输入时清除错误；验证码输入仅保留数字且最多 6 位
+ email.addEventListener("input",()=>setFieldError(email,emailError,""));
+ code.addEventListener("input",()=>{code.value=code.value.replace(/\\D/g,"").slice(0,6);setFieldError(code,codeError,"");});
+ $("agreeTerms").addEventListener("change",()=>{legalError.textContent="";});
+ // 获取验证码：邮箱校验通过后调用真实接口，成功后启动 60 秒倒计时
+ send.addEventListener("click",async()=>{
+  if(cooldown>0||send.disabled)return;
+  if(!email.value.trim()||!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}
+  setFieldError(email,emailError,"");message(msg,"");
+  send.disabled=true;send.textContent=authText("sending");
+  try{
+   await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});
+   message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;
+   const tick=()=>{send.textContent=cooldown+authText("retry");};tick();
+   timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);
+  }catch(error){
+   message(msg,error.message==="too_many_requests"?authText("tooMany"):authText("sendFailed"),"error");
+   send.disabled=false;send.textContent=authText("sendCode");
+  }
+ });
+ // 注册提交校验全部通过后调用现有真实登录/自动注册接口
+ form.addEventListener("submit",async e=>{
+  e.preventDefault();message(msg,"");
+  if(!email.value.trim()||!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}
+  if(!/^\\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
+  if(!$("agreeTerms").checked){legalError.textContent=authText("needAgreement");return;}
+  setFieldError(email,emailError,"");setFieldError(code,codeError,"");legalError.textContent="";
+  login.disabled=true;login.classList.add("loading");login.querySelector(".login-button-text").textContent=authText("logging");
+  try{
+   const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim()})});
+   if(!result.token)throw new Error("login_failed");
+   localStorage.setItem(TOKEN_KEY,result.token);location.replace("./shop.html");
+  }catch(error){
+   const text=error.message==="invalid_code"?authText("wrongCode"):error.message==="code_expired"?authText("expired"):error.message==="too_many_attempts"?authText("tooManyAttempts"):authText("loginFailed");
+   message(msg,text,"error");login.disabled=false;login.classList.remove("loading");
+   login.querySelector(".login-button-text").textContent=document.body.dataset.authMode==="register"?(authLanguage==="en"?"Register & Sign In":"注册并登录"):authText("login");
+  }
+ });
 }
 async function loadUser() {
   const data = await api("/api/user/info");
