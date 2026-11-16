@@ -59,21 +59,6 @@ function setAuthLanguage(lang){
   document.querySelector(".auth-switch").innerHTML=authLanguage==="en"?'Already have an account? <a href="./auth.html">Sign in</a>':'已有账号？<a href="./auth.html">返回登录</a>';
  }
 }
-function initAstronautParallax(){
- const wrap=$("astronautWrap");if(!wrap)return;
- const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
- if(reduced)return;
- let raf=0;
- function move(e){
-  if(window.innerWidth<=760)return;
-  const x=(e.clientX/window.innerWidth-.5)*16,y=(e.clientY/window.innerHeight-.5)*12;
-  cancelAnimationFrame(raf);
-  raf=requestAnimationFrame(()=>{wrap.style.setProperty("--astro-x",x.toFixed(1)+"px");wrap.style.setProperty("--astro-y",y.toFixed(1)+"px");});
- }
- function reset(){wrap.style.setProperty("--astro-x","0px");wrap.style.setProperty("--astro-y","0px");}
- window.addEventListener("pointermove",move,{passive:true});
- window.addEventListener("pointerleave",reset,{passive:true});
-}
 function setFieldError(input,target,text){target.textContent=text||"";input.classList.toggle("invalid",Boolean(text));input.setAttribute("aria-invalid",text?"true":"false");}
 function initParticleBackground(){
  const canvas=$("particleCanvas"),ctx=canvas&&canvas.getContext("2d");if(!canvas||!ctx)return;
@@ -121,7 +106,7 @@ function initAuth(){
  if(token()){location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
- $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();initAstronautParallax();
+ $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  email.addEventListener("input",()=>setFieldError(email,emailError,""));code.addEventListener("input",()=>setFieldError(code,codeError,""));
  send.addEventListener("click",async()=>{if(cooldown>0||send.disabled)return;if(!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}send.disabled=true;send.textContent=authText("sending");message(msg,"");try{await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;const tick=()=>{send.textContent=cooldown+authText("retry");};tick();timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);}catch(error){message(msg,error.message==="too_many_requests"?authText("tooMany"):authText("sendFailed"),"error");send.disabled=false;send.textContent=authText("sendCode");}});
