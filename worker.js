@@ -208,10 +208,10 @@ async function refund(env, order) {
   const now = Math.floor(Date.now() / 1000);
   await env.DB.batch([
     env.DB.prepare(
-      "UPDATE users SET balance_units=balance_units+?,balance=printf('%.4f',(balance_units+?)/10000.0),updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM web_purchases WHERE order_id=? AND status='reserved')"
+      "UPDATE users SET balance_units=balance_units+?,balance=printf('%.4f',(balance_units+?)/10000.0),updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM web_purchases WHERE order_id=? AND status IN ('reserved','pending'))"
     ).bind(order.amount_units, order.amount_units, now, order.user_id, order.order_id),
     env.DB.prepare(
-      "UPDATE web_purchases SET status='refunded',updated_at=?,error_code='purchase_failed' WHERE order_id=? AND status='reserved'"
+      "UPDATE web_purchases SET status='refunded',updated_at=?,error_code='purchase_failed' WHERE order_id=? AND status IN ('reserved','pending')"
     ).bind(now, order.order_id)
   ]);
 }
