@@ -1,0 +1,17 @@
+name: Bind Custom Domain
+
+on:
+  workflow_dispatch:
+
+permissions:
+  pages: write
+
+jobs:
+  bind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Bind Domain via GitHub CLI
+        run: |
+          gh api -X PUT repos/Zhouzhou198871/Telegram/pages -f cname="shop.lynli.me" -F https_enforced=true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
