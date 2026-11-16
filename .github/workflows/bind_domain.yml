@@ -1,4 +1,4 @@
-name: Bind Custom Domain
+name: Inspect Pages Certificate
 
 on:
   push:
@@ -6,24 +6,13 @@ on:
       - main
 
 permissions:
-  pages: write
-  administration: write
+  pages: read
 
 jobs:
-  bind:
+  inspect:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect current Pages certificate
-        run: |
-          gh api repos/Zhouzhou198871/Telegram/pages --jq '{cname, https_protocol_domain, https_certificate, https_enforced}'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Bind Domain
-        run: |
-          gh api -X PUT repos/Zhouzhou198871/Telegram/pages -f cname="shop.lynli.me" -F https_enforced=true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Verify Pages certificate state
+      - name: Read Pages certificate status
         run: |
           gh api repos/Zhouzhou198871/Telegram/pages --jq '{cname, https_protocol_domain, https_certificate, https_enforced}'
         env:
