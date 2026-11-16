@@ -1,29 +1,115 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#070B14"><meta name="description" content="晴天号铺 · 安全邮箱登录">
-<title>注册账号 · 晴天号铺</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f8fafc">
+<meta name="description" content="晴天号铺注册账号">
+<title>创建账号 · 晴天号铺</title>
 <link rel="icon" type="image/jpeg" href="./logo.jpg">
-<link rel="stylesheet" href="./style.css">
+<style>
+:root{color-scheme:light;--blue:#3b82f6;--blue-dark:#2563eb;--ink:#172033;--muted:#64748b;--line:#dbe2ea}
+*{box-sizing:border-box}
+html{min-height:100%;background:#f8fafc}
+body{margin:0;min-height:100vh;min-height:100svh;padding:28px 18px 22px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#f8fafc 0%,#eff6ff 55%,#f8fafc 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.auth-shell{width:100%;max-width:440px;margin:auto}
+.auth-panel{width:100%;padding:34px 32px 28px;border:1px solid rgba(226,232,240,.9);border-radius:26px;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.025)}
+.auth-header{position:relative;text-align:center;margin-bottom:28px}
+.language-toggle{position:absolute;right:0;top:0;border:1px solid #e2e8f0;border-radius:999px;background:#fff;padding:6px 10px;color:#64748b;font-size:11px;font-weight:700;cursor:pointer}
+.language-toggle [data-lang-label]{opacity:.55}.language-toggle [data-lang-label].active{color:var(--blue-dark);opacity:1}
+.brand-logo{display:block;width:68px;height:68px;margin:0 auto 16px;border-radius:20px;object-fit:cover;box-shadow:0 7px 18px rgba(37,99,235,.12)}
+h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;line-height:1.25}
+.auth-subtitle{margin:9px 0 0;color:#8490a2;font-size:13px;line-height:1.65}
+.auth-form{display:grid;gap:19px}
+.auth-field{min-width:0}
+.field-label{display:block;margin:0 0 8px;color:#334155;font-size:13px;font-weight:700}
+.text-input{display:block;width:100%;height:50px;padding:0 15px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#172033;font:500 14px inherit;outline:none;transition:border-color .18s,box-shadow .18s,background .18s}
+.text-input::placeholder{color:#a0aaba;font-weight:400}
+.text-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.13)}
+.text-input.invalid{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08)}
+.code-row{display:flex;align-items:flex-end;gap:10px}
+.code-field{flex:1;min-width:0}
+.code-button{flex:0 0 122px;height:50px;padding:0 10px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;color:#2563eb;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .18s,border-color .18s,opacity .18s}
+.code-button:hover{background:#dbeafe;border-color:#93c5fd}
+.code-button:disabled{cursor:not-allowed;opacity:.62}
+.field-error{min-height:0;margin:5px 0 0;color:#dc2626;font-size:11px;line-height:1.4}
+.field-error:empty{display:none}
+.auth-legal{margin-top:1px}
+.legal-check{display:flex;align-items:flex-start;gap:9px;color:#64748b;font-size:12px;line-height:1.8;cursor:pointer}
+.legal-check input{flex:0 0 16px;width:16px;height:16px;margin:3px 0 0;accent-color:var(--blue);cursor:pointer}
+.legal-copy{min-width:0}
+.legal-check a{color:#2563eb;font-weight:700;text-decoration:none;white-space:nowrap}
+.legal-check a:hover{text-decoration:underline}
+.primary-button{position:relative;display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;margin-top:2px;padding:0 18px;border:0;border-radius:13px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:15px;font-weight:800;letter-spacing:.02em;box-shadow:0 7px 16px rgba(37,99,235,.2);cursor:pointer;transition:transform .18s,box-shadow .18s,filter .18s}
+.primary-button:hover{filter:brightness(1.035);box-shadow:0 9px 20px rgba(37,99,235,.26);transform:translateY(-1px)}
+.primary-button:active{transform:translateY(0)}
+.primary-button:disabled{cursor:wait;opacity:.75;transform:none}
+.login-arrow{position:absolute;right:18px;font-size:19px;font-weight:500;opacity:.85}
+.button-spinner{display:none;width:15px;height:15px;margin-right:9px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+.login-button.loading .button-spinner{display:block}
+.login-button.loading .login-arrow{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+.form-message{min-height:0;margin:0;text-align:center;font-size:12px;line-height:1.5}
+.form-message:empty{display:none}
+.form-message.success{color:#15803d}.form-message.error{color:#dc2626}
+.auth-security-note{display:flex;align-items:flex-start;gap:8px;margin-top:18px;padding:11px 12px;border-radius:10px;background:#f8fafc;color:#94a3b8;font-size:11px;line-height:1.6}
+.auth-security-note span:first-child{color:#60a5fa;font-size:14px;line-height:1.3}
+.auth-switch{margin:22px 0 0;text-align:center;color:#8a94a4;font-size:13px}
+.auth-switch a{margin-left:3px;color:#2563eb;font-weight:700;text-decoration:none}
+.auth-switch a:hover{text-decoration:underline}
+.footer-note{margin:17px 0 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6}
+@media(max-width:420px){body{padding:18px 14px 20px}.auth-panel{padding:28px 21px 24px;border-radius:22px}.auth-header{margin-bottom:24px}.brand-logo{width:62px;height:62px;margin-bottom:13px}h1{font-size:24px}.auth-form{gap:17px}.code-button{flex-basis:116px;font-size:12px}.primary-button{min-height:52px}}
+@media(max-width:340px){.auth-panel{padding-right:16px;padding-left:16px}.code-row{gap:7px}.code-button{flex-basis:108px;padding:0 7px;font-size:11px}.legal-check{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
 </head>
 <body data-page="auth" data-auth-mode="register">
-<header class="topbar auth-topbar">
-<a class="brand auth-brand" href="./index.html" aria-label="晴天号铺 QINGTIAN STORE">
-<span class="brand-image-wrap"><img class="brand-logo" src="./logo.jpg" alt="晴天号铺 Logo"></span>
-<span class="brand-copy"><strong>晴天号铺</strong><small>QINGTIAN STORE</small></span></a>
-<div class="auth-header-actions"><button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language"><span data-lang-label="zh">中</span><i>/</i><span data-lang-label="en">EN</span></button><a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="support">联系客服 ↗</a></div>
-</header>
-<main class="auth-shell"><section class="auth-panel" aria-labelledby="authTitle">
-<div class="auth-eyebrow"><span class="auth-live-dot"></span><span data-i18n="eyebrow">SECURE EMAIL ACCESS</span></div>
-<h1 id="authTitle" data-i18n="title">创建账号</h1><p class="auth-subtitle" data-i18n="subtitle">输入新邮箱并验证，即可自动注册并登录晴天号铺。</p>
-<form id="authForm" novalidate>
-<div class="auth-field"><label class="field-label" for="email" data-i18n="emailLabel">邮箱地址</label><input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254" aria-describedby="emailError"><p class="field-error" id="emailError" aria-live="polite"></p></div>
-<div class="code-row"><div class="auth-field code-field"><label class="field-label" for="code" data-i18n="codeLabel">邮箱验证码</label><input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required aria-describedby="codeError"><p class="field-error" id="codeError" aria-live="polite"></p></div><button class="secondary-button code-button" id="sendCode" type="button" data-i18n="sendCode">获取验证码</button></div>
-<div class="auth-legal"><label class="legal-check"><input id="agreeTerms" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" target="_blank" rel="noopener" data-i18n="terms">用户协议</a></label><label class="legal-check"><input id="agreePrivacy" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacy">隐私政策</a></label><p class="field-error legal-error" id="legalError" aria-live="polite"></p></div>
-<button class="primary-button full-button login-button" id="loginButton" type="submit"><span class="button-spinner" aria-hidden="true"></span><span class="login-button-text" data-i18n="login">安全登录</span><span class="login-arrow" aria-hidden="true">→</span></button>
-<p class="form-message" id="authMessage" role="status" aria-live="polite"></p></form>
-<div class="auth-security-note"><span aria-hidden="true">⌑</span><span data-i18n="securityNote">验证码 5 分钟内有效，请勿向任何人透露。</span></div>
-<p class="auth-switch">已有账号？<a href="./auth.html">返回登录</a></p>
-</section><footer class="auth-foot">QINGTIAN STORE <span>·</span> SECURE ACCESS</footer><p class="footer-note">© 2026 晴天号铺 (lynli.me) 版权所有 | 本平台</p></main>
-<script src="./script.js" defer></script></body></html>
+<main class="auth-shell">
+  <section class="auth-panel" aria-labelledby="authTitle">
+    <header class="auth-header">
+      <button class="language-toggle" id="languageToggle" type="button" aria-label="切换语言"><span data-lang-label="zh" class="active">中</span> / <span data-lang-label="en">EN</span></button>
+      <img class="brand-logo" src="./logo.jpg" alt="晴天号铺 Logo">
+      <h1 id="authTitle" data-i18n="title">创建账号</h1>
+      <p class="auth-subtitle" data-i18n="subtitle">输入新邮箱并验证，即可自动注册并登录晴天号铺。</p>
+    </header>
+
+    <form id="authForm" class="auth-form" novalidate>
+      <div class="auth-field">
+        <label class="field-label" for="email" data-i18n="emailLabel">邮箱地址</label>
+        <input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="请输入邮箱地址" required maxlength="254" aria-describedby="emailError">
+        <p class="field-error" id="emailError" aria-live="polite"></p>
+      </div>
+
+      <div class="code-row">
+        <div class="auth-field code-field">
+          <label class="field-label" for="code" data-i18n="codeLabel">邮箱验证码</label>
+          <input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required aria-describedby="codeError">
+          <p class="field-error" id="codeError" aria-live="polite"></p>
+        </div>
+        <button class="secondary-button code-button" id="sendCode" type="button" data-i18n="sendCode">获取验证码</button>
+      </div>
+
+      <div class="auth-legal">
+        <label class="legal-check" for="agreeTerms">
+          <input id="agreeTerms" type="checkbox">
+          <span class="legal-copy"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" target="_blank" rel="noopener" data-i18n="terms">《用户协议》</a> 和 <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacy">《隐私政策》</a></span>
+        </label>
+        <p class="field-error legal-error" id="legalError" aria-live="polite"></p>
+      </div>
+
+      <button class="primary-button full-button login-button" id="loginButton" type="submit">
+        <span class="button-spinner" aria-hidden="true"></span>
+        <span class="login-button-text" data-i18n="login">注册并登录</span>
+        <span class="login-arrow" aria-hidden="true">→</span>
+      </button>
+      <p class="form-message" id="authMessage" role="status" aria-live="polite"></p>
+    </form>
+
+    <div class="auth-security-note"><span aria-hidden="true">ⓘ</span><span data-i18n="securityNote">验证码 5 分钟内有效，请勿向任何人透露。</span></div>
+    <p class="auth-switch">已有账号？<a href="./auth.html">返回登录</a></p>
+  </section>
+  <p class="footer-note">© 2026 晴天号铺 (lynli.me) 版权所有</p>
+</main>
+<script src="./script.js" defer></script>
+</body>
+</html>
