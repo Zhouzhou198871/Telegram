@@ -130,54 +130,67 @@ function initParticleBackground(){
  window.addEventListener("touchend",leave,{passive:true});
  document.addEventListener("visibilitychange",()=>{if(document.hidden)cancelAnimationFrame(raf);else if(!reduced)draw();});
 }
+
+function initPolicyModal(){
+ const policyModal = $("policyModal");
+ if(!policyModal)return;
+ const policyModalTitle = $("policyModalTitle");
+ const policyModalContent = $("policyModalContent");
+ const closeButton = $("policyModalClose");
+ const confirmButton = $("policyModalConfirm");
+ let previousBodyOverflow = "";
+ let returnFocus = null;
+ const closePolicyModal = () => {
+  if(policyModal.hidden)return;
+  policyModal.hidden = true;
+  policyModal.setAttribute("aria-hidden","true");
+  document.body.style.overflow = previousBodyOverflow;
+  if(returnFocus && typeof returnFocus.focus === "function")returnFocus.focus();
+ };
+ // 捕获阶段统一拦截所有协议/隐私入口，避免其他监听器或默认 href 导航抢先执行
+ document.addEventListener("click",event=>{
+  const target = event.target instanceof Element ? event.target : event.target.parentElement;
+  const link = target && target.closest('a[data-policy],a[href*="terms.html"],a[href*="privacy.html"]');
+  if(!link)return;
+  const href = (link.getAttribute("href") || "").toLowerCase();
+  const policyType = link.dataset.policy || (href.includes("terms.html") ? "terms" : "privacy");
+  if(policyType !== "terms" && policyType !== "privacy")return;
+  event.preventDefault();
+  event.stopPropagation();
+  if(event.stopImmediatePropagation)event.stopImmediatePropagation();
+  const isTerms = policyType === "terms";
+  policyModalTitle.textContent = isTerms
+   ? (authLanguage === "en" ? "Terms of Service" : "用户协议")
+   : (authLanguage === "en" ? "Privacy Policy" : "隐私政策");
+  policyModalContent.textContent = isTerms
+   ? (authLanguage === "en"
+     ? "Terms of Service placeholder. Replace this text with the complete terms and conditions."
+     : "这里是用户协议内容占位文本。正式内容可在后续替换为完整的用户协议条款。")
+   : (authLanguage === "en"
+     ? "Privacy Policy placeholder. Replace this text with the complete privacy policy."
+     : "这里是隐私政策内容占位文本。正式内容可在后续替换为完整的隐私政策条款。");
+  previousBodyOverflow = document.body.style.overflow;
+  returnFocus = link;
+  policyModal.hidden = false;
+  policyModal.setAttribute("aria-hidden","false");
+  document.body.style.overflow = "hidden";
+  closeButton && closeButton.focus();
+ },true);
+ if(closeButton)closeButton.addEventListener("click",closePolicyModal);
+ if(confirmButton)confirmButton.addEventListener("click",closePolicyModal);
+ policyModal.addEventListener("click",event=>{
+  if(event.target === policyModal)closePolicyModal();
+ });
+ document.addEventListener("keydown",event=>{
+  if(event.key === "Escape" && !policyModal.hidden)closePolicyModal();
+ });
+}
+
 function initAuth(){
  if(token()){location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),password=$("password"),confirmPassword=$("confirmPassword"),passwordError=$("passwordError"),confirmPasswordError=$("confirmPasswordError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
- // 用户协议与隐私政策使用当前页弹窗，避免离开表单页面
- const policyModal = $("policyModal");
- const policyModalTitle = $("policyModalTitle");
- const policyModalContent = $("policyModalContent");
- let previousBodyOverflow = "";
- let policyReturnFocus = null;
- const closePolicyModal = () => {
-  if (!policyModal || policyModal.hidden) return;
-  policyModal.hidden = true;
-  policyModal.setAttribute("aria-hidden", "true");
-  document.body.style.overflow = previousBodyOverflow;
-  if (policyReturnFocus) policyReturnFocus.focus();
- };
- document.querySelectorAll("[data-policy]").forEach(link => {
-  link.addEventListener("click", event => {
-   event.preventDefault();
-   const isTerms = link.dataset.policy === "terms";
-   policyModalTitle.textContent = isTerms
-    ? (authLanguage === "en" ? "Terms of Service" : "用户协议")
-    : (authLanguage === "en" ? "Privacy Policy" : "隐私政策");
-   policyModalContent.textContent = isTerms
-    ? (authLanguage === "en"
-      ? "Terms of Service placeholder. Replace this text with the complete terms and conditions."
-      : "这里是用户协议内容占位文本。正式内容可在后续替换为完整的用户协议条款。")
-    : (authLanguage === "en"
-      ? "Privacy Policy placeholder. Replace this text with the complete privacy policy."
-      : "这里是隐私政策内容占位文本。正式内容可在后续替换为完整的隐私政策条款。");
-   previousBodyOverflow = document.body.style.overflow;
-   policyReturnFocus = link;
-   policyModal.hidden = false;
-   policyModal.setAttribute("aria-hidden", "false");
-   document.body.style.overflow = "hidden";
-   $("policyModalClose").focus();
-  });
- });
- $("policyModalClose").addEventListener("click", closePolicyModal);
- $("policyModalConfirm").addEventListener("click", closePolicyModal);
- policyModal.addEventListener("click", event => {
-  if (event.target === policyModal) closePolicyModal();
- });
- document.addEventListener("keydown", event => {
-  if (event.key === "Escape" && policyModal && !policyModal.hidden) closePolicyModal();
- });
 
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  // 输入时清除错误；验证码输入仅保留数字且最多 6 位
@@ -404,6 +417,7 @@ function initShop() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  if (document.body.dataset.page === "auth") initPolicyModal();
   if (document.body.dataset.page === "auth") initAuth();
   if (document.body.dataset.page === "shop") initShop();
 });
