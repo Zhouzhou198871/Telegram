@@ -5,7 +5,7 @@ import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 const host = document.getElementById("astronautStage");
 if (host) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const mobile = matchMedia("(max-width: 760px)").matches;
+  const mobile = window.innerWidth < 768;
   try {
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: mobile ? "high-performance" : "high-performance" });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, mobile ? 1.35 : 2));
@@ -20,8 +20,9 @@ if (host) {
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(29, host.clientWidth / host.clientHeight, 0.1, 100);
-    camera.position.set(0, 0.12, mobile ? 6.8 : 5.35);
+    const camera = new THREE.PerspectiveCamera(mobile ? 34 : 29, host.clientWidth / host.clientHeight, 0.1, 100);
+    camera.position.set(0, 0.12, 8);
+    camera.lookAt(0, 0, 0);
     const ambient = new THREE.AmbientLight(0xffffff, 1.85); scene.add(ambient);
     const hemi = new THREE.HemisphereLight(0xffffff, 0xdce5f0, 2.55); scene.add(hemi);
     const key = new THREE.DirectionalLight(0xfffdf8, 2.8); key.position.set(3.5, 6, 5); key.castShadow = true;
@@ -69,11 +70,34 @@ if (host) {
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,-0.63,0.30,0.02);
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,0.63,0.30,0.02);
       add(new THREE.TorusGeometry(0.16,0.025,8,24),gold,0.28,0.08,0.42,1,1,0);
-      group.scale.setScalar(1.12);
+      group.scale.setScalar(window.innerWidth < 768 ? 0.72 : 1.12);
       return group;
+    };
+    let activeSubject = null;
+    const fitCameraToSubject = (subject) => {
+      if (!subject) return;
+      const bounds = new THREE.Box3().setFromObject(subject);
+      if (bounds.isEmpty()) return;
+      const size = bounds.getSize(new THREE.Vector3());
+      const center = bounds.getCenter(new THREE.Vector3());
+      const isMobile = window.innerWidth < 768;
+      const targetY = isMobile ? 1.0 : 0.0;
+      subject.position.y += targetY - center.y;
+      const fittedBounds = new THREE.Box3().setFromObject(subject);
+      const fittedSize = fittedBounds.getSize(new THREE.Vector3());
+      const vFov = THREE.MathUtils.degToRad(camera.fov);
+      const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+      const distanceY = (fittedSize.y * 0.5) / Math.tan(vFov / 2);
+      const distanceX = (fittedSize.x * 0.5) / Math.tan(hFov / 2);
+      const distance = Math.max(distanceX, distanceY, fittedSize.z * 0.5) * (isMobile ? 1.24 : 1.16);
+      camera.position.set(0, targetY, Math.max(distance, isMobile ? 4.2 : 5.0));
+      camera.lookAt(0, targetY, 0);
+      camera.updateProjectionMatrix();
+      activeSubject = subject;
     };
     const fallbackAstronaut = createFallbackAstronaut();
     pivot.add(fallbackAstronaut);
+    fitCameraToSubject(fallbackAstronaut);
     host.classList.add("model-fallback");
     let mixer = null, modelReady = true;
     const loader = new GLTFLoader();    loader.load("https://modelviewer.dev/shared-assets/models/Astronaut.glb", (gltf) => {
@@ -83,7 +107,8 @@ if (host) {
       const center = bounds.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const longest = Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(4.55 / Math.max(longest, 0.001));
+      const isMobile = window.innerWidth < 768;
+      model.scale.setScalar((isMobile ? 2.75 : 4.55) / Math.max(longest, 0.001));
       model.traverse((node) => {
         if (!node.isMesh) return;
         node.castShadow = true;
@@ -100,6 +125,7 @@ if (host) {
       });
       pivot.remove(fallbackAstronaut);
       pivot.add(model);
+      fitCameraToSubject(model);
       host.classList.remove("model-fallback");
       if (gltf.animations && gltf.animations.length) {
         mixer = new THREE.AnimationMixer(model);
@@ -124,10 +150,13 @@ if (host) {
 
     const resize = () => {
       const width = host.clientWidth, height = host.clientHeight; if (!width || !height) return;
-      const isMobile = matchMedia("(max-width: 760px)").matches;
+      const isMobile = window.innerWidth < 768;
       renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isMobile ? 1.35 : 2));
-      renderer.setSize(width, height, false); camera.aspect = width / height;
-      camera.position.z = isMobile ? 7.2 : 5.35; camera.fov = isMobile ? 31 : 29; camera.updateProjectionMatrix();
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      camera.fov = isMobile ? 34 : 29;
+      camera.updateProjectionMatrix();
+      if (activeSubject) fitCameraToSubject(activeSubject);
     };
     const observer = new ResizeObserver(resize); observer.observe(host);
     let frame = 0; const clock = new THREE.Clock();
