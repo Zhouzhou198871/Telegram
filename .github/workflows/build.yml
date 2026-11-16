@@ -11,6 +11,7 @@ on:
       - "shop.html"
       - "style.css"
       - "script.js"
+      - "astronaut-3d.js"
       - "config.html"
       - "terms.html"
       - "privacy.html"
@@ -40,7 +41,7 @@ jobs:
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp index.html auth.html register.html shop.html style.css script.js config.html terms.html privacy.html _site/
+          cp index.html auth.html register.html shop.html style.css script.js astronaut-3d.js config.html terms.html privacy.html _site/
           for asset in logo.jpg logo.png bg.webm bg.mp4; do
             if [ -f "$asset" ]; then cp "$asset" _site/; fi
           done
