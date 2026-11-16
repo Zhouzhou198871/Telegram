@@ -1,18 +1,20 @@
-name: Build and deploy static site
+name: Build and deploy Qingtian Shop to GitHub Pages
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 * * * *"
   push:
     branches: [main]
     paths:
       - "index.html"
+      - "auth.html"
+      - "shop.html"
       - "style.css"
       - "script.js"
       - "config.html"
-      - "theme_config.json"
-      - "scripts/**"
+      - "logo.jpg"
+      - "logo.png"
+      - "bg.mp4"
+      - "bg.webm"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -30,37 +32,18 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Validate Telegram sync script
-        run: python -m py_compile scripts/sync_telegram.py
-
-      - name: Prepare static output
+      - name: Validate frontend JavaScript
+        run: node --check script.js
+      - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp index.html style.css script.js config.html _site/
-          if [ -f theme_config.json ]; then cp theme_config.json _site/; fi
+          cp index.html auth.html shop.html style.css script.js config.html _site/
           for asset in logo.jpg logo.png bg.webm bg.mp4; do
             if [ -f "$asset" ]; then cp "$asset" _site/; fi
           done
-
-      - name: Export public data from pinned Telegram message
-        env:
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          CHANNEL_ID: ${{ secrets.CHANNEL_ID }}
-          OUTPUT_JSON: _site/data.json
-        run: |
-          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$CHANNEL_ID" ]; then
-            echo "::warning::Telegram Secrets are missing; publishing an empty catalog until configured."
-            printf '{"schema_version":1,"products":[],"announcements":[],"updated_at":null}\\n' > "$OUTPUT_JSON"
-          else
-            python scripts/sync_telegram.py
-          fi
-
+          test -s _site/index.html
+          test -s _site/auth.html
+          test -s _site/shop.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
@@ -69,7 +52,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: \${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
     steps:
