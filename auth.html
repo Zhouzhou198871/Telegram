@@ -1,27 +1,54 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#0B1120"><meta name="description" content="晴天号铺 · 安全邮箱登录">
-<title>安全登录 · 晴天号铺</title><link rel="stylesheet" href="./style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 晴天号铺</title>
+    <link rel="stylesheet" href="./style.css">
 </head>
-<body data-page="auth">
-<header class="topbar auth-topbar">
-<a class="brand auth-brand" href="./index.html" aria-label="晴天号铺 QINGTIAN STORE">
-<span class="brand-image-wrap"><img class="brand-logo" src="./logo.jpg" alt="晴天号铺 Logo"></span>
-<span class="brand-copy"><strong>晴天号铺</strong><small>QINGTIAN STORE</small></span></a>
+<body>
+    <div class="header">
+        <img src="./logo.jpg" alt="Logo">
+        <div class="header-text">
+            <span class="zh">晴天号铺</span>
+            <span class="en">QINGTIAN STORE</span>
+        </div>
+    </div>
 
-</header>
-<main class="auth-shell"><section class="auth-panel" aria-labelledby="authTitle">
-<div class="auth-eyebrow"><span class="auth-live-dot"></span><span data-i18n="eyebrow">SECURE EMAIL ACCESS</span></div>
-<h1 id="authTitle" data-i18n="title">欢迎回来</h1><p class="auth-subtitle" data-i18n="subtitle">使用邮箱验证码，安全进入你的晴天号铺账户。</p>
-<form id="authForm" novalidate>
-<div class="auth-field"><label class="field-label" for="email" data-i18n="emailLabel">邮箱地址</label><input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254" aria-describedby="emailError"><p class="field-error" id="emailError" aria-live="polite"></p></div>
-<div class="code-row"><div class="auth-field code-field"><label class="field-label" for="code" data-i18n="codeLabel">邮箱验证码</label><input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required aria-describedby="codeError"><p class="field-error" id="codeError" aria-live="polite"></p></div><button class="secondary-button code-button" id="sendCode" type="button" data-i18n="sendCode">获取验证码</button></div>
-<div class="auth-legal"><label class="legal-check"><input id="agreeTerms" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" target="_blank" rel="noopener" data-i18n="terms">用户协议</a></label><label class="legal-check"><input id="agreePrivacy" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacy">隐私政策</a></label><p class="field-error legal-error" id="legalError" aria-live="polite"></p></div>
-<button class="primary-button full-button login-button" id="loginButton" type="submit"><span class="button-spinner" aria-hidden="true"></span><span class="login-button-text" data-i18n="login">安全登录</span><span class="login-arrow" aria-hidden="true">→</span></button>
-<p class="form-message" id="authMessage" role="status" aria-live="polite"></p></form>
-<div class="auth-security-note"><span aria-hidden="true">⌑</span><span data-i18n="securityNote">验证码 5 分钟内有效，请勿向任何人透露。</span></div>
-<p class="auth-switch">没有账号？<a href="./register.html">去注册</a></p>
-</section><footer class="auth-foot">QINGTIAN STORE <span>·</span> SECURE ACCESS</footer></main>
-<script src="./script.js" defer></script></body></html>
+    <div class="auth-panel">
+        <div class="title-en">SECURE EMAIL ACCESS</div>
+        <div class="title-zh">欢迎回来</div>
+        <div class="subtitle">使用邮箱验证码，安全进入你的晴天号铺账户。</div>
+
+        <form>
+            <div class="form-group">
+                <label>邮箱地址</label>
+                <input type="email" placeholder="name@example.com" required>
+            </div>
+
+            <div class="code-row">
+                <div class="form-group">
+                    <label>邮箱验证码</label>
+                    <input type="text" placeholder="输入 6 位验证码" required>
+                </div>
+                <button type="button" class="btn-code">获取验证码</button>
+            </div>
+
+            <div class="agreement-box">
+                <label class="agree-item">
+                    <input type="checkbox"> 我已阅读并同意 <a href="#">用户协议</a>
+                </label>
+                <label class="agree-item">
+                    <input type="checkbox"> 我已阅读并同意 <a href="#">隐私政策</a>
+                </label>
+            </div>
+
+            <button type="submit" class="btn-primary">安全登录 →</button>
+        </form>
+
+        <div class="go-register">没有账号？ <a href="./register.html">去注册</a></div>
+    </div>
+
+    <div class="footer-note">QINGTIAN STORE · SECURE ACCESS</div>
+</body>
+</html>
