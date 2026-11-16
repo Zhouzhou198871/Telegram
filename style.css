@@ -529,3 +529,87 @@ body[data-page="auth"] .auth-legal .legal-check a{
   text-underline-offset:3px!important;
   text-decoration-skip-ink:auto;
 }
+
+
+/* FINAL NATIVE UI OVERRIDES — consistent typography, contrast and alignment */
+:root,
+html,
+body,
+button,
+input,
+select,
+textarea {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+body[data-page="auth"] .auth-panel,
+body[data-page="auth"] .auth-panel * {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+}
+body[data-page="auth"] .auth-subtitle,
+body[data-page="auth"] .auth-legal,
+body[data-page="auth"] .auth-legal .legal-check,
+body[data-page="auth"] .legal-check {
+  color: #4B5563 !important;
+}
+body[data-page="auth"] .text-input,
+body[data-page="auth"] input:not([type="checkbox"]) {
+  box-sizing: border-box !important;
+  height: 50px !important;
+  min-height: 50px !important;
+  font-size: 16px !important;
+  line-height: 1.25 !important;
+  color: #111827 !important;
+  font-weight: 500 !important;
+}
+body[data-page="auth"] input::placeholder,
+body[data-page="auth"] .text-input::placeholder,
+body[data-page="auth"] textarea::placeholder {
+  color: #9CA3AF !important;
+  opacity: 1 !important;
+}
+body[data-page="auth"] .code-row {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 132px !important;
+  align-items: center !important;
+  gap: 11px !important;
+}
+body[data-page="auth"] .code-button,
+body[data-page="auth"] .login-button {
+  box-sizing: border-box !important;
+  min-height: 50px !important;
+  height: 50px !important;
+  margin-top: 0 !important;
+  align-self: center !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+body[data-page="auth"] .login-button {
+  width: 100% !important;
+  margin-top: 16px !important;
+}
+body[data-page="auth"] .astronaut-stage {
+  opacity: 1 !important;
+  filter:
+    drop-shadow(0 16px 22px rgba(15, 23, 42, .22))
+    drop-shadow(0 4px 8px rgba(37, 99, 235, .20)) !important;
+}
+@media (max-width: 760px) {
+  body[data-page="auth"] .astronaut-stage {
+    width: 124px !important;
+    height: 132px !important;
+    opacity: .94 !important;
+    filter:
+      drop-shadow(0 10px 16px rgba(15, 23, 42, .28))
+      drop-shadow(0 3px 7px rgba(37, 99, 235, .24)) !important;
+  }
+}
+@media (max-width: 480px) {
+  body[data-page="auth"] .code-row {
+    grid-template-columns: minmax(0, 1fr) 118px !important;
+  }
+  body[data-page="auth"] .text-input,
+  body[data-page="auth"] input:not([type="checkbox"]) {
+    font-size: 16px !important;
+  }
+}
