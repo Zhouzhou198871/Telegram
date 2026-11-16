@@ -412,7 +412,8 @@ function initShop() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  if (document.body.dataset.page === "auth") initPolicyModal();
-  if (document.body.dataset.page === "auth") initAuth();
+  const page = document.body.dataset.page;
+  if (page === "auth" || page === "login") initPolicyModal();
+  if (page === "auth") initAuth();
   if (document.body.dataset.page === "shop") initShop();
 });
