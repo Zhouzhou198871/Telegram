@@ -32,7 +32,8 @@ LOG = logging.getLogger("qingtian-shop-origin")
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
 DB_PATH = Path(os.getenv("WEB_DB_PATH", "/var/lib/qingtian-shop/web.sqlite3"))
 KEY_PATH = Path(os.getenv("DELIVERY_KEY_FILE", "/etc/qingtian-shop/delivery.key"))
-LIVE_PURCHASES = os.getenv("ENABLE_LIVE_PURCHASES", "false").lower() == "true"
+ENABLE_LOCAL_DELIVERY = os.getenv("ENABLE_LOCAL_DELIVERY", "false").lower() == "true"
+ENABLE_UPSTREAM_PURCHASES = os.getenv("ENABLE_UPSTREAM_PURCHASES", "false").lower() == "true"
 CORS_ORIGINS = [x.strip() for x in os.getenv(
     "CORS_ORIGINS", "https://zhouzhou198871.github.io"
 ).split(",") if x.strip()]
@@ -233,6 +234,7 @@ def public_product(p):
         "stock": stock,
         "currency": "USDT",
         "is_local_inventory": local,
+        "purchasable": ENABLE_LOCAL_DELIVERY if local else ENABLE_UPSTREAM_PURCHASES,
     }
 
 
@@ -268,7 +270,7 @@ def startup():
 
 @app.get("/health")
 def health():
-    return {"ok": True, "service": "qingtian-shop-origin", "live_purchases": LIVE_PURCHASES}
+    return {"ok": True, "service": "qingtian-shop-origin", "local_delivery": ENABLE_LOCAL_DELIVERY, "upstream_purchases": ENABLE_UPSTREAM_PURCHASES}
 
 
 @app.post("/api/send_email", dependencies=[Depends(worker_only)])
@@ -321,13 +323,14 @@ def buy(data: BuyIn):
             "content": delivery_from_row(existing), "error_code": existing["error_code"],
         }
 
-    if not LIVE_PURCHASES:
-        return {"ok": True, "status": "failed", "error_code": "live_purchase_disabled"}
-
     product = find_product(data.product_id)
     item = public_product(product) if product else None
     if not item:
         return {"ok": True, "status": "failed", "error_code": "product_unavailable"}
+    if product.get("is_local_inventory") is True and not ENABLE_LOCAL_DELIVERY:
+        return {"ok": True, "status": "failed", "error_code": "local_delivery_disabled"}
+    if product.get("is_local_inventory") is not True and not ENABLE_UPSTREAM_PURCHASES:
+        return {"ok": True, "status": "failed", "error_code": "upstream_purchase_disabled"}
     if item["price_usdt"] != data.expected_price_usdt:
         return {"ok": True, "status": "failed", "error_code": "price_changed"}
 
