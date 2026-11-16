@@ -1,5 +1,5 @@
-import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js";
-import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/loaders/GLTFLoader.js";
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const host = document.getElementById("astronautStage");
 if (host) {
@@ -66,7 +66,7 @@ if (host) {
     const animate = () => {
       if (document.hidden) { frame = 0; return; }
       frame = requestAnimationFrame(animate);
-      const elapsed = clock.getElapsedTime(), dt = Math.min(clock.getDelta(), 0.05);
+      const dt = Math.min(clock.getDelta(), 0.05), elapsed = clock.elapsedTime;
       if (mixer) mixer.update(dt);
       if (modelReady) {
         pivot.position.y = Math.sin(elapsed * 1.05) * (reduced ? 0 : 0.12);
