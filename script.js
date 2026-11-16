@@ -139,7 +139,8 @@ function renderProducts(items) {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = "立即购买";
+    buyButton.textContent = item.purchasable === false ? "暂不可购买" : "立即购买";
+    buyButton.disabled = item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
     fragment.appendChild(card);
