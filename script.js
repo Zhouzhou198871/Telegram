@@ -139,7 +139,7 @@ function initAuth(){
   if(!email.value.trim()||!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}
   if(!/^\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
   const passwordValue=password.value;
-  if(!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,20}$/.test(passwordValue)){setFieldError(password,passwordError,authText("invalidPassword"));password.focus();return;}
+  if(!/^(?=.*[A-Za-z])(?=.*\d).{6,20}$/.test(passwordValue)){setFieldError(password,passwordError,authText("invalidPassword"));password.focus();return;}
   if(passwordValue!==confirmPassword.value){setFieldError(confirmPassword,confirmPasswordError,authText("passwordMismatch"));confirmPassword.focus();return;}
   if(!$("agreeTerms").checked){legalError.textContent=authText("needAgreement");return;}
   setFieldError(email,emailError,"");setFieldError(code,codeError,"");setFieldError(password,passwordError,"");setFieldError(confirmPassword,confirmPasswordError,"");legalError.textContent="";
