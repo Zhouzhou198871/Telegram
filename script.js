@@ -10,15 +10,40 @@ async function api(path, options = {}) {
   headers.set("Accept", "application/json");
   if (options.body) headers.set("Content-Type", "application/json");
   if (token()) headers.set("Authorization", "Bearer " + token());
-  const response = await fetch(API_BASE + path, { ...options, headers, cache: "no-store" });
-  let data = {};
-  try { data = await response.json(); } catch {}
-  if (!response.ok && response.status !== 202) {
-    const error = new Error(data.error || "request_failed");
-    error.status = response.status;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetch(API_BASE + path, {
+      ...options,
+      headers,
+      cache: "no-store",
+      signal: controller.signal
+    });
+    let data = {};
+    try { data = await response.json(); } catch {}
+    if (!response.ok && response.status !== 202) {
+      const errorCode = response.status >= 500 ? "server_error" : (data.error || "request_failed");
+      const error = new Error(errorCode);
+      error.status = response.status;
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      const timeoutError = new Error("request_timeout");
+      timeoutError.code = "request_timeout";
+      throw timeoutError;
+    }
+    if (error instanceof TypeError || !error.status) {
+      const networkError = new Error("network_error");
+      networkError.code = "network_error";
+      throw networkError;
+    }
     throw error;
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return data;
 }
 
 function message(element, text, kind = "") {
@@ -40,8 +65,8 @@ function formatPrice(value) {
 }
 
 const AUTH_I18N = {
- zh:{eyebrow:"SECURE EMAIL ACCESS",title:"欢迎回来",subtitle:"使用邮箱验证码，安全进入你的晴天号铺账户。",support:"联系客服 ↗",emailLabel:"邮箱地址",codeLabel:"邮箱验证码",codePlaceholder:"输入 6 位验证码",sendCode:"获取验证码",sending:"发送中…",resend:"重新获取",retry:" 秒后重试",login:"安全登录",logging:"正在登录…",agreePrefix:"我已阅读并同意",terms:"用户协议",privacy:"隐私政策",securityNote:"验证码 5 分钟内有效，请勿向任何人透露。",invalidEmail:"请输入有效的邮箱地址。",invalidCode:"请输入 6 位数字验证码。",needAgreement:"请先勾选并同意用户协议和隐私政策。",passwordLabel:"设置密码",confirmPasswordLabel:"确认密码",passwordPlaceholder:"请设置8-20位包含字母和数字的密码",confirmPasswordPlaceholder:"请再次输入密码",invalidPassword:"密码须为8-20位，且同时包含字母和数字。",passwordMismatch:"两次输入的密码不一致",registered:"该邮箱已注册，请直接登录或更换邮箱。",sent:"验证码已发送，请检查邮箱。",sendFailed:"验证码发送失败，请稍后重试。",tooMany:"发送过于频繁，请稍后再试。",wrongCode:"验证码不正确。",expired:"验证码已过期，请重新获取。",tooManyAttempts:"验证次数过多，请重新获取验证码。",loginFailed:"登录失败，请检查验证码后重试。"},
- en:{eyebrow:"SECURE EMAIL ACCESS",title:"Welcome Back",subtitle:"Sign in securely to your Qingtian Store account with an email code.",support:"Support ↗",emailLabel:"Email address",codeLabel:"Verification code",codePlaceholder:"Enter 6-digit code",sendCode:"Send Code",sending:"Sending…",resend:"Send Again",retry:"s to retry",login:"Secure Login",logging:"Signing in…",agreePrefix:"I have read and agree to the",terms:"Terms of Service",privacy:"Privacy Policy",securityNote:"Codes expire in 5 minutes. Never share your code.",invalidEmail:"Please enter a valid email address.",invalidCode:"Please enter the 6-digit verification code.",needAgreement:"Please accept the Terms of Service and Privacy Policy.",passwordLabel:"Set password",confirmPasswordLabel:"Confirm password",passwordPlaceholder:"Use 8-20 characters with letters and numbers",confirmPasswordPlaceholder:"Enter your password again",invalidPassword:"Use 8-20 characters with both letters and numbers.",passwordMismatch:"The passwords do not match.",registered:"This email is already registered. Please sign in or use another email.",sent:"Code sent. Please check your inbox.",sendFailed:"Unable to send the code. Please try again.",tooMany:"Too many requests. Please try again later.",wrongCode:"The verification code is incorrect.",expired:"Code expired. Please request a new one.",tooManyAttempts:"Too many attempts. Please request a new code.",loginFailed:"Sign-in failed. Please check your code and try again."}
+ zh:{eyebrow:"SECURE EMAIL ACCESS",title:"欢迎回来",subtitle:"使用邮箱验证码，安全进入你的晴天号铺账户。",support:"联系客服 ↗",emailLabel:"邮箱地址",codeLabel:"邮箱验证码",codePlaceholder:"输入 6 位验证码",sendCode:"获取验证码",sending:"发送中…",resend:"重新获取",retry:" 秒后重试",login:"安全登录",logging:"正在登录…",agreePrefix:"我已阅读并同意",terms:"用户协议",privacy:"隐私政策",securityNote:"验证码 5 分钟内有效，请勿向任何人透露。",invalidEmail:"请输入有效的邮箱地址。",invalidCode:"请输入 6 位数字验证码。",needAgreement:"请先勾选并同意用户协议和隐私政策。",passwordLabel:"设置密码",confirmPasswordLabel:"确认密码",passwordPlaceholder:"请设置8-20位包含字母和数字的密码",confirmPasswordPlaceholder:"请再次输入密码",invalidPassword:"密码须为8-20位，且同时包含字母和数字。",passwordMismatch:"两次输入的密码不一致",registered:"该邮箱已注册，请直接登录或更换邮箱。",sent:"验证码已发送，请检查邮箱。",sendFailed:"验证码发送失败，请稍后重试。",tooMany:"发送过于频繁，请稍后再试。",wrongCode:"验证码不正确。",expired:"验证码已过期，请重新获取。",tooManyAttempts:"验证次数过多，请重新获取验证码。",loginFailed:"登录失败，请检查验证码后重试。",requestTimeout:"服务器响应超时，请稍后重试。",networkError:"网络连接失败，请检查网络后重试。",serverError:"服务器暂时出现故障，请稍后重试。"},
+ en:{eyebrow:"SECURE EMAIL ACCESS",title:"Welcome Back",subtitle:"Sign in securely to your Qingtian Store account with an email code.",support:"Support ↗",emailLabel:"Email address",codeLabel:"Verification code",codePlaceholder:"Enter 6-digit code",sendCode:"Send Code",sending:"Sending…",resend:"Send Again",retry:"s to retry",login:"Secure Login",logging:"Signing in…",agreePrefix:"I have read and agree to the",terms:"Terms of Service",privacy:"Privacy Policy",securityNote:"Codes expire in 5 minutes. Never share your code.",invalidEmail:"Please enter a valid email address.",invalidCode:"Please enter the 6-digit verification code.",needAgreement:"Please accept the Terms of Service and Privacy Policy.",passwordLabel:"Set password",confirmPasswordLabel:"Confirm password",passwordPlaceholder:"Use 8-20 characters with letters and numbers",confirmPasswordPlaceholder:"Enter your password again",invalidPassword:"Use 8-20 characters with both letters and numbers.",passwordMismatch:"The passwords do not match.",registered:"This email is already registered. Please sign in or use another email.",sent:"Code sent. Please check your inbox.",sendFailed:"Unable to send the code. Please try again.",tooMany:"Too many requests. Please try again later.",wrongCode:"The verification code is incorrect.",expired:"Code expired. Please request a new one.",tooManyAttempts:"Too many attempts. Please request a new code.",loginFailed:"Sign-in failed. Please check your code and try again.",requestTimeout:"The server took too long to respond. Please try again.",networkError:"Network connection failed. Please check your connection.",serverError:"The server encountered an error. Please try again later."}
 };
 let authLanguage=localStorage.getItem("qingtian_auth_language")==="en"?"en":"zh";
 const authText=key=>AUTH_I18N[authLanguage][key]||AUTH_I18N.zh[key]||key;
@@ -129,7 +154,12 @@ function initAuth(){
    const tick=()=>{send.textContent=cooldown+authText("retry");};tick();
    timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);
   }catch(error){
-   message(msg,error.message==="too_many_requests"?authText("tooMany"):authText("sendFailed"),"error");
+   const errorMessage = error.message === "request_timeout" ? authText("requestTimeout")
+    : error.message === "network_error" ? authText("networkError")
+    : error.message === "server_error" ? authText("serverError")
+    : error.message === "too_many_requests" ? authText("tooMany")
+    : authText("sendFailed");
+   message(msg,errorMessage,"error");
    send.disabled=false;send.textContent=authText("sendCode");
   }
  });
@@ -151,7 +181,10 @@ function initAuth(){
    window.location.replace("/shop.html");
   }catch(error){
    const errorCode=String(error.message||"");
-   let text=authText("loginFailed");
+   let text=errorCode==="request_timeout"?authText("requestTimeout")
+    :errorCode==="network_error"?authText("networkError")
+    :errorCode==="server_error"?authText("serverError")
+    :authText("loginFailed");
    if(errorCode==="invalid_code")text=authText("wrongCode");
    else if(errorCode==="code_expired")text=authText("expired");
    else if(errorCode==="too_many_attempts")text=authText("tooManyAttempts");
