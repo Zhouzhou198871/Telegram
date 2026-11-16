@@ -480,3 +480,52 @@ body[data-page="auth"] .astronaut-stage:before {
   }
   body[data-page="auth"] .auth-shell { padding-top: 132px !important; }
 }
+
+
+/* AUTH TYPOGRAPHY REFINEMENT — clean hierarchy and restrained weights */
+body[data-page="auth"] .auth-header-actions{display:none!important}
+body[data-page="auth"] .auth-panel h1{
+  color:#111827!important;
+  font-weight:800!important;
+  letter-spacing:-.045em;
+}
+body[data-page="auth"] .auth-subtitle{
+  color:#4B5563!important;
+  font-weight:500!important;
+  line-height:1.6!important;
+}
+body[data-page="auth"] .field-label{
+  color:#374151!important;
+  font-size:11px!important;
+  font-weight:600!important;
+  letter-spacing:.025em!important;
+}
+body[data-page="auth"] .text-input,
+body[data-page="auth"] input:not([type="checkbox"]){
+  color:#1f2937!important;
+  font-weight:500!important;
+}
+body[data-page="auth"] .text-input::placeholder,
+body[data-page="auth"] input:not([type="checkbox"])::placeholder{
+  color:#9CA3AF!important;
+  opacity:1!important;
+}
+body[data-page="auth"] .code-button,
+body[data-page="auth"] .login-button{
+  font-weight:700!important;
+  letter-spacing:.5px!important;
+}
+body[data-page="auth"] .auth-legal,
+body[data-page="auth"] .auth-legal .legal-check{
+  color:#6B7280!important;
+  font-weight:400!important;
+}
+body[data-page="auth"] .auth-legal .legal-check a{
+  color:#2563eb!important;
+  font-weight:600!important;
+  text-decoration-line:underline!important;
+  text-decoration-color:rgba(37,99,235,.38)!important;
+  text-decoration-thickness:1px!important;
+  text-underline-offset:3px!important;
+  text-decoration-skip-ink:auto;
+}
