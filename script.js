@@ -135,6 +135,50 @@ function initAuth(){
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),password=$("password"),confirmPassword=$("confirmPassword"),passwordError=$("passwordError"),confirmPasswordError=$("confirmPasswordError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
+ // 用户协议与隐私政策使用当前页弹窗，避免离开表单页面
+ const policyModal = $("policyModal");
+ const policyModalTitle = $("policyModalTitle");
+ const policyModalContent = $("policyModalContent");
+ let previousBodyOverflow = "";
+ let policyReturnFocus = null;
+ const closePolicyModal = () => {
+  if (!policyModal || policyModal.hidden) return;
+  policyModal.hidden = true;
+  policyModal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = previousBodyOverflow;
+  if (policyReturnFocus) policyReturnFocus.focus();
+ };
+ document.querySelectorAll("[data-policy]").forEach(link => {
+  link.addEventListener("click", event => {
+   event.preventDefault();
+   const isTerms = link.dataset.policy === "terms";
+   policyModalTitle.textContent = isTerms
+    ? (authLanguage === "en" ? "Terms of Service" : "用户协议")
+    : (authLanguage === "en" ? "Privacy Policy" : "隐私政策");
+   policyModalContent.textContent = isTerms
+    ? (authLanguage === "en"
+      ? "Terms of Service placeholder. Replace this text with the complete terms and conditions."
+      : "这里是用户协议内容占位文本。正式内容可在后续替换为完整的用户协议条款。")
+    : (authLanguage === "en"
+      ? "Privacy Policy placeholder. Replace this text with the complete privacy policy."
+      : "这里是隐私政策内容占位文本。正式内容可在后续替换为完整的隐私政策条款。");
+   previousBodyOverflow = document.body.style.overflow;
+   policyReturnFocus = link;
+   policyModal.hidden = false;
+   policyModal.setAttribute("aria-hidden", "false");
+   document.body.style.overflow = "hidden";
+   $("policyModalClose").focus();
+  });
+ });
+ $("policyModalClose").addEventListener("click", closePolicyModal);
+ $("policyModalConfirm").addEventListener("click", closePolicyModal);
+ policyModal.addEventListener("click", event => {
+  if (event.target === policyModal) closePolicyModal();
+ });
+ document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && policyModal && !policyModal.hidden) closePolicyModal();
+ });
+
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  // 输入时清除错误；验证码输入仅保留数字且最多 6 位
  email.addEventListener("input",()=>setFieldError(email,emailError,""));
