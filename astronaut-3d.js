@@ -70,7 +70,9 @@ if (host) {
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,-0.63,0.30,0.02);
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,0.63,0.30,0.02);
       add(new THREE.TorusGeometry(0.16,0.025,8,24),gold,0.28,0.08,0.42,1,1,0);
-      group.scale.setScalar(window.innerWidth < 768 ? 0.72 : 1.12);
+      group.userData.mobileScale = 0.98;
+      group.userData.desktopScale = 1.12;
+      group.scale.setScalar(window.innerWidth < 768 ? group.userData.mobileScale : group.userData.desktopScale);
       return group;
     };
     let activeSubject = null;
@@ -78,26 +80,40 @@ if (host) {
       if (!subject) return;
       const bounds = new THREE.Box3().setFromObject(subject);
       if (bounds.isEmpty()) return;
-      const size = bounds.getSize(new THREE.Vector3());
       const center = bounds.getCenter(new THREE.Vector3());
-      const isMobile = window.innerWidth < 768;
-      const targetY = isMobile ? 1.0 : 0.0;
-      subject.position.y += targetY - center.y;
-      const fittedBounds = new THREE.Box3().setFromObject(subject);
-      const fittedSize = fittedBounds.getSize(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
       const vFov = THREE.MathUtils.degToRad(camera.fov);
       const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
-      const distanceY = (fittedSize.y * 0.5) / Math.tan(vFov / 2);
-      const distanceX = (fittedSize.x * 0.5) / Math.tan(hFov / 2);
-      const distance = Math.max(distanceX, distanceY, fittedSize.z * 0.5) * (isMobile ? 1.24 : 1.16);
-      camera.position.set(0, targetY, Math.max(distance, isMobile ? 4.2 : 5.0));
-      camera.lookAt(0, targetY, 0);
+      const distanceY = (size.y * 0.5) / Math.tan(vFov / 2);
+      const distanceX = (size.x * 0.5) / Math.tan(hFov / 2);
+      const distance = Math.max(distanceX, distanceY, size.z * 0.5) * 1.16;
+      subject.position.y += -center.y;
+      camera.position.set(0, 0.12, Math.max(distance, 5.0));
+      camera.lookAt(0, 0, 0);
       camera.updateProjectionMatrix();
       activeSubject = subject;
     };
+    const configureResponsiveCamera = (subject) => {
+      if (!subject) return;
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        if (subject.userData.mobileScale) subject.scale.setScalar(subject.userData.mobileScale);
+        subject.rotation.y = -0.18;
+        camera.fov = 34;
+        camera.position.set(0.10, 0.82, 3.45);
+        camera.lookAt(0, 0.82, 0);
+        camera.updateProjectionMatrix();
+        activeSubject = subject;
+      } else {
+        if (subject.userData.desktopScale) subject.scale.setScalar(subject.userData.desktopScale);
+        subject.rotation.y = 0;
+        camera.fov = 29;
+        fitCameraToSubject(subject);
+      }
+    };
     const fallbackAstronaut = createFallbackAstronaut();
     pivot.add(fallbackAstronaut);
-    fitCameraToSubject(fallbackAstronaut);
+    configureResponsiveCamera(fallbackAstronaut);
     host.classList.add("model-fallback");
     let mixer = null, modelReady = true;
     const loader = new GLTFLoader();    loader.load("https://modelviewer.dev/shared-assets/models/Astronaut.glb", (gltf) => {
@@ -107,8 +123,9 @@ if (host) {
       const center = bounds.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const longest = Math.max(size.x, size.y, size.z);
-      const isMobile = window.innerWidth < 768;
-      model.scale.setScalar((isMobile ? 2.75 : 4.55) / Math.max(longest, 0.001));
+      model.userData.mobileScale = 3.85 / Math.max(longest, 0.001);
+      model.userData.desktopScale = 4.55 / Math.max(longest, 0.001);
+      model.scale.setScalar(window.innerWidth < 768 ? model.userData.mobileScale : model.userData.desktopScale);
       model.traverse((node) => {
         if (!node.isMesh) return;
         node.castShadow = true;
@@ -125,7 +142,7 @@ if (host) {
       });
       pivot.remove(fallbackAstronaut);
       pivot.add(model);
-      fitCameraToSubject(model);
+      configureResponsiveCamera(model);
       host.classList.remove("model-fallback");
       if (gltf.animations && gltf.animations.length) {
         mixer = new THREE.AnimationMixer(model);
@@ -156,7 +173,7 @@ if (host) {
       camera.aspect = width / height;
       camera.fov = isMobile ? 34 : 29;
       camera.updateProjectionMatrix();
-      if (activeSubject) fitCameraToSubject(activeSubject);
+      if (activeSubject) configureResponsiveCamera(activeSubject);
     };
     const observer = new ResizeObserver(resize); observer.observe(host);
     let frame = 0; const clock = new THREE.Clock();
