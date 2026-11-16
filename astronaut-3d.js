@@ -75,7 +75,7 @@ if (host) {
     pivot.add(fallbackAstronaut);
     host.classList.add("model-fallback");
     let mixer = null, modelReady = true;
-    const loader = new GLTFLoader();    loader.load("https://cdn.jsdelivr.net/gh/nasa/NASA-3D-Resources@master/3D%20Models/Astronaut/Astronaut.glb", (gltf) => {
+    const loader = new GLTFLoader();    loader.load("https://modelviewer.dev/shared-assets/models/Astronaut.glb", (gltf) => {
       const model = gltf.scene;
       const bounds = new THREE.Box3().setFromObject(model);
       const size = bounds.getSize(new THREE.Vector3());
@@ -105,7 +105,7 @@ if (host) {
       }
       modelReady = true; host.classList.add("is-ready");
       host.setAttribute("aria-label", "可交互的 3D 宇航员模型");
-    }, undefined, (error) => { console.warn("NASA GLB unavailable; keeping the generated 3D astronaut fallback:", error); host.classList.add("model-fallback"); });
+    }, undefined, (error) => { console.warn("Google Model Viewer Astronaut GLB unavailable; keeping the generated 3D astronaut fallback:", error); host.classList.add("model-fallback"); });
 
     let targetX = 0, targetY = 0, dragging = false, lastX = 0, lastY = 0, dragYaw = 0, dragPitch = 0;
     host.addEventListener("pointermove", (event) => {
