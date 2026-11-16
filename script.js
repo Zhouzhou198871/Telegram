@@ -133,8 +133,8 @@ function initAuth(){
  form.addEventListener("submit",async e=>{
   e.preventDefault();message(msg,"");
   if(!email.value.trim()||!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}
-  if(!/^\\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
   if(!$("agreeTerms").checked){legalError.textContent=authText("needAgreement");return;}
+  if(!/^\\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
   setFieldError(email,emailError,"");setFieldError(code,codeError,"");legalError.textContent="";
   login.disabled=true;login.classList.add("loading");login.querySelector(".login-button-text").textContent=authText("logging");
   try{
