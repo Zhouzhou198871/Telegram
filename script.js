@@ -62,6 +62,7 @@ function setAuthLanguage(lang){
 function setFieldError(input,target,text){target.textContent=text||"";input.classList.toggle("invalid",Boolean(text));input.setAttribute("aria-invalid",text?"true":"false");}
 function initParticleBackground(){
  const canvas=$("particleCanvas"),ctx=canvas&&canvas.getContext("2d");if(!canvas||!ctx)return;
+ canvas.style.position="fixed";canvas.style.inset="0";canvas.style.zIndex="0";canvas.style.pointerEvents="none";
  let w=0,h=0,particles=[],raf=0;const pointer={x:-1000,y:-1000,active:false};
  const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
  function resize(){
