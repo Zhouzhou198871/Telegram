@@ -35,7 +35,7 @@ if (host) {
     const room = new RoomEnvironment();
     const envTarget = pmrem.fromScene(room, 0.04);
     scene.environment = envTarget.texture;
-    room.dispose(); pmrem.dispose();
+    pmrem.dispose();
     const pivot = new THREE.Group(); scene.add(pivot);
     const createFallbackAstronaut = () => {
       const group = new THREE.Group();
@@ -45,7 +45,7 @@ if (host) {
       const glass = new THREE.MeshPhysicalMaterial({ color: 0x173b70, roughness: 0.12, metalness: 0.28, clearcoat: 1, clearcoatRoughness: 0.08 });
       const gold = new THREE.MeshStandardMaterial({ color: 0xf2bd62, metalness: 0.65, roughness: 0.28 });
       const add = (geometry, material, x, y, z, sx=1, sy=1, sz=1, rz=0) => {
-        const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x,y,z); mesh.scale.set(sx,sy,sz); mesh.rotation.z=rz; group.add(mesh); return mesh;
+        const mesh = new THREE.Mesh(geometry, material); mesh.castShadow = true; mesh.receiveShadow = true; mesh.position.set(x,y,z); mesh.scale.set(sx,sy,sz); mesh.rotation.z=rz; group.add(mesh); return mesh;
       };
       add(new THREE.CapsuleGeometry(0.43,0.78,7,16),suit,0,0.05,0,1,1,0.78);
       add(new THREE.BoxGeometry(0.66,0.9,0.42),dark,0,0.12,-0.43);
