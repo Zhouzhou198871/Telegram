@@ -98,10 +98,14 @@ if (host) {
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
         if (subject.userData.mobileScale) subject.scale.setScalar(subject.userData.mobileScale);
-        subject.rotation.y = -0.18;
+        subject.rotation.y = -0.12;
+        // Mobile hero framing: fixed coordinates, no bounding-box fitting.
+        // Lower the subject slightly and pull the camera back to keep the
+        // helmet, shoulders and upper torso inside the visible stage.
+        subject.position.y = -1.0;
         camera.fov = 34;
-        camera.position.set(0.10, 0.82, 3.45);
-        camera.lookAt(0, 0.82, 0);
+        camera.position.set(-0.22, -0.18, 8.0);
+        camera.lookAt(0, -0.32, 0);
         camera.updateProjectionMatrix();
         activeSubject = subject;
       } else {
