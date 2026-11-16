@@ -15,22 +15,23 @@ if (host) {
     renderer.setSize(host.clientWidth, host.clientHeight, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.32;
+    renderer.toneMappingExposure = 1.48;
     renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(29, host.clientWidth / host.clientHeight, 0.1, 100);
     camera.position.set(0, 0.12, mobile ? 6.8 : 5.35);
-    const ambient = new THREE.AmbientLight(0xffffff, 1.15); scene.add(ambient);
-    const hemi = new THREE.HemisphereLight(0xf7fbff, 0x7186a8, 2.0); scene.add(hemi);
-    const key = new THREE.DirectionalLight(0xffffff, 4.2); key.position.set(3.5, 6, 5); key.castShadow = true;
+    const ambient = new THREE.AmbientLight(0xffffff, 1.85); scene.add(ambient);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0xdce5f0, 2.55); scene.add(hemi);
+    const key = new THREE.DirectionalLight(0xfffdf8, 2.8); key.position.set(3.5, 6, 5); key.castShadow = true;
     key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.00018; key.shadow.normalBias = 0.025;
     key.shadow.camera.near = 0.5; key.shadow.camera.far = 24;
     key.shadow.camera.left = -5; key.shadow.camera.right = 5; key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
     scene.add(key); scene.add(key.target);
-    const fill = new THREE.DirectionalLight(0xe7f2ff, 1.8); fill.position.set(-4, 2, 4); scene.add(fill);
-    const rim = new THREE.DirectionalLight(0x6dbaff, 3.6); rim.position.set(-4, 1.5, -3); scene.add(rim);
+    const fill = new THREE.DirectionalLight(0xeaf3ff, 1.65); fill.position.set(-4, 2, 4); scene.add(fill);
+    const rim = new THREE.DirectionalLight(0x8fcaff, 2.65); rim.position.set(-4, 2.2, -3); scene.add(rim);
+    const frontRim = new THREE.DirectionalLight(0xb8dcff, 1.15); frontRim.position.set(4, 1.2, 3); scene.add(frontRim);
     const pmrem = new THREE.PMREMGenerator(renderer);
     const room = new RoomEnvironment();
     const envTarget = pmrem.fromScene(room, 0.04);
@@ -90,8 +91,9 @@ if (host) {
         if (node.material) {
           const mats = Array.isArray(node.material) ? node.material : [node.material];
           mats.forEach((mat) => {
-            if ("envMapIntensity" in mat) mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 1.25);
-            if ("roughness" in mat && mat.roughness > 0.82) mat.roughness = 0.82;
+            if ("envMapIntensity" in mat) mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 1.65);
+            if ("roughness" in mat) mat.roughness = Math.min(mat.roughness ?? 0.7, mat.metalness > 0.35 ? 0.32 : 0.68);
+            if ("metalness" in mat && mat.metalness > 0.15) mat.metalness = Math.max(mat.metalness, 0.35);
             mat.needsUpdate = true;
           });
         }
@@ -107,18 +109,18 @@ if (host) {
       host.setAttribute("aria-label", "可交互的 3D 宇航员模型");
     }, undefined, (error) => { console.warn("Google Model Viewer Astronaut GLB unavailable; keeping the generated 3D astronaut fallback:", error); host.classList.add("model-fallback"); });
 
-    let targetX = 0, targetY = 0, dragging = false, lastX = 0, lastY = 0, dragYaw = 0, dragPitch = 0;
+    let targetX = 0, targetY = 0, smoothX = 0, smoothY = 0, dragging = false, lastX = 0, lastY = 0, dragYaw = 0, dragPitch = 0;
     host.addEventListener("pointermove", (event) => {
       if (matchMedia("(max-width: 760px)").matches) return;
       const rect = host.getBoundingClientRect();
-      targetY = ((event.clientX - rect.left) / rect.width - 0.5) * 0.42;
-      targetX = ((event.clientY - rect.top) / rect.height - 0.5) * 0.22;
-      if (dragging) { dragYaw += (event.clientX - lastX) * 0.009; dragPitch += (event.clientY - lastY) * 0.006; lastX = event.clientX; lastY = event.clientY; }
+      targetY = ((event.clientX - rect.left) / rect.width - 0.5) * 0.085;
+      targetX = ((event.clientY - rect.top) / rect.height - 0.5) * 0.042;
+      if (dragging) { dragYaw = THREE.MathUtils.clamp(dragYaw + (event.clientX - lastX) * 0.0018, -0.12, 0.12); dragPitch = THREE.MathUtils.clamp(dragPitch + (event.clientY - lastY) * 0.0012, -0.06, 0.06); lastX = event.clientX; lastY = event.clientY; }
     }, { passive: true });
     host.addEventListener("pointerdown", (event) => { if (matchMedia("(max-width: 760px)").matches) return; dragging = true; lastX = event.clientX; lastY = event.clientY; host.setPointerCapture?.(event.pointerId); });
     const stopDrag = () => { dragging = false; };
     host.addEventListener("pointerup", stopDrag); host.addEventListener("pointercancel", stopDrag);
-    host.addEventListener("pointerleave", () => { if (!dragging) { targetX = 0; targetY = 0; } });
+    host.addEventListener("pointerleave", () => { if (!dragging) { targetX = 0; targetY = 0; dragYaw *= 0.92; dragPitch *= 0.92; } });
 
     const resize = () => {
       const width = host.clientWidth, height = host.clientHeight; if (!width || !height) return;
@@ -136,9 +138,10 @@ if (host) {
       if (mixer) mixer.update(dt);
       if (modelReady) {
         pivot.position.y = Math.sin(elapsed * 1.05) * (reduced ? 0 : 0.16);
-        if (!reduced) pivot.rotation.y += 0.0038;
-        pivot.rotation.y += (targetY + dragYaw - pivot.rotation.y) * 0.035;
-        pivot.rotation.x += (targetX + dragPitch - pivot.rotation.x) * 0.035;
+        if (!reduced) smoothY += (targetY + dragYaw - smoothY) * (1 - Math.exp(-dt * 3.2));
+        smoothX += (targetX + dragPitch - smoothX) * (1 - Math.exp(-dt * 3.2));
+        pivot.rotation.y = Math.sin(elapsed * 0.22) * 0.10 + smoothY;
+        pivot.rotation.x = Math.sin(elapsed * 0.16) * 0.025 + smoothX;
       }
       renderer.render(scene, camera);
     };
