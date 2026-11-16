@@ -22,9 +22,45 @@ if (host) {
     const key = new THREE.DirectionalLight(0xffffff, 3.1); key.position.set(3, 5, 6); scene.add(key);
     const rim = new THREE.DirectionalLight(0x74baff, 2.2); rim.position.set(-4, 1, -3); scene.add(rim);
     const pivot = new THREE.Group(); scene.add(pivot);
-    const loader = new GLTFLoader();
-    let mixer = null, modelReady = false;
-    loader.load("https://raw.githubusercontent.com/nasa/NASA-3D-Resources/master/3D%20Models/Astronaut/Astronaut.glb", (gltf) => {
+    const createFallbackAstronaut = () => {
+      const group = new THREE.Group();
+      const suit = new THREE.MeshStandardMaterial({ color: 0xf4f7fb, roughness: 0.72, metalness: 0.08 });
+      const trim = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.38, metalness: 0.25 });
+      const dark = new THREE.MeshStandardMaterial({ color: 0x10284f, roughness: 0.22, metalness: 0.18 });
+      const glass = new THREE.MeshPhysicalMaterial({ color: 0x173b70, roughness: 0.12, metalness: 0.28, clearcoat: 1, clearcoatRoughness: 0.08 });
+      const gold = new THREE.MeshStandardMaterial({ color: 0xf2bd62, metalness: 0.65, roughness: 0.28 });
+      const add = (geometry, material, x, y, z, sx=1, sy=1, sz=1, rz=0) => {
+        const mesh = new THREE.Mesh(geometry, material); mesh.position.set(x,y,z); mesh.scale.set(sx,sy,sz); mesh.rotation.z=rz; group.add(mesh); return mesh;
+      };
+      add(new THREE.CapsuleGeometry(0.43,0.78,7,16),suit,0,0.05,0,1,1,0.78);
+      add(new THREE.BoxGeometry(0.66,0.9,0.42),dark,0,0.12,-0.43);
+      add(new THREE.BoxGeometry(0.58,0.72,0.16),suit,0,0.12,-0.68);
+      add(new THREE.TorusGeometry(0.43,0.085,12,32),trim,0,0.88,0,1,1,0);
+      add(new THREE.SphereGeometry(0.53,32,24),suit,0,1.35,0,1,1,0.96);
+      add(new THREE.SphereGeometry(0.385,32,24),glass,0,1.36,0.39,1,0.77,0.30);
+      add(new THREE.TorusGeometry(0.39,0.035,10,32),trim,0,1.36,0.42,1,0.78,0);
+      add(new THREE.BoxGeometry(0.32,0.23,0.06),trim,0,0.28,0.34);
+      add(new THREE.BoxGeometry(0.22,0.10,0.035),dark,0,0.29,0.39);
+      add(new THREE.CircleGeometry(0.045,16),gold,-0.08,0.29,0.415);
+      add(new THREE.CylinderGeometry(0.17,0.20,0.72,16),suit,-0.62,0.23,0,0.82,1,0.82,0.28);
+      add(new THREE.CylinderGeometry(0.17,0.20,0.72,16),suit,0.62,0.23,0,0.82,1,0.82,-0.28);
+      add(new THREE.SphereGeometry(0.19,18,14),trim,-0.86,-0.17,0.02,1,0.9,0.85);
+      add(new THREE.SphereGeometry(0.19,18,14),trim,0.86,-0.17,0.02,1,0.9,0.85);
+      add(new THREE.CylinderGeometry(0.23,0.25,0.76,16),suit,-0.25,-0.86,0,1,1,0.9,-0.06);
+      add(new THREE.CylinderGeometry(0.23,0.25,0.76,16),suit,0.25,-0.86,0,1,1,0.9,0.06);
+      add(new THREE.BoxGeometry(0.48,0.22,0.48),dark,-0.25,-1.32,0.08);
+      add(new THREE.BoxGeometry(0.48,0.22,0.48),dark,0.25,-1.32,0.08);
+      add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,-0.63,0.30,0.02);
+      add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,0.63,0.30,0.02);
+      add(new THREE.TorusGeometry(0.16,0.025,8,24),gold,0.28,0.08,0.42,1,1,0);
+      group.scale.setScalar(1.0);
+      return group;
+    };
+    const fallbackAstronaut = createFallbackAstronaut();
+    pivot.add(fallbackAstronaut);
+    host.classList.add("model-fallback");
+    let mixer = null, modelReady = true;
+    const loader = new GLTFLoader();    loader.load("https://cdn.jsdelivr.net/gh/nasa/NASA-3D-Resources@master/3D%20Models/Astronaut/Astronaut.glb", (gltf) => {
       const model = gltf.scene;
       const bounds = new THREE.Box3().setFromObject(model);
       const size = bounds.getSize(new THREE.Vector3());
@@ -32,14 +68,16 @@ if (host) {
       model.position.sub(center);
       const longest = Math.max(size.x, size.y, size.z);
       model.scale.setScalar(3.45 / Math.max(longest, 0.001));
+      pivot.remove(fallbackAstronaut);
       pivot.add(model);
+      host.classList.remove("model-fallback");
       if (gltf.animations && gltf.animations.length) {
         mixer = new THREE.AnimationMixer(model);
         gltf.animations.forEach((clip) => mixer.clipAction(clip).play());
       }
       modelReady = true; host.classList.add("is-ready");
       host.setAttribute("aria-label", "可交互的 3D 宇航员模型");
-    }, undefined, (error) => { console.error("3D astronaut model failed to load:", error); host.classList.add("model-error"); });
+    }, undefined, (error) => { console.warn("NASA GLB unavailable; keeping the generated 3D astronaut fallback:", error); host.classList.add("model-fallback"); });
 
     let targetX = 0, targetY = 0, dragging = false, lastX = 0, lastY = 0, dragYaw = 0, dragPitch = 0;
     host.addEventListener("pointermove", (event) => {
