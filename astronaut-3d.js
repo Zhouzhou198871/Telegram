@@ -1,26 +1,41 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 
 const host = document.getElementById("astronautStage");
 if (host) {
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const mobile = matchMedia("(max-width: 760px)").matches;
   try {
-    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: !mobile, powerPreference: mobile ? "low-power" : "high-performance" });
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, mobile ? 1.15 : 1.65));
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, powerPreference: mobile ? "high-performance" : "high-performance" });
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, mobile ? 1.35 : 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.physicallyCorrectLights = true;
     renderer.setSize(host.clientWidth, host.clientHeight, false);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.18;
+    renderer.toneMappingExposure = 1.32;
     renderer.domElement.setAttribute("aria-hidden", "true");
     host.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(32, host.clientWidth / host.clientHeight, 0.1, 100);
-    camera.position.set(0, 0.15, 7.4);
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x9aacc8, 2.1));
-    const key = new THREE.DirectionalLight(0xffffff, 3.1); key.position.set(3, 5, 6); scene.add(key);
-    const rim = new THREE.DirectionalLight(0x74baff, 2.2); rim.position.set(-4, 1, -3); scene.add(rim);
+    const camera = new THREE.PerspectiveCamera(29, host.clientWidth / host.clientHeight, 0.1, 100);
+    camera.position.set(0, 0.12, mobile ? 6.8 : 5.35);
+    const ambient = new THREE.AmbientLight(0xffffff, 1.15); scene.add(ambient);
+    const hemi = new THREE.HemisphereLight(0xf7fbff, 0x7186a8, 2.0); scene.add(hemi);
+    const key = new THREE.DirectionalLight(0xffffff, 4.2); key.position.set(3.5, 6, 5); key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048); key.shadow.bias = -0.00018; key.shadow.normalBias = 0.025;
+    key.shadow.camera.near = 0.5; key.shadow.camera.far = 24;
+    key.shadow.camera.left = -5; key.shadow.camera.right = 5; key.shadow.camera.top = 6; key.shadow.camera.bottom = -6;
+    scene.add(key); scene.add(key.target);
+    const fill = new THREE.DirectionalLight(0xe7f2ff, 1.8); fill.position.set(-4, 2, 4); scene.add(fill);
+    const rim = new THREE.DirectionalLight(0x6dbaff, 3.6); rim.position.set(-4, 1.5, -3); scene.add(rim);
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const room = new RoomEnvironment();
+    const envTarget = pmrem.fromScene(room, 0.04);
+    scene.environment = envTarget.texture;
+    room.dispose(); pmrem.dispose();
     const pivot = new THREE.Group(); scene.add(pivot);
     const createFallbackAstronaut = () => {
       const group = new THREE.Group();
@@ -53,7 +68,7 @@ if (host) {
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,-0.63,0.30,0.02);
       add(new THREE.BoxGeometry(0.10,0.38,0.12),trim,0.63,0.30,0.02);
       add(new THREE.TorusGeometry(0.16,0.025,8,24),gold,0.28,0.08,0.42,1,1,0);
-      group.scale.setScalar(1.0);
+      group.scale.setScalar(1.12);
       return group;
     };
     const fallbackAstronaut = createFallbackAstronaut();
@@ -67,7 +82,20 @@ if (host) {
       const center = bounds.getCenter(new THREE.Vector3());
       model.position.sub(center);
       const longest = Math.max(size.x, size.y, size.z);
-      model.scale.setScalar(3.45 / Math.max(longest, 0.001));
+      model.scale.setScalar(4.55 / Math.max(longest, 0.001));
+      model.traverse((node) => {
+        if (!node.isMesh) return;
+        node.castShadow = true;
+        node.receiveShadow = true;
+        if (node.material) {
+          const mats = Array.isArray(node.material) ? node.material : [node.material];
+          mats.forEach((mat) => {
+            if ("envMapIntensity" in mat) mat.envMapIntensity = Math.max(mat.envMapIntensity || 1, 1.25);
+            if ("roughness" in mat && mat.roughness > 0.82) mat.roughness = 0.82;
+            mat.needsUpdate = true;
+          });
+        }
+      });
       pivot.remove(fallbackAstronaut);
       pivot.add(model);
       host.classList.remove("model-fallback");
@@ -95,9 +123,9 @@ if (host) {
     const resize = () => {
       const width = host.clientWidth, height = host.clientHeight; if (!width || !height) return;
       const isMobile = matchMedia("(max-width: 760px)").matches;
-      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isMobile ? 1.15 : 1.65));
+      renderer.setPixelRatio(Math.min(devicePixelRatio || 1, isMobile ? 1.35 : 2));
       renderer.setSize(width, height, false); camera.aspect = width / height;
-      camera.position.z = isMobile ? 8.3 : 7.4; camera.updateProjectionMatrix();
+      camera.position.z = isMobile ? 7.2 : 5.35; camera.fov = isMobile ? 31 : 29; camera.updateProjectionMatrix();
     };
     const observer = new ResizeObserver(resize); observer.observe(host);
     let frame = 0; const clock = new THREE.Clock();
@@ -107,8 +135,8 @@ if (host) {
       const dt = Math.min(clock.getDelta(), 0.05), elapsed = clock.elapsedTime;
       if (mixer) mixer.update(dt);
       if (modelReady) {
-        pivot.position.y = Math.sin(elapsed * 1.05) * (reduced ? 0 : 0.12);
-        if (!reduced) pivot.rotation.y += 0.0028;
+        pivot.position.y = Math.sin(elapsed * 1.05) * (reduced ? 0 : 0.16);
+        if (!reduced) pivot.rotation.y += 0.0038;
         pivot.rotation.y += (targetY + dragYaw - pivot.rotation.y) * 0.035;
         pivot.rotation.x += (targetX + dragPitch - pivot.rotation.x) * 0.035;
       }
