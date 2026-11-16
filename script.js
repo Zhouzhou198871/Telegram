@@ -52,7 +52,27 @@ function setAuthLanguage(lang){
  document.querySelectorAll("[data-lang-label]").forEach(el=>el.classList.toggle("active",el.dataset.langLabel===authLanguage));
  $("code").placeholder=authText("codePlaceholder");
  $("sendCode").textContent=window.authCodeCooldown>0?window.authCodeCooldown+authText("retry"):authText("sendCode");
- $("loginButton").querySelector(".login-button-text").textContent=$("loginButton").classList.contains("loading")?authText("logging"):authText("login");
+ $("loginButton").querySelector(".login-button-text").textContent=$("loginButton").classList.contains("loading")?authText("logging"):(document.body.dataset.authMode==="register"?(authLanguage==="en"?"Register & Sign In":"注册并登录"):authText("login"));
+ if(document.body.dataset.authMode==="register"){
+  $("authTitle").textContent=authLanguage==="en"?"Create Account":"创建账号";
+  document.querySelector(".auth-subtitle").textContent=authLanguage==="en"?"Verify a new email to automatically create your account and sign in.":"输入新邮箱并验证，即可自动注册并登录晴天号铺。";
+  document.querySelector(".auth-switch").innerHTML=authLanguage==="en"?'Already have an account? <a href="./auth.html">Sign in</a>':'已有账号？<a href="./auth.html">返回登录</a>';
+ }
+}
+function initAstronautParallax(){
+ const wrap=$("astronautWrap");if(!wrap)return;
+ const reduced=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+ if(reduced)return;
+ let raf=0;
+ function move(e){
+  if(window.innerWidth<=760)return;
+  const x=(e.clientX/window.innerWidth-.5)*16,y=(e.clientY/window.innerHeight-.5)*12;
+  cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(()=>{wrap.style.setProperty("--astro-x",x.toFixed(1)+"px");wrap.style.setProperty("--astro-y",y.toFixed(1)+"px");});
+ }
+ function reset(){wrap.style.setProperty("--astro-x","0px");wrap.style.setProperty("--astro-y","0px");}
+ window.addEventListener("pointermove",move,{passive:true});
+ window.addEventListener("pointerleave",reset,{passive:true});
 }
 function setFieldError(input,target,text){target.textContent=text||"";input.classList.toggle("invalid",Boolean(text));input.setAttribute("aria-invalid",text?"true":"false");}
 function initParticleBackground(){
@@ -101,7 +121,7 @@ function initAuth(){
  if(token()){location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
- $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
+ $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();initAstronautParallax();
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  email.addEventListener("input",()=>setFieldError(email,emailError,""));code.addEventListener("input",()=>setFieldError(code,codeError,""));
  send.addEventListener("click",async()=>{if(cooldown>0||send.disabled)return;if(!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}send.disabled=true;send.textContent=authText("sending");message(msg,"");try{await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;const tick=()=>{send.textContent=cooldown+authText("retry");};tick();timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);}catch(error){message(msg,error.message==="too_many_requests"?authText("tooMany"):authText("sendFailed"),"error");send.disabled=false;send.textContent=authText("sendCode");}});
