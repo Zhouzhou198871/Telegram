@@ -40,8 +40,8 @@ function formatPrice(value) {
 }
 
 const AUTH_I18N = {
- zh:{eyebrow:"SECURE EMAIL ACCESS",title:"欢迎回来",subtitle:"使用邮箱验证码，安全进入你的晴天号铺账户。",support:"联系客服 ↗",emailLabel:"邮箱地址",codeLabel:"邮箱验证码",codePlaceholder:"输入 6 位验证码",sendCode:"获取验证码",sending:"发送中…",resend:"重新获取",retry:" 秒后重试",login:"安全登录",logging:"正在登录…",agreePrefix:"我已阅读并同意",terms:"用户协议",privacy:"隐私政策",securityNote:"验证码 5 分钟内有效，请勿向任何人透露。",invalidEmail:"请输入有效的邮箱地址。",invalidCode:"请输入 6 位数字验证码。",needAgreement:"请先勾选并同意用户协议和隐私政策。",sent:"验证码已发送，请检查邮箱。",sendFailed:"验证码发送失败，请稍后重试。",tooMany:"发送过于频繁，请稍后再试。",wrongCode:"验证码不正确。",expired:"验证码已过期，请重新获取。",tooManyAttempts:"验证次数过多，请重新获取验证码。",loginFailed:"登录失败，请检查验证码后重试。"},
- en:{eyebrow:"SECURE EMAIL ACCESS",title:"Welcome Back",subtitle:"Sign in securely to your Qingtian Store account with an email code.",support:"Support ↗",emailLabel:"Email address",codeLabel:"Verification code",codePlaceholder:"Enter 6-digit code",sendCode:"Send Code",sending:"Sending…",resend:"Send Again",retry:"s to retry",login:"Secure Login",logging:"Signing in…",agreePrefix:"I have read and agree to the",terms:"Terms of Service",privacy:"Privacy Policy",securityNote:"Codes expire in 5 minutes. Never share your code.",invalidEmail:"Please enter a valid email address.",invalidCode:"Please enter the 6-digit verification code.",needAgreement:"Please accept the Terms of Service and Privacy Policy.",sent:"Code sent. Please check your inbox.",sendFailed:"Unable to send the code. Please try again.",tooMany:"Too many requests. Please try again later.",wrongCode:"The verification code is incorrect.",expired:"Code expired. Please request a new one.",tooManyAttempts:"Too many attempts. Please request a new code.",loginFailed:"Sign-in failed. Please check your code and try again."}
+ zh:{eyebrow:"SECURE EMAIL ACCESS",title:"欢迎回来",subtitle:"使用邮箱验证码，安全进入你的晴天号铺账户。",support:"联系客服 ↗",emailLabel:"邮箱地址",codeLabel:"邮箱验证码",codePlaceholder:"输入 6 位验证码",sendCode:"获取验证码",sending:"发送中…",resend:"重新获取",retry:" 秒后重试",login:"安全登录",logging:"正在登录…",agreePrefix:"我已阅读并同意",terms:"用户协议",privacy:"隐私政策",securityNote:"验证码 5 分钟内有效，请勿向任何人透露。",invalidEmail:"请输入有效的邮箱地址。",invalidCode:"请输入 6 位数字验证码。",needAgreement:"请先勾选并同意用户协议和隐私政策。",passwordLabel:"设置密码",confirmPasswordLabel:"确认密码",passwordPlaceholder:"请设置6-20位包含字母和数字的密码",confirmPasswordPlaceholder:"请再次输入密码",invalidPassword:"密码须为6-20位，且同时包含字母和数字。",passwordMismatch:"两次输入的密码不一致",registered:"该邮箱已注册，请直接登录或更换邮箱。",sent:"验证码已发送，请检查邮箱。",sendFailed:"验证码发送失败，请稍后重试。",tooMany:"发送过于频繁，请稍后再试。",wrongCode:"验证码不正确。",expired:"验证码已过期，请重新获取。",tooManyAttempts:"验证次数过多，请重新获取验证码。",loginFailed:"登录失败，请检查验证码后重试。"},
+ en:{eyebrow:"SECURE EMAIL ACCESS",title:"Welcome Back",subtitle:"Sign in securely to your Qingtian Store account with an email code.",support:"Support ↗",emailLabel:"Email address",codeLabel:"Verification code",codePlaceholder:"Enter 6-digit code",sendCode:"Send Code",sending:"Sending…",resend:"Send Again",retry:"s to retry",login:"Secure Login",logging:"Signing in…",agreePrefix:"I have read and agree to the",terms:"Terms of Service",privacy:"Privacy Policy",securityNote:"Codes expire in 5 minutes. Never share your code.",invalidEmail:"Please enter a valid email address.",invalidCode:"Please enter the 6-digit verification code.",needAgreement:"Please accept the Terms of Service and Privacy Policy.",passwordLabel:"Set password",confirmPasswordLabel:"Confirm password",passwordPlaceholder:"Use 6-20 characters with letters and numbers",confirmPasswordPlaceholder:"Enter your password again",invalidPassword:"Use 6-20 characters with both letters and numbers.",passwordMismatch:"The passwords do not match.",registered:"This email is already registered. Please sign in or use another email.",sent:"Code sent. Please check your inbox.",sendFailed:"Unable to send the code. Please try again.",tooMany:"Too many requests. Please try again later.",wrongCode:"The verification code is incorrect.",expired:"Code expired. Please request a new one.",tooManyAttempts:"Too many attempts. Please request a new code.",loginFailed:"Sign-in failed. Please check your code and try again."}
 };
 let authLanguage=localStorage.getItem("qingtian_auth_language")==="en"?"en":"zh";
 const authText=key=>AUTH_I18N[authLanguage][key]||AUTH_I18N.zh[key]||key;
@@ -51,6 +51,8 @@ function setAuthLanguage(lang){
  document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(AUTH_I18N[authLanguage][k])el.textContent=authText(k);});
  document.querySelectorAll("[data-lang-label]").forEach(el=>el.classList.toggle("active",el.dataset.langLabel===authLanguage));
  $("code").placeholder=authText("codePlaceholder");
+ if($("password"))$("password").placeholder=authText("passwordPlaceholder");
+ if($("confirmPassword"))$("confirmPassword").placeholder=authText("confirmPasswordPlaceholder");
  $("sendCode").textContent=window.authCodeCooldown>0?window.authCodeCooldown+authText("retry"):authText("sendCode");
  $("loginButton").querySelector(".login-button-text").textContent=$("loginButton").classList.contains("loading")?authText("logging"):(document.body.dataset.authMode==="register"?(authLanguage==="en"?"Register & Sign In":"注册并登录"):authText("login"));
  if(document.body.dataset.authMode==="register"){
@@ -106,12 +108,14 @@ function initParticleBackground(){
 function initAuth(){
  if(token()){location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
- const emailError=$("emailError"),codeError=$("codeError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
+ const emailError=$("emailError"),codeError=$("codeError"),password=$("password"),confirmPassword=$("confirmPassword"),passwordError=$("passwordError"),confirmPasswordError=$("confirmPasswordError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  $("languageToggle").addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
  const validEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
  // 输入时清除错误；验证码输入仅保留数字且最多 6 位
  email.addEventListener("input",()=>setFieldError(email,emailError,""));
  code.addEventListener("input",()=>{code.value=code.value.replace(/\\D/g,"").slice(0,6);setFieldError(code,codeError,"");});
+ password.addEventListener("input",()=>{setFieldError(password,passwordError,"");setFieldError(confirmPassword,confirmPasswordError,confirmPassword.value&&confirmPassword.value!==password.value?authText("passwordMismatch"):"");});
+ confirmPassword.addEventListener("input",()=>setFieldError(confirmPassword,confirmPasswordError,confirmPassword.value!==password.value?authText("passwordMismatch"):""));
  $("agreeTerms").addEventListener("change",()=>{legalError.textContent="";});
  // 获取验证码：邮箱校验通过后调用真实接口，成功后启动 60 秒倒计时
  send.addEventListener("click",async()=>{
@@ -129,20 +133,33 @@ function initAuth(){
    send.disabled=false;send.textContent=authText("sendCode");
   }
  });
- // 注册提交校验全部通过后调用现有真实登录/自动注册接口
+ // 注册校验顺序：邮箱 -> 验证码 -> 密码 -> 协议；提交邮箱、验证码和密码
  form.addEventListener("submit",async e=>{
   e.preventDefault();message(msg,"");
   if(!email.value.trim()||!validEmail()){setFieldError(email,emailError,authText("invalidEmail"));email.focus();return;}
+  if(!/^\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
+  const passwordValue=password.value;
+  if(!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,20}$/.test(passwordValue)){setFieldError(password,passwordError,authText("invalidPassword"));password.focus();return;}
+  if(passwordValue!==confirmPassword.value){setFieldError(confirmPassword,confirmPasswordError,authText("passwordMismatch"));confirmPassword.focus();return;}
   if(!$("agreeTerms").checked){legalError.textContent=authText("needAgreement");return;}
-  if(!/^\\d{6}$/.test(code.value.trim())){setFieldError(code,codeError,authText("invalidCode"));code.focus();return;}
-  setFieldError(email,emailError,"");setFieldError(code,codeError,"");legalError.textContent="";
+  setFieldError(email,emailError,"");setFieldError(code,codeError,"");setFieldError(password,passwordError,"");setFieldError(confirmPassword,confirmPasswordError,"");legalError.textContent="";
   login.disabled=true;login.classList.add("loading");login.querySelector(".login-button-text").textContent=authText("logging");
   try{
-   const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim()})});
-   if(!result.token)throw new Error("login_failed");
-   localStorage.setItem(TOKEN_KEY,result.token);location.replace("./shop.html");
+   const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim(),password:passwordValue})});
+   if(!result.token)throw new Error(result.error||"login_failed");
+   localStorage.setItem(TOKEN_KEY,result.token);
+   window.location.replace("/shop.html");
   }catch(error){
-   const text=error.message==="invalid_code"?authText("wrongCode"):error.message==="code_expired"?authText("expired"):error.message==="too_many_attempts"?authText("tooManyAttempts"):authText("loginFailed");
+   const errorCode=String(error.message||"");
+   let text=authText("loginFailed");
+   if(errorCode==="invalid_code")text=authText("wrongCode");
+   else if(errorCode==="code_expired")text=authText("expired");
+   else if(errorCode==="too_many_attempts")text=authText("tooManyAttempts");
+   else if(["email_already_registered","already_registered","user_exists"].includes(errorCode))text=authText("registered");
+   else if(errorCode==="weak_password")text=authText("invalidPassword");
+   else if(errorCode==="password_mismatch")text=authText("passwordMismatch");
+   else if(errorCode==="invalid_credentials")text="邮箱或验证码不正确，请检查后重试。";
+   else if(errorCode&&errorCode!=="login_failed"&&!/^[a-z0-9_ -]{1,60}$/i.test(errorCode))text=errorCode;
    message(msg,text,"error");login.disabled=false;login.classList.remove("loading");
    login.querySelector(".login-button-text").textContent=document.body.dataset.authMode==="register"?(authLanguage==="en"?"Register & Sign In":"注册并登录"):authText("login");
   }
