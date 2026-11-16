@@ -363,3 +363,40 @@ body[data-page="shop"] .delivery-content{background:#f1f5f9;border-color:rgba(30
 body[data-page="shop"] .modal-close{color:#475569}
 
 body[data-page="auth"] .astronaut-stage.model-fallback:after{content:"3D ASTRONAUT";position:absolute;right:12%;bottom:8%;color:rgba(30,58,138,.38);font-size:9px;letter-spacing:.28em;font-weight:800;pointer-events:none}
+
+
+/* OVERSIZED HERO ASTRONAUT — desktop hero scale, mobile stays clear of controls */
+@media (min-width: 761px) {
+  body[data-page="auth"] .astronaut-stage {
+    right: 1.2vw !important;
+    top: 50% !important;
+    width: min(49vw, 720px) !important;
+    height: min(88vh, 860px) !important;
+    min-width: 520px !important;
+    transform: translateY(-50%) !important;
+    opacity: 1 !important;
+    filter: drop-shadow(0 30px 46px rgba(37,99,235,.20)) !important;
+  }
+  body[data-page="auth"] .auth-shell { padding-right: min(43vw, 590px) !important; }
+}
+@media (max-width: 760px) {
+  body[data-page="auth"] .astronaut-stage {
+    top: 76px !important;
+    right: 4px !important;
+    width: 124px !important;
+    height: 132px !important;
+    opacity: .78 !important;
+    z-index: 1 !important;
+  }
+  body[data-page="auth"] .auth-shell { padding-top: 148px !important; }
+}
+@media (max-width: 420px) {
+  body[data-page="auth"] .astronaut-stage {
+    top: 76px !important;
+    right: 2px !important;
+    width: 92px !important;
+    height: 104px !important;
+    opacity: .68 !important;
+  }
+  body[data-page="auth"] .auth-shell { padding-top: 122px !important; }
+}
