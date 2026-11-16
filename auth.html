@@ -1,51 +1,158 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 - 晴天号铺</title>
-    <link rel="icon" type="image/jpeg" href="./logo.jpg">
-    <link rel="stylesheet" href="./style.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f8fafc">
+<meta name="description" content="晴天号铺账户登录">
+<title>登录 · 晴天号铺</title>
+<link rel="icon" type="image/jpeg" href="./logo.jpg">
+<style>
+:root{color-scheme:light;--blue:#3b82f6;--ink:#172033;--line:#dbe2ea}
+*{box-sizing:border-box}html{min-height:100%;background:#f8fafc}
+body{margin:0;min-height:100vh;min-height:100svh;padding:28px 18px 22px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,#f8fafc 0%,#eff6ff 55%,#f8fafc 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}
+.auth-shell{width:100%;max-width:440px;margin:auto}.auth-panel{width:100%;padding:34px 32px 28px;border:1px solid rgba(226,232,240,.9);border-radius:26px;background:#fff;box-shadow:0 18px 50px rgba(15,23,42,.08),0 3px 10px rgba(15,23,42,.025)}
+.auth-header{text-align:center;margin-bottom:25px}.brand-logo{display:block;width:68px;height:68px;margin:0 auto 16px;border-radius:20px;object-fit:cover;box-shadow:0 7px 18px rgba(37,99,235,.12)}
+h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;line-height:1.25}.auth-subtitle{margin:9px 0 0;color:#8490a2;font-size:13px;line-height:1.65}
+.login-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:0 0 22px;padding:4px;border:1px solid #e7edf5;border-radius:13px;background:#f5f7fb}
+.login-tab{min-height:40px;border:0;border-radius:10px;background:transparent;color:#64748b;font-size:13px;font-weight:700;cursor:pointer;transition:background .18s,color .18s,box-shadow .18s}
+.login-tab[aria-selected="true"]{background:#fff;color:#2563eb;box-shadow:0 2px 8px rgba(15,23,42,.09)}
+.login-form{display:grid;gap:18px}.form-group{min-width:0}.form-group label{display:block;margin:0 0 8px;color:#334155;font-size:13px;font-weight:700}
+.text-input{display:block;width:100%;height:50px;padding:0 15px;border:1px solid var(--line);border-radius:12px;background:#fff;color:#172033;font-size:14px;outline:none;transition:border-color .18s,box-shadow .18s}
+.text-input::placeholder{color:#a0aaba}.text-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,130,246,.13)}.text-input.invalid{border-color:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.08)}
+.code-row{display:flex;align-items:flex-end;gap:10px}.code-field{flex:1;min-width:0}.code-button{flex:0 0 122px;height:50px;padding:0 10px;border:1px solid #bfdbfe;border-radius:12px;background:#eff6ff;color:#2563eb;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;transition:background .18s,border-color .18s,opacity .18s}
+.code-button:hover{background:#dbeafe;border-color:#93c5fd}.code-button:disabled{cursor:not-allowed;opacity:.62}
+.form-options{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:-3px;color:#64748b;font-size:12px}
+.remember-me{display:inline-flex;align-items:center;gap:7px;cursor:pointer}.remember-me input{width:15px;height:15px;margin:0;accent-color:#2563eb}
+.forgot-pwd{color:#64748b!important;font-size:12px;text-decoration:none!important;transition:color .18s}.forgot-pwd:hover,.forgot-pwd:focus-visible{color:#2563eb!important;text-decoration:none!important}
+.primary-button{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;margin-top:2px;padding:0 18px;border:0;border-radius:13px;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:15px;font-weight:800;letter-spacing:.02em;box-shadow:0 7px 16px rgba(37,99,235,.2);cursor:pointer;transition:transform .18s,box-shadow .18s,filter .18s}
+.primary-button:hover{filter:brightness(1.035);box-shadow:0 9px 20px rgba(37,99,235,.26);transform:translateY(-1px)}.primary-button:disabled{cursor:wait;opacity:.75;transform:none}
+.form-message{min-height:0;margin:0;text-align:center;font-size:12px;line-height:1.5}.form-message:empty{display:none}.form-message.success{color:#15803d}.form-message.error{color:#dc2626}
+.legal-note{margin:0;text-align:center;color:#94a3b8;font-size:11px;line-height:1.8}.legal-note a{color:#64748b;text-decoration:none;white-space:nowrap;transition:color .18s}.legal-note a:hover,.legal-note a:focus-visible{color:#2563eb;text-decoration:none}
+.go-register{margin:22px 0 0;text-align:center;color:#8a94a4;font-size:13px}.go-register a{margin-left:3px;color:#2563eb;font-weight:700;text-decoration:none}.go-register a:hover{text-decoration:underline}
+.footer-note{margin:17px 0 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6}[hidden]{display:none!important}
+.policy-modal[hidden]{display:none!important}.policy-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:5vh 5vw;background:rgba(15,23,42,.48);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.policy-modal-card{position:relative;display:flex;flex-direction:column;width:90%;max-width:560px;max-height:80vh;overflow:hidden;background:#fff;border-radius:24px;box-shadow:0 24px 80px rgba(15,23,42,.24);color:#172033}
+.policy-modal-header{display:flex;align-items:center;justify-content:center;position:relative;padding:22px 56px 16px;border-bottom:1px solid #e8edf5}.policy-modal-title{margin:0;font-size:20px;font-weight:700;text-align:center}
+.policy-modal-close{position:absolute;right:16px;top:14px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(100,116,139,.12);color:#64748b;font-size:22px;line-height:1;cursor:pointer}
+.policy-modal-content{flex:1 1 auto;min-height:0;padding:20px 22px;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;line-height:1.6;font-size:14px;color:#475569;white-space:normal}
+.policy-modal-content h3{margin:0 0 10px;color:#1e293b;font-size:16px;line-height:1.45}.policy-modal-content h4{margin:18px 0 7px;color:#334155;font-size:14px;line-height:1.5}.policy-modal-content p{margin:0 0 12px}.policy-modal-content ul{margin:0 0 13px;padding-left:1.35em}.policy-modal-content li{margin:0 0 6px}.policy-modal-content strong{color:#334155}
+.policy-modal-footer{padding:14px 20px 20px;border-top:1px solid #e8edf5}.policy-modal-confirm{width:100%;min-height:46px;border:0;border-radius:14px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+@media(max-width:420px){body{padding:18px 14px 20px}.auth-panel{padding:28px 21px 24px;border-radius:22px}.brand-logo{width:62px;height:62px;margin-bottom:13px}h1{font-size:24px}.code-button{flex-basis:116px;font-size:12px}}
+@media(max-width:340px){.auth-panel{padding-right:16px;padding-left:16px}.code-row{gap:7px}.code-button{flex-basis:108px;padding:0 7px;font-size:11px}}
+@media(max-width:480px){.policy-modal{padding:5vh 5vw}.policy-modal-card{width:100%;border-radius:20px}.policy-modal-content{padding:18px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
 </head>
-<body>
-    <div class="header">
-        <img src="./logo.jpg" alt="Logo">
-        <div class="header-text">
-            <span class="zh">晴天号铺</span>
-        </div>
-    </div>
-
-    <div class="auth-panel">
-        <div class="title-zh">欢迎回来</div>
-        <div class="subtitle">请登录你的晴天号铺账户。</div>
-
-        <form>
-            <div class="form-group">
-                <label>账号 / 邮箱</label>
-                <input type="text" placeholder="请输入账号或邮箱" required>
-            </div>
-
-            <div class="form-group">
-                <label>密码</label>
-                <input type="password" placeholder="请输入密码" required>
-            </div>
-
-            <div class="form-options">
-                <label class="remember-me">
-                    <input type="checkbox"> 记住密码
-                </label>
-                <a href="#" class="forgot-pwd">忘记密码？</a>
-            </div>
-
-            <button type="submit" class="btn-primary">登 录</button>
-        </form>
-
-        <div class="go-register">没有账号？ <a href="./register.html">立即注册</a></div>
-    </div>
-
-    <div class="footer-note">
-    <p>© 2026 晴天号铺 (lynli.me) 版权所有 | 本平台</p>
-    <p>所有账号仅供合法合规用途，严禁用于任何违法行为。</p>
+<body data-page="login">
+<main class="auth-shell">
+<section class="auth-panel" aria-labelledby="loginTitle">
+<header class="auth-header">
+<img class="brand-logo" src="./logo.jpg" alt="晴天号铺 Logo">
+<h1 id="loginTitle">欢迎回来</h1>
+<p class="auth-subtitle">登录你的晴天号铺账户，继续使用服务。</p>
+</header>
+<div class="login-tabs" role="tablist" aria-label="登录方式">
+<button class="login-tab" id="passwordTab" type="button" role="tab" aria-selected="true" aria-controls="passwordPanel">密码登录</button>
+<button class="login-tab" id="codeTab" type="button" role="tab" aria-selected="false" aria-controls="codePanel">验证码登录</button>
 </div>
+<form class="login-form" id="loginForm" novalidate>
+<div class="form-group"><label for="email">邮箱地址</label><input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="请输入注册邮箱" maxlength="254" required></div>
+<div class="form-group" id="passwordPanel" role="tabpanel" aria-labelledby="passwordTab"><label for="password">登录密码</label><input class="text-input" id="password" name="password" type="password" autocomplete="current-password" placeholder="请输入密码" maxlength="128"></div>
+<div class="code-row" id="codePanel" role="tabpanel" aria-labelledby="codeTab" hidden><div class="form-group code-field"><label for="code">邮箱验证码</label><input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="请输入 6 位验证码" maxlength="6"></div><button class="code-button" id="sendCode" type="button">获取验证码</button></div>
+<div class="form-options"><label class="remember-me"><input id="rememberMe" type="checkbox">记住密码</label><a href="#" class="forgot-pwd" id="forgotPassword">忘记密码？</a></div>
+<button type="submit" class="primary-button" id="loginButton">登 录</button>
+<p class="form-message" id="loginMessage" role="status" aria-live="polite"></p>
+<p class="legal-note">登录即代表您同意<a href="javascript:void(0);" data-policy="terms">《用户协议》</a>和<a href="javascript:void(0);" data-policy="privacy">《隐私政策》</a></p>
+</form>
+<div class="go-register">没有账号？<a href="./register.html">立即注册</a></div>
+</section>
+<p class="footer-note">© 2026 晴天号铺 (lynli.me) 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</p>
+</main>
+<div class="policy-modal" id="policyModal" hidden aria-hidden="true">
+  <section class="policy-modal-card" role="dialog" aria-modal="true" aria-labelledby="policyModalTitle">
+    <header class="policy-modal-header">
+      <h2 class="policy-modal-title" id="policyModalTitle">用户协议</h2>
+      <button class="policy-modal-close" id="policyModalClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="policy-modal-content" id="policyModalContent" tabindex="0"></div>
+    <footer class="policy-modal-footer">
+      <button class="policy-modal-confirm" id="policyModalConfirm" type="button">我知道了</button>
+    </footer>
+  </section>
+</div>
+<template id="termsPolicyTemplate">
+  <h3>晴天号铺《用户协议》</h3>
+  <p><strong>更新日期：2026年11月17日</strong></p>
+  <p>欢迎使用晴天号铺（以下简称“本平台”）。本平台提供 Telegram（TG）账号及其他数字商品的展示、销售与交付服务。请在注册、下单或使用服务前仔细阅读本协议。您点击同意、注册账号、提交订单或实际使用服务，即表示您已阅读并理解本协议。若您不同意，请停止使用本平台。</p>
+  <h4>一、服务与数字商品性质</h4>
+  <p>本平台销售的商品可能包括账号、账号相关资料、数字内容、虚拟权益及其他以电子方式交付的商品。数字商品具有可复制、可即时交付、交付后难以恢复原状等特点。商品页面、订单说明及双方就具体订单确认的内容共同构成该订单的商品描述。</p>
+  <p>您应在付款前认真核对商品类型、数量、规格、适用条件及特别说明；如有疑问，应先联系客服确认。除法律法规另有强制规定或本协议明确约定外，数字商品一经按约交付，不因个人偏好、误操作、改变主意、购买错误或未按说明使用而支持退换。</p>
+  <h4>二、订单与交付</h4>
+  <ul>
+    <li>订单以平台记录的商品、数量、金额及订单状态为准。请在提交订单前核对信息。</li>
+    <li>数字商品通过平台页面、站内信息、文件或双方确认的其他电子方式交付。请妥善保存订单凭证及交付记录。</li>
+    <li>如发生未按约交付或实际交付内容与订单商品描述不符，请在售后期限内提供订单号、问题说明及必要的截图或记录，以便核实处理。</li>
+    <li>因网络延迟、第三方平台处理或其他合理原因导致状态更新延迟的，请先联系平台核查，不要重复下单。</li>
+  </ul>
+  <h4>三、售后期限与处理规则</h4>
+  <p><strong>售后申请期限为下单后3小时内，以平台发送账号或交付信息的时间记录作为起算依据。</strong>请您在收到商品后及时检查，并在期限内提交完整的售后材料。超过该期限，平台可能无法核实交付时的状态，原则上不再受理；法律法规规定不得排除或限制的权利不受影响。</p>
+  <p>在售后期限内，经核实存在未按约交付或交付内容与商品描述不符的，平台将根据具体情况提供补发、更换、修正或退款等合理处理。除上述情形、平台另行明确承诺或法律法规另有规定外，已交付的数字商品不支持退换。</p>
+  <h4>四、账号状态、登录与使用须知</h4>
+  <ul>
+    <li><strong>交付状态：</strong>平台按订单说明交付账号时，账号应处于未冻结状态。该说明仅针对交付时平台可核验的状态，不构成账号未来持续可用或不会受到第三方风控措施影响的保证。</li>
+    <li><strong>首次登录设备：</strong>对于本平台提供并附有该项说明的 TG 账号，首次登录请使用 Windows 电脑及 Telegram 官方最新版便携式客户端。请勿首次使用手机或 Mac 登录，也不建议在首次登录后立即转移设备或频繁更换登录环境。不同设备、网络和操作可能增加触发平台安全验证或限制的风险。</li>
+    <li><strong>谨慎操作：</strong>请勿短时间内频繁登录、退出、切换 IP 或设备；不要使用来历不明的第三方客户端、自动化工具或非官方插件；请遵守 Telegram 的服务条款及适用法律。</li>
+    <li><strong>两步验证（2FA）：</strong>如订单附带 2FA 密码或相关资料，请根据交付文件夹及文件名称自行查找并妥善保存。请勿将密码、验证码或恢复资料告知他人。</li>
+    <li><strong>账号安全：</strong>您应自行保管账号、密码、2FA 信息及登录设备。因您自行修改资料、泄露凭据、误操作、违规使用或未按说明操作造成的损失，平台不承担由此产生的责任，但法律另有规定的除外。</li>
+  </ul>
+  <h4>五、第三方平台风控与责任边界</h4>
+  <p>Telegram 等第三方平台独立制定并执行其账号审核、登录验证、内容管理和风控规则。本平台无法控制第三方的判断、政策调整、服务中断或处置结果。</p>
+  <p><strong>因 Telegram 官方风控、平台政策变化、第三方审核或限制导致的封号、冻结、限制登录、要求验证、功能受限或账号不可用，不属于本平台承诺的售后保障范围。</strong>但如问题经核实系交付时已存在且与订单描述不符，或属于平台未按约交付所致，仍按本协议售后规则处理。任何条款均不排除依法不得排除的消费者权利或平台法定责任。</p>
+  <h4>六、用户行为规范</h4>
+  <p>您承诺遵守适用法律法规及第三方平台规则，不利用本平台商品从事诈骗、骚扰、垃圾信息传播、侵犯他人权益、规避法律监管或其他违法违规活动。您不得未经授权转售、公开传播他人个人信息或交付资料，也不得攻击、干扰平台系统或利用漏洞获取不当利益。</p>
+  <h4>七、平台服务调整</h4>
+  <p>因系统维护、网络故障、不可抗力、第三方服务异常或法律政策变化，本平台可能暂时调整、中止部分服务。平台会在合理范围内采取措施降低影响。涉及订单履行及用户合法权益的事项，将依照适用法律和订单实际情况处理。</p>
+  <h4>八、协议更新与争议处理</h4>
+  <p>本平台可根据业务或法律要求更新本协议，并在页面公布更新版本。更新内容自公布之日起适用；对您权益有重大影响的变更，将在合理范围内作出提示。您继续使用服务前应查看更新内容。</p>
+  <p>本协议的订立、履行及争议处理适用依法应适用的法律。发生争议时，双方应先友好协商；协商不成的，依法向有管辖权的机构寻求解决。本协议任何部分被认定无效，不影响其他部分的效力。</p>
+  <p>如您对订单或本协议有疑问，请通过平台公布的客服渠道联系晴天号铺，并尽量提供订单号及相关凭证。</p>
+</template>
+<template id="privacyPolicyTemplate">
+  <h3>晴天号铺《隐私政策》</h3>
+  <p><strong>更新日期：2026年11月17日</strong></p>
+  <p>晴天号铺（以下简称“本平台”）重视您的个人信息与账号安全。本政策说明我们在您注册、浏览、下单、接受交付及联系客服时，可能处理的信息类型、使用目的、保护方式及您的相关权利。请在使用服务前阅读本政策。</p>
+  <h4>一、我们可能收集的信息</h4>
+  <ul>
+    <li><strong>账户信息：</strong>例如您注册或登录时提供的邮箱地址、账户标识及账户状态，用于创建账户、身份验证、登录和账户管理。</li>
+    <li><strong>订单与交易信息：</strong>例如订单编号、商品名称或编号、数量、金额、订单状态、下单及交付时间、售后沟通记录，用于订单处理、数字商品交付、售后核验、对账及防止欺诈。</li>
+    <li><strong>设备与访问日志：</strong>在服务运行过程中，服务器或安全组件可能记录 IP 地址、访问时间、请求路径、浏览器或设备类型、操作系统、错误记录及必要的安全事件信息，用于保障服务稳定、排查故障、识别异常访问和防范滥用。</li>
+    <li><strong>客服沟通信息：</strong>您主动提交的咨询内容、订单凭证、截图及联系方式，用于回应咨询和处理争议。请勿在非必要情况下提交身份证件、支付密码或其他敏感资料。</li>
+  </ul>
+  <h4>二、信息使用目的</h4>
+  <p>我们仅在提供和改进服务所需的合理范围内使用上述信息，包括：注册及登录验证、处理订单与交付数字商品、提供售后支持、维护账户和系统安全、排查技术问题、履行适用法律义务，以及在必要范围内处理争议和防范欺诈。我们不会将个人信息用于与上述目的无关的用途；如需改变用途且法律要求取得同意，我们会依法征求您的同意。</p>
+  <h4>三、密码与账号凭据保护</h4>
+  <p><strong>我们不会向其他用户、买家或无关第三方泄露您的账户登录密码。</strong>请勿通过客服聊天、截图或其他方式向任何人提供您的登录密码、邮箱验证码、2FA 密码或恢复代码。平台工作人员不会以索取上述秘密凭据作为处理普通售后问题的条件。</p>
+  <p>我们会采取与业务风险相适应的管理和技术措施保护账户信息，并限制相关信息的访问权限。请注意，互联网传输和电子存储无法保证绝对安全；请您使用独立且强度足够的密码，并及时更新存在风险的凭据。</p>
+  <h4>四、信息共享与披露</h4>
+  <p>我们不会出售您的个人信息，也不会为无关第三方的营销目的提供您的信息。仅在以下必要情形下，可能在最小必要范围内共享或披露信息：</p>
+  <ul>
+    <li>为完成网站托管、邮件发送、系统安全、数据存储等服务而使用必要的服务提供商，并要求其按照约定保护信息；</li>
+    <li>根据适用法律法规、司法或行政机关依法提出的要求进行披露；</li>
+    <li>为保护用户、平台或公众的人身、财产及系统安全，或处理欺诈、违法行为和争议而有必要披露；</li>
+    <li>在取得您的明确同意后，按您授权的范围共享。</li>
+  </ul>
+  <h4>五、保存期限与信息安全</h4>
+  <p>我们会根据实现处理目的所需的期限保存信息，并结合订单、售后、财务记录及法律义务确定合理保存期限。超过必要期限后，我们会删除或匿名化处理相关信息；法律法规另有保存要求的除外。</p>
+  <p>我们采取访问控制、必要的权限管理、传输保护及安全监测等措施降低信息泄露、丢失或被滥用的风险。若发生依法需要通知的个人信息安全事件，我们将按照适用法律要求采取补救措施并履行通知义务。</p>
+  <h4>六、您的权利</h4>
+  <p>在适用法律允许的范围内，您可以联系平台请求查询、更正或删除您的账户信息，了解个人信息处理情况，或请求注销账户、撤回非必要处理的同意。为保护账户安全，我们可能需要核验您的身份。法律法规要求保留或处理争议所必需的信息，可能无法立即删除，但会在允许范围内限制其用途。</p>
+  <h4>七、未成年人保护</h4>
+  <p>本平台服务面向具备相应民事行为能力的用户。未成年人应在监护人指导下并依法取得必要同意后使用服务。如我们发现未经适当授权处理了未成年人的个人信息，将依法采取相应措施。</p>
+  <h4>八、政策更新与联系我们</h4>
+  <p>我们可能根据服务变化或法律要求更新本政策，并在本页面公布更新版本。重大变更会在合理范围内提示。若您对个人信息处理或本政策有疑问，请通过平台公布的客服渠道联系晴天号铺。</p>
+</template>
+<script src="./script.js?v=20261117-login-tabs" defer></script>
+<script src="./login.js?v=20261117-login-tabs" defer></script>
 </body>
 </html>
