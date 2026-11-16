@@ -1,41 +1,27 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070b12">
-  <meta name="description" content="晴天商城邮箱登录">
-  <title>邮箱登录 · 晴天商城</title>
-  <link rel="stylesheet" href="./style.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#050810"><meta name="description" content="晴天号铺 · 安全邮箱登录">
+<title>安全登录 · 晴天号铺</title><link rel="stylesheet" href="./style.css">
 </head>
 <body data-page="auth">
-  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
-  <header class="topbar">
-    <a class="brand" href="./index.html"><span class="brand-mark">Q</span><span class="brand-name">QINGTIAN<span> / STORE</span></span></a>
-    <a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系客服 ↗</a>
-  </header>
-  <main class="auth-shell">
-    <section class="auth-panel">
-      <div class="eyebrow"><span class="pulse"></span> SECURE EMAIL ACCESS</div>
-      <h1>欢迎回来<span>。</span></h1>
-      <p class="hero-copy">使用邮箱验证码安全登录晴天商城。</p>
-      <form id="authForm" novalidate>
-        <label class="field-label" for="email">邮箱地址</label>
-        <input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254">
-        <div class="code-row">
-          <div class="code-field">
-            <label class="field-label" for="code">邮箱验证码</label>
-            <input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required>
-          </div>
-          <button class="secondary-button code-button" id="sendCode" type="button">获取验证码</button>
-        </div>
-        <button class="primary-button full-button" id="loginButton" type="submit">安全登录 <span>→</span></button>
-        <p class="form-message" id="authMessage" role="status" aria-live="polite"></p>
-      </form>
-      <p class="legal-note">验证码 5 分钟内有效。请勿向任何人透露验证码。</p>
-    </section>
-    <div class="auth-foot">QINGTIAN DIGITAL STORE · SECURE ACCESS</div>
-  </main>
-  <script src="./script.js" defer></script>
-</body>
-</html>
+<canvas id="particleCanvas" class="particle-canvas" aria-hidden="true"></canvas><div class="auth-vignette" aria-hidden="true"></div>
+<header class="topbar auth-topbar">
+<a class="brand auth-brand" href="./index.html" aria-label="晴天号铺 QINGTIAN STORE">
+<span class="brand-image-wrap"><img class="brand-logo" id="brandLogo" src="./logo.png" alt="晴天号铺 Logo"><span id="brandFallback" class="brand-fallback" hidden>晴</span></span>
+<span class="brand-copy"><strong>晴天号铺</strong><small>QINGTIAN STORE</small></span></a>
+<div class="auth-header-actions"><button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language"><span data-lang-label="zh">中</span><i>/</i><span data-lang-label="en">EN</span></button><a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="support">联系客服 ↗</a></div>
+</header>
+<main class="auth-shell"><section class="auth-panel" aria-labelledby="authTitle">
+<div class="auth-eyebrow"><span class="auth-live-dot"></span><span data-i18n="eyebrow">SECURE EMAIL ACCESS</span></div>
+<h1 id="authTitle" data-i18n="title">欢迎回来</h1><p class="auth-subtitle" data-i18n="subtitle">使用邮箱验证码，安全进入你的晴天号铺账户。</p>
+<form id="authForm" novalidate>
+<div class="auth-field"><label class="field-label" for="email" data-i18n="emailLabel">邮箱地址</label><input class="text-input" id="email" name="email" type="email" autocomplete="email" placeholder="name@example.com" required maxlength="254" aria-describedby="emailError"><p class="field-error" id="emailError" aria-live="polite"></p></div>
+<div class="code-row"><div class="auth-field code-field"><label class="field-label" for="code" data-i18n="codeLabel">邮箱验证码</label><input class="text-input" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="输入 6 位验证码" maxlength="6" pattern="[0-9]{6}" required aria-describedby="codeError"><p class="field-error" id="codeError" aria-live="polite"></p></div><button class="secondary-button code-button" id="sendCode" type="button" data-i18n="sendCode">获取验证码</button></div>
+<div class="auth-legal"><label class="legal-check"><input id="agreeTerms" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./terms.html" target="_blank" rel="noopener" data-i18n="terms">用户协议</a></label><label class="legal-check"><input id="agreePrivacy" type="checkbox"><span data-i18n="agreePrefix">我已阅读并同意</span> <a href="./privacy.html" target="_blank" rel="noopener" data-i18n="privacy">隐私政策</a></label><p class="field-error legal-error" id="legalError" aria-live="polite"></p></div>
+<button class="primary-button full-button login-button" id="loginButton" type="submit"><span class="button-spinner" aria-hidden="true"></span><span class="login-button-text" data-i18n="login">安全登录</span><span class="login-arrow" aria-hidden="true">→</span></button>
+<p class="form-message" id="authMessage" role="status" aria-live="polite"></p></form>
+<div class="auth-security-note"><span aria-hidden="true">⌑</span><span data-i18n="securityNote">验证码 5 分钟内有效，请勿向任何人透露。</span></div>
+</section><footer class="auth-foot">QINGTIAN STORE <span>·</span> SECURE ACCESS</footer></main>
+<script src="./script.js" defer></script></body></html>
