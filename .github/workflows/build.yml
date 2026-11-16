@@ -7,6 +7,7 @@ on:
     paths:
       - "index.html"
       - "auth.html"
+      - "register.html"
       - "shop.html"
       - "style.css"
       - "script.js"
@@ -39,12 +40,13 @@ jobs:
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp index.html auth.html shop.html style.css script.js config.html terms.html privacy.html _site/
+          cp index.html auth.html register.html shop.html style.css script.js config.html terms.html privacy.html _site/
           for asset in logo.jpg logo.png bg.webm bg.mp4; do
             if [ -f "$asset" ]; then cp "$asset" _site/; fi
           done
           test -s _site/index.html
           test -s _site/auth.html
+          test -s _site/register.html
           test -s _site/shop.html
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
