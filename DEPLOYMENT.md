@@ -5,6 +5,8 @@
 GitHub 仓库：Zhouzhou198871/Telegram
 GitHub Pages：https://zhouzhou198871.github.io/telegram/
 Worker API：https://qingtian-shop-api.chulingli1988.workers.dev
+D1：fakabot-procurement-db（fb8bf149-abc2-4f05-96e5-0735db7fa8fc）
+167 Tunnel 源站：shop-origin.lynli.me
 167 源站：https://shop-origin.lynli.me
 
 ## 1. 167 服务器
@@ -65,7 +67,7 @@ SMTP 参数：
 
 ## 4. Cloudflare Worker 与 D1
 
-本项目复用已有 D1 数据库 fakabot-procurement-db，新增 users 与 web_purchases 表，不修改原有采购、支付、库存表。
+本项目复用已有 D1 数据库 fakabot-procurement-db，users 与 web_purchases 表已经创建并核验，不修改原有采购、支付、库存表。Worker 已部署到 qingtian-shop-api.chulingli1988.workers.dev，四项 Worker Secrets 已配置。
 
 Worker Secrets：
 - JWT_SECRET：JWT HS256 签名密钥
@@ -93,7 +95,7 @@ wrangler.toml 已配置 D1 binding、SERVER_ORIGIN 和 FRONTEND_ORIGIN。
 
 ## 6. GitHub Pages 与 Actions
 
-仓库 Settings → Pages → Build and deployment → Source 选择 GitHub Actions。
+仓库 Settings → Pages → Build and deployment → Source 选择 GitHub Actions。当前仓库 Pages 地址实测仍返回 404，说明 Pages 尚未启用或首次部署未完成；启用后 build.yml 会自动发布。
 
 Pages 工作流会在 main 分支相关文件变更后自动部署。Worker 工作流需要 GitHub Secrets：
 - CLOUDFLARE_API_TOKEN：具备 Workers Scripts Edit 和 D1 Edit 权限
