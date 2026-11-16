@@ -14,7 +14,7 @@ D1：fakabot-procurement-db（fb8bf149-abc2-4f05-96e5-0735db7fa8fc）
 本项目的 API 从 /opt/fakabot-staging 读取现有产品目录与本地库存。部署包不包含卡密库存 JSON、供应商会话或密钥。
 
     python3 -m venv /opt/qingtian-shop/venv
-    /opt/qingtian-shop/venv/bin/pip install -r /opt/fakabot-staging/requirements.txt
+    /opt/qingtian-shop/venv/bin/pip install -r /opt/fakabot-staging/requirements-shop.txt
 
 创建 /etc/qingtian-shop.env，权限设为 600：
 
