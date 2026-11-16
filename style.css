@@ -302,3 +302,30 @@ body[data-page="auth"] .particle-canvas{
 body[data-page="auth"] .auth-vignette{
  background:radial-gradient(ellipse at 50% 42%,rgba(4,12,27,.02),rgba(4,9,20,.12) 78%),linear-gradient(180deg,rgba(4,9,20,.04),rgba(4,9,20,.10)) !important;
 }
+
+
+/* Floating astronaut Lottie for login and registration */
+body[data-page="auth"] .astronaut-wrap{
+ position:fixed;z-index:0;left:clamp(10px,2.2vw,42px);top:50%;width:clamp(190px,23vw,330px);aspect-ratio:1;
+ display:grid;place-items:center;pointer-events:none;transform:translate3d(var(--astro-x,0),calc(-50% + var(--astro-y,0)),0);
+ animation:float 5.8s ease-in-out infinite;filter:drop-shadow(0 0 24px rgba(0,217,255,.24));
+}
+body[data-page="auth"] .astronaut-wrap:before{content:"";position:absolute;inset:12%;border-radius:50%;background:radial-gradient(circle,rgba(0,217,255,.16),rgba(85,156,255,.08) 42%,transparent 72%);filter:blur(22px);animation:astronaut-breathe 4.2s ease-in-out infinite}
+body[data-page="auth"] .astronaut-animation{position:relative;z-index:1;width:100%;height:100%;transform-origin:center;animation:astronaut-breathe 4.2s ease-in-out infinite}
+@keyframes float{0%,100%{translate:0 0}50%{translate:0 -16px}}
+@keyframes astronaut-breathe{0%,100%{scale:1}50%{scale:1.045}}
+body[data-page="auth"] .auth-panel{position:relative;z-index:2}
+body[data-page="auth"] .auth-switch{position:relative;z-index:2;margin:18px 0 0;text-align:center;color:#8fa6bb;font-size:12px}
+body[data-page="auth"] .auth-switch a{margin-left:5px;color:#00d9ff;font-weight:700;text-decoration:none}
+body[data-page="auth"] .auth-switch a:hover{text-decoration:underline;text-shadow:0 0 14px rgba(0,217,255,.4)}
+@media(max-width:760px){
+ body[data-page="auth"] .astronaut-wrap{left:auto;right:2vw;top:84px;width:clamp(96px,24vw,138px);opacity:.58;transform:translate3d(var(--astro-x,0),var(--astro-y,0),0)}
+ body[data-page="auth"] .auth-shell{padding-top:112px}
+}
+@media(max-width:420px){
+ body[data-page="auth"] .astronaut-wrap{top:76px;width:92px;right:3px;opacity:.42}
+ body[data-page="auth"] .auth-shell{padding-top:92px}
+}
+@media(prefers-reduced-motion:reduce){
+ body[data-page="auth"] .astronaut-wrap,body[data-page="auth"] .astronaut-wrap:before,body[data-page="auth"] .astronaut-animation{animation:none!important}
+}
