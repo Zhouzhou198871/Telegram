@@ -294,7 +294,7 @@ async function telegramLogin(request, env) {
     return reply(request, env, { ok: false, error: "invalid_telegram_payload" }, 400);
   }
   const dataCheckString = entries
-    .sort(([a], [b]) => a.localeCompare(b))
+    .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([key, value]) => key + "=" + String(value))
     .join("\\n");
   const secretKey = await sha256(env.TELEGRAM_BOT_TOKEN);
