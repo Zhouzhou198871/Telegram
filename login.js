@@ -1,5 +1,18 @@
 "use strict";
 
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const githubToken = params.get("github_token");
+  if (githubToken) {
+    localStorage.setItem("qingtian_shop_token", githubToken);
+    params.delete("github_token");
+    const query = params.toString();
+    const cleanUrl = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
+    window.history.replaceState(null, "", cleanUrl);
+    window.location.replace("./shop.html");
+  }
+})();
+
 (function () {
   function initLoginPage() {
     if (!document.body || document.body.dataset.page !== "login") return;
@@ -19,7 +32,7 @@
     }
 
     let mode = "password", cooldown = 0, countdownTimer = null;
-    const validEmail = () => /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email.value.trim());
+    const validEmail = () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim());
     const showMessage = (text, kind = "error") => {
       if (!messageBox) return;
       messageBox.textContent = text || "";
@@ -188,7 +201,7 @@
         }
         payload.password = password.value;
       } else {
-        if (!/^\\d{6}$/.test(code.value.trim())) {
+        if (!/^\d{6}$/.test(code.value.trim())) {
           code.classList.add("invalid"); code.focus();
           showMessage("请输入 6 位数字验证码。"); return;
         }
