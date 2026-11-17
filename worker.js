@@ -2,9 +2,10 @@ const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache
 
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
-  const allowed = env.FRONTEND_ORIGIN || "https://zhouzhou198871.github.io";
+  const allowedOrigins = new Set([env.FRONTEND_ORIGIN || "https://zhouzhou198871.github.io", "https://shop.lynli.me", "https://zhouzhou198871.github.io"]);
+  const allowedOrigin = allowedOrigins.has(origin) ? origin : (env.FRONTEND_ORIGIN || "https://zhouzhou198871.github.io");
   return {
-    "Access-Control-Allow-Origin": origin === allowed ? origin : allowed,
+    "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization,Idempotency-Key,X-Admin-Key",
     "Access-Control-Max-Age": "86400",
@@ -43,6 +44,21 @@ async function sha256(text) {
   return new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text)));
 }
 
+
+async function hashPassword(password) {
+ const salt=crypto.getRandomValues(new Uint8Array(16));
+ const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+ const bits=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:210000},key,256));
+ return "pbkdf2-sha256$210000$"+b64url(salt)+"$"+b64url(bits);
+}
+async function verifyPassword(password,stored) {
+ if(typeof stored!=="string")return false;const p=stored.split("$");
+ if(p.length!==4||p[0]!=="pbkdf2-sha256"||p[1]!=="210000")return false;
+ try{const salt=unb64url(p[2]),expected=unb64url(p[3]);const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);const actual=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:210000},key,256));if(actual.length!==expected.length)return false;let diff=0;for(let i=0;i<actual.length;i++)diff|=actual[i]^expected[i];return diff===0}catch{return false}
+}
+function validPassword(password){return typeof password==="string"&&password.length>=8&&password.length<=20&&/[A-Za-z]/.test(password)&&/\d/.test(password)}
+
+
 async function signToken(payload, secret) {
   const header = b64url(new TextEncoder().encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
   const body = b64url(new TextEncoder().encode(JSON.stringify(payload)));
@@ -51,23 +67,14 @@ async function signToken(payload, secret) {
 }
 
 async function verifyToken(request, env) {
-  const header = request.headers.get("Authorization") || "";
-  if (!header.startsWith("Bearer ")) throw new Error("auth_required");
-  const token = header.slice(7).trim();
-  const parts = token.split(".");
-  if (parts.length !== 3) throw new Error("invalid_token");
-  const input = parts[0] + "." + parts[1];
-  const expected = b64url(await hmac(env.JWT_SECRET || "", input));
-  if (!env.JWT_SECRET || expected !== parts[2]) throw new Error("invalid_token");
-  let payload;
-  try { payload = JSON.parse(new TextDecoder().decode(unb64url(parts[1]))); }
-  catch { throw new Error("invalid_token"); }
-  if (!payload.sub || !Number.isInteger(payload.exp) || payload.exp <= Math.floor(Date.now() / 1000)) {
-    throw new Error("token_expired");
-  }
-  return payload;
+ const h=request.headers.get("Authorization")||"";if(!h.startsWith("Bearer "))throw new Error("auth_required");
+ const t=h.slice(7).trim(),p=t.split(".");if(p.length!==3)throw new Error("invalid_token");
+ const input=p[0]+"."+p[1],sig=b64url(await hmac(env.JWT_SECRET||"",input));if(!env.JWT_SECRET||sig!==p[2])throw new Error("invalid_token");
+ let payload;try{payload=JSON.parse(new TextDecoder().decode(unb64url(p[1])))}catch{throw new Error("invalid_token")}
+ if(!payload.sub||!Number.isInteger(payload.exp)||payload.exp<=Math.floor(Date.now()/1000))throw new Error("token_expired");
+ const session=await env.DB.prepare("SELECT token_version FROM users WHERE id=?").bind(payload.sub).first();
+ if(!session||Number(payload.ver||0)!==Number(session.token_version||0))throw new Error("token_revoked");return payload;
 }
-
 function amountUnits(value) {
   const s = String(value ?? "").trim();
   if (!/^\d{1,10}(\.\d{1,4})?$/.test(s)) return null;
@@ -148,38 +155,53 @@ async function sendCode(request, env) {
 }
 
 async function login(request, env) {
-  let body;
-  try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
-  const email = String(body.email || "").trim().toLowerCase();
-  const code = String(body.code || "").trim();
-  if (!validEmail(email) || !/^\d{6}$/.test(code)) {
-    return reply(request, env, { ok: false, error: "invalid_credentials" }, 400);
-  }
-  const user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
-  const now = Math.floor(Date.now() / 1000);
-  if (!user || !user.verify_code || Number(user.code_expires || 0) < now) {
-    return reply(request, env, { ok: false, error: "code_expired" }, 401);
-  }
-  if (Number(user.code_attempts || 0) >= 5) {
-    return reply(request, env, { ok: false, error: "too_many_attempts" }, 429);
-  }
-  const digest = b64url(await sha256((env.CODE_PEPPER || "") + "|" + email + "|" + code));
-  if (digest !== user.verify_code) {
-    await env.DB.prepare("UPDATE users SET code_attempts=code_attempts+1 WHERE id=?").bind(user.id).run();
-    return reply(request, env, { ok: false, error: "invalid_code" }, 401);
-  }
-  await env.DB.prepare(
-    "UPDATE users SET verify_code=NULL,code_expires=NULL,code_attempts=0,updated_at=? WHERE id=?"
-  ).bind(now, user.id).run();
-  const token = await signToken({
-    sub: user.id, email, iat: now, exp: now + 7 * 24 * 60 * 60
-  }, env.JWT_SECRET || "");
-  return reply(request, env, {
-    ok: true, token,
-    user: { id: user.id, email, balance: user.balance || "0.0000", balance_units: user.balance_units || 0 }
-  });
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const email=String(body.email||"").trim().toLowerCase(),code=String(body.code||"").trim(),password=typeof body.password==="string"?body.password:"";
+ if(!validEmail(email))return reply(request,env,{ok:false,error:"invalid_credentials"},400);
+ const user=await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
+ if(code){
+  if(!/^\d{6}$/.test(code)||!user||!user.verify_code||Number(user.code_expires||0)<Math.floor(Date.now()/1000))return reply(request,env,{ok:false,error:"code_expired"},401);
+  if(Number(user.code_attempts||0)>=5)return reply(request,env,{ok:false,error:"too_many_attempts"},429);
+  const digest=b64url(await sha256((env.CODE_PEPPER||"")+"|"+email+"|"+code));
+  if(digest!==user.verify_code){await env.DB.prepare("UPDATE users SET code_attempts=code_attempts+1 WHERE id=?").bind(user.id).run();return reply(request,env,{ok:false,error:"invalid_code"},401)}
+  const now=Math.floor(Date.now()/1000);let ph=user.password_hash||null;
+  if(!ph&&password){if(!validPassword(password))return reply(request,env,{ok:false,error:"weak_password"},400);ph=await hashPassword(password)}
+  await env.DB.prepare("UPDATE users SET verify_code=NULL,code_expires=NULL,code_attempts=0,password_hash=COALESCE(password_hash,?),updated_at=? WHERE id=?").bind(ph,now,user.id).run();
+  const token=await signToken({sub:user.id,email,iat:now,exp:now+604800,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+  return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
+ }
+ if(!password||!user||!user.password_hash||!await verifyPassword(password,user.password_hash))return reply(request,env,{ok:false,error:"invalid_credentials"},401);
+ const now=Math.floor(Date.now()/1000),token=await signToken({sub:user.id,email,iat:now,exp:now+604800,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+ return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
 }
-
+async function forgotPassword(request,env){
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const email=String(body.email||"").trim().toLowerCase();if(!validEmail(email))return reply(request,env,{ok:false,error:"invalid_email"},400);
+ const now=Math.floor(Date.now()/1000),generic={ok:true,message:"如果该邮箱已注册，验证码将发送至邮箱，请注意查收。"};
+ const ip=request.headers.get("CF-Connecting-IP")||"unknown",ipHash=b64url(await sha256((env.CODE_PEPPER||"")+"|reset-ip|"+ip));
+ await env.DB.prepare("INSERT INTO password_reset_limits(ip_hash,window_started_at,sent_count,last_sent_at) VALUES(?,?,1,?) ON CONFLICT(ip_hash) DO UPDATE SET window_started_at=CASE WHEN ?-window_started_at>=600 THEN ? ELSE window_started_at END,sent_count=CASE WHEN ?-window_started_at>=600 THEN 1 ELSE sent_count+1 END,last_sent_at=excluded.last_sent_at").bind(ipHash,now,now,now,now,now).run();
+ const limit=await env.DB.prepare("SELECT sent_count FROM password_reset_limits WHERE ip_hash=?").bind(ipHash).first();if(Number(limit?.sent_count||0)>5)return reply(request,env,generic);
+ const user=await env.DB.prepare("SELECT id FROM users WHERE email=?").bind(email).first();if(!user)return reply(request,env,generic);
+ const prev=await env.DB.prepare("SELECT sent_at FROM password_resets WHERE email=?").bind(email).first();if(prev&&now-Number(prev.sent_at||0)<60)return reply(request,env,generic);
+ const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%1000000).padStart(6,"0"),digest=b64url(await sha256(env.CODE_PEPPER+"|password-reset|"+email+"|"+code));
+ await env.DB.prepare("INSERT INTO password_resets(email,code_hash,expires_at,sent_at,attempts,created_at) VALUES(?,?,?,?,0,?) ON CONFLICT(email) DO UPDATE SET code_hash=excluded.code_hash,expires_at=excluded.expires_at,sent_at=excluded.sent_at,attempts=0,created_at=excluded.created_at").bind(email,digest,now+300,now,now).run();
+ try{await originRequest(env,"POST","/api/send_email",{email,code})}catch{await env.DB.prepare("DELETE FROM password_resets WHERE email=?").bind(email).run()}
+ return reply(request,env,generic);
+}
+async function resetPassword(request,env){
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const email=String(body.email||"").trim().toLowerCase(),code=String(body.code||"").trim(),password=typeof body.password==="string"?body.password:"";
+ if(!validEmail(email)||!/^\d{6}$/.test(code))return reply(request,env,{ok:false,error:"invalid_reset_request"},400);
+ if(!validPassword(password))return reply(request,env,{ok:false,error:"weak_password"},400);
+ const reset=await env.DB.prepare("SELECT * FROM password_resets WHERE email=?").bind(email).first(),now=Math.floor(Date.now()/1000);
+ if(!reset||Number(reset.expires_at)<now){await env.DB.prepare("DELETE FROM password_resets WHERE email=?").bind(email).run();return reply(request,env,{ok:false,error:"reset_code_expired"},401)}
+ if(Number(reset.attempts||0)>=5)return reply(request,env,{ok:false,error:"too_many_attempts"},429);
+ const digest=b64url(await sha256((env.CODE_PEPPER||"")+"|password-reset|"+email+"|"+code));
+ if(digest!==reset.code_hash){await env.DB.prepare("UPDATE password_resets SET attempts=attempts+1 WHERE email=?").bind(email).run();return reply(request,env,{ok:false,error:"invalid_reset_code"},401)}
+ const ph=await hashPassword(password),changed=await env.DB.prepare("UPDATE users SET password_hash=?,token_version=COALESCE(token_version,0)+1,verify_code=NULL,code_expires=NULL,code_attempts=0,updated_at=? WHERE email=?").bind(ph,now,email).run();
+ if(Number(changed.meta?.changes||0)!==1)return reply(request,env,{ok:false,error:"reset_unavailable"},404);
+ await env.DB.prepare("DELETE FROM password_resets WHERE email=?").bind(email).run();return reply(request,env,{ok:true,message:"密码已重置，请使用新密码登录。"});
+}
 async function userInfo(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
@@ -365,6 +387,8 @@ export default {
         return reply(request, env, { ok: true, service: "qingtian-shop-api" });
       }
       if (url.pathname === "/api/auth/send_code" && request.method === "POST") return await sendCode(request, env);
+      if (url.pathname === "/api/auth/forgot_password" && request.method === "POST") return await forgotPassword(request, env);
+      if (url.pathname === "/api/auth/reset_password" && request.method === "POST") return await resetPassword(request, env);
       if (url.pathname === "/api/auth/login" && request.method === "POST") return await login(request, env);
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
