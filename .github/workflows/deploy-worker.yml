@@ -8,7 +8,6 @@ on:
       - "worker.js"
       - "schema.sql"
       - "wrangler.toml"
-      - ".github/workflows/deploy-worker.yml"
 
 permissions:
   contents: read
