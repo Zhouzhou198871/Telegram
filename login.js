@@ -2,27 +2,37 @@
 
 (function(){
   const params = new URLSearchParams(window.location.search);
-  const githubToken = params.get("github_token");
+  const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const githubToken = hashParams.get("github_token") || params.get("github_token");
   if (githubToken) {
     localStorage.setItem("qingtian_shop_token", githubToken);
     params.delete("github_token");
+    hashParams.delete("github_token");
     const query = params.toString();
-    const cleanUrl = window.location.pathname + (query ? "?" + query : "") + window.location.hash;
+    const hash = hashParams.toString();
+    const cleanUrl = window.location.pathname + (query ? "?" + query : "") + (hash ? "#" + hash : "");
     window.history.replaceState(null, "", cleanUrl);
     window.location.replace("./shop.html");
+    return;
   }
-})();
-
-(function () {
   const githubError = params.get("github_error");
   if (githubError) {
     params.delete("github_error");
     const query = params.toString();
     window.history.replaceState(null, "", window.location.pathname + (query ? "?" + query : "") + window.location.hash);
-    const showGithubError = () => { const box = document.getElementById("loginMessage"); if (box) { box.textContent = githubError === "verified_email_required" ? "请先在 GitHub 账号中验证邮箱后再登录。" : "GitHub 登录未完成，请重试。"; box.className = "form-message error"; } };
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showGithubError, { once: true }); else showGithubError();
+    const showGithubError = () => {
+      const box = document.getElementById("loginMessage");
+      if (box) {
+        box.textContent = githubError === "verified_email_required" ? "请先在 GitHub 账号中验证邮箱后再登录。" : "GitHub 登录未完成，请重试。";
+        box.className = "form-message error";
+      }
+    };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showGithubError, { once: true });
+    else showGithubError();
   }
+})();
 
+(function () {
   function initLoginPage() {
     if (!document.body || document.body.dataset.page !== "login") return;
     const $ = id => document.getElementById(id);
