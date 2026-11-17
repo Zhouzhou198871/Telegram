@@ -54,3 +54,14 @@ CREATE TABLE IF NOT EXISTS password_reset_limits (
   sent_count INTEGER NOT NULL DEFAULT 0,
   last_sent_at INTEGER NOT NULL
 );
+
+
+-- Verified GitHub OAuth identities linked to existing shop accounts.
+CREATE TABLE IF NOT EXISTS github_identities (
+  github_id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  email TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_github_identities_user ON github_identities(user_id);
