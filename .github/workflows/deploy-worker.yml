@@ -2,6 +2,13 @@ name: Deploy Qingtian Shop Worker
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "worker.js"
+      - "schema.sql"
+      - "wrangler.toml"
+      - ".github/workflows/deploy-worker.yml"
 
 permissions:
   contents: read
