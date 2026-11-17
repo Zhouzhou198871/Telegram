@@ -44,7 +44,7 @@
 
     $("forgotPassword")?.addEventListener("click", event => {
       event.preventDefault();
-      alert("请联系客服重置密码。");
+      showMessage("密码重置请联系客服处理。", "success");
     });
     email.addEventListener("input", () => email.classList.remove("invalid"));
     password.addEventListener("input", () => password.classList.remove("invalid"));
