@@ -13,6 +13,21 @@
       return;
     }
 
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    const githubToken = hash.get("github_token");
+    if (githubToken) {
+      localStorage.setItem(TOKEN_KEY, githubToken);
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+      window.location.replace("./shop.html");
+      return;
+    }
+    const oauthError = new URLSearchParams(window.location.search).get("oauth_error");
+    if (oauthError) {
+      const messages = { not_configured: "GitHub 登录尚未完成服务器配置。", verified_email_required: "GitHub 账号需要提供已验证邮箱。", account_link_conflict: "该邮箱已绑定其他 GitHub 账号。", cancelled: "已取消 GitHub 登录。" };
+      const box = document.getElementById("loginMessage");
+      if (box) { box.textContent = messages[oauthError] || "GitHub 登录失败，请重试。"; box.className = "form-message error"; }
+      history.replaceState(null, "", window.location.pathname);
+    }
     if (typeof token === "function" && token()) {
       window.location.replace("./shop.html");
       return;
