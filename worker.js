@@ -282,7 +282,7 @@ async function telegramLogin(request, env) {
   const authDate = Number(userData.auth_date);
   const telegramId = String(userData.id || "");
   const now = Math.floor(Date.now() / 1000);
-  if (!/^[a-f0-9]{64}$/.test(hash) || !/^\\d{1,20}$/.test(telegramId) ||
+  if (!/^[a-f0-9]{64}$/.test(hash) || !/^\d{1,20}$/.test(telegramId) ||
       !Number.isSafeInteger(authDate) || authDate > now + 60 || now - authDate > 86400) {
     return reply(request, env, { ok: false, error: "invalid_or_expired_telegram_auth" }, 401);
   }
@@ -296,7 +296,7 @@ async function telegramLogin(request, env) {
   const dataCheckString = entries
     .sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
     .map(([key, value]) => key + "=" + String(value))
-    .join("\\n");
+    .join("\n");
   const secretKey = await sha256(env.TELEGRAM_BOT_TOKEN);
   const cryptoKey = await crypto.subtle.importKey(
     "raw", secretKey, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
