@@ -385,7 +385,8 @@ function initShop() {
     location.replace("./auth.html");
     return;
   }
-  $("year").textContent = String(new Date().getFullYear());
+  const year = $("year");
+  if (year) year.textContent = String(new Date().getFullYear());
   $("logout").addEventListener("click", () => {
     localStorage.removeItem(TOKEN_KEY);
     location.replace("./auth.html");
