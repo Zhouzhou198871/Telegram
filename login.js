@@ -14,9 +14,20 @@
 })();
 
 (function () {
+  const githubError = params.get("github_error");
+  if (githubError) {
+    params.delete("github_error");
+    const query = params.toString();
+    window.history.replaceState(null, "", window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+    const showGithubError = () => { const box = document.getElementById("loginMessage"); if (box) { box.textContent = githubError === "verified_email_required" ? "请先在 GitHub 账号中验证邮箱后再登录。" : "GitHub 登录未完成，请重试。"; box.className = "form-message error"; } };
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", showGithubError, { once: true }); else showGithubError();
+  }
+
   function initLoginPage() {
     if (!document.body || document.body.dataset.page !== "login") return;
     const $ = id => document.getElementById(id);
+    const githubButton = $("githubLoginButton");
+    if (githubButton) fetch("https://qingtian-shop-api.chulingli1988.workers.dev/api/auth/github/status", { cache: "no-store" }).then(r => r.json()).then(data => { if (data.enabled) githubButton.hidden = false; }).catch(() => {});
     const form = $("loginForm"), email = $("email"), password = $("password"), code = $("code");
     const passwordPanel = $("passwordPanel"), codePanel = $("codePanel");
     const passwordTab = $("passwordTab"), codeTab = $("codeTab");
