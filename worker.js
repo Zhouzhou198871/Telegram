@@ -211,6 +211,9 @@ function cookieValue(request, name) {
 function clearGithubStateCookie() {
   return "github_oauth_state=; Path=/api/auth/github; Max-Age=0; HttpOnly; Secure; SameSite=Lax";
 }
+function githubStatus(request, env) {
+  return reply(request, env, { ok: true, enabled: Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) });
+}
 async function githubStart(request, env) {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return reply(request, env, { ok: false, error: "github_oauth_not_configured" }, 503);
   const state = b64url(crypto.getRandomValues(new Uint8Array(32)));
@@ -446,6 +449,7 @@ export default {
       if (url.pathname === "/health" && request.method === "GET") {
         return reply(request, env, { ok: true, service: "qingtian-shop-api" });
       }
+      if (url.pathname === "/api/auth/github/status" && request.method === "GET") return githubStatus(request, env);
       if (url.pathname === "/api/auth/github/start" && request.method === "GET") return await githubStart(request, env);
       if (url.pathname === "/api/auth/github/callback" && request.method === "GET") return await githubCallback(request, env);
       if (url.pathname === "/api/auth/send_code" && request.method === "POST") return await sendCode(request, env);
