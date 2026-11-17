@@ -29,6 +29,57 @@ document.addEventListener("DOMContentLoaded", () => {
   password.addEventListener("input", () => password.classList.remove("invalid"));
   code.addEventListener("input", () => { code.value = code.value.replace(/\D/g, "").slice(0, 6); code.classList.remove("invalid"); });
 
+
+  // 滑动验证：只有完整拖到最右侧并正常释放才通过；中断/未到终点自动回弹
+  const slider = $id("sliderVerify"), track = $id("sliderTrack"), fill = $id("sliderFill");
+  const thumb = $id("sliderThumb"), sliderText = $id("sliderText");
+  let sliderVerified = false, dragging = false, dragStartX = 0, startLeft = 0, currentLeft = 0;
+  const thumbWidth = () => thumb.getBoundingClientRect().width;
+  const maxLeft = () => Math.max(0, track.clientWidth - thumbWidth());
+  const paintSlider = (left, animate = false) => {
+    currentLeft = Math.max(0, Math.min(maxLeft(), left));
+    thumb.style.transition = animate ? "left .22s ease,background .2s,border-color .2s,color .2s" : "none";
+    fill.style.transition = animate ? "width .22s ease" : "none";
+    thumb.style.left = currentLeft + "px";
+    fill.style.width = (sliderVerified ? track.clientWidth : currentLeft) + "px";
+  };
+  const resetSlider = () => {
+    dragging = false;
+    paintSlider(0, true);
+  };
+  const passSlider = () => {
+    sliderVerified = true;
+    slider.classList.add("is-verified");
+    sliderText.textContent = "验证通过";
+    thumb.textContent = "✓";
+    thumb.setAttribute("aria-label", "验证已通过");
+    thumb.disabled = true;
+    paintSlider(maxLeft(), true);
+  };
+  thumb.addEventListener("pointerdown", event => {
+    if (sliderVerified || thumb.disabled) return;
+    event.preventDefault();
+    dragging = true;
+    dragStartX = event.clientX;
+    startLeft = currentLeft;
+    thumb.setPointerCapture(event.pointerId);
+  });
+  thumb.addEventListener("pointermove", event => {
+    if (!dragging || sliderVerified) return;
+    paintSlider(startLeft + event.clientX - dragStartX);
+  });
+  thumb.addEventListener("pointerup", () => {
+    if (!dragging || sliderVerified) return;
+    dragging = false;
+    if (currentLeft >= maxLeft() - 3) passSlider();
+    else resetSlider();
+  });
+  thumb.addEventListener("pointercancel", resetSlider);
+  window.addEventListener("resize", () => {
+    if (sliderVerified) paintSlider(maxLeft());
+    else if (!dragging) paintSlider(0);
+  });
+
   sendButton.addEventListener("click", async () => {
     if (cooldown > 0 || sendButton.disabled) return;
     if (!validEmail()) { email.classList.add("invalid"); email.focus(); showMessage("请输入有效的邮箱地址。"); return; }
@@ -50,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   form.addEventListener("submit", async event => {
     event.preventDefault(); showMessage("");
+    if (!sliderVerified) { showMessage("请先完成滑动验证。"); return; }
     if (!validEmail()) { email.classList.add("invalid"); email.focus(); showMessage("请输入有效的邮箱地址。"); return; }
     const payload = { email: email.value.trim().toLowerCase() };
     if (mode === "password") {
