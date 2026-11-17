@@ -257,7 +257,7 @@ async function githubCallback(request, env) {
       await env.DB.prepare("INSERT INTO github_identities (github_id,user_id,email,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(github_id) DO UPDATE SET user_id=excluded.user_id,email=excluded.email,updated_at=excluded.updated_at").bind(githubId,user.id,email,now,now).run();
     }
     const token = await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 604800, ver: Number(user.token_version || 0) }, env.JWT_SECRET || "");
-    const destination = new URL("https://shop.lynli.me/auth.html"); destination.searchParams.set("github_token", token);
+    const destination = new URL("https://shop.lynli.me/auth.html"); destination.hash = "github_token=" + encodeURIComponent(token);
     return new Response(null, { status: 302, headers: { "Location": destination.toString(), "Set-Cookie": cookie, "Cache-Control": "no-store" } });
   } catch (error) {
     const destination = new URL("https://shop.lynli.me/auth.html"); destination.searchParams.set("github_error", error.message === "github_verified_email_required" ? "verified_email_required" : "oauth_failed");
