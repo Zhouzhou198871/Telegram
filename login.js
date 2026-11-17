@@ -53,12 +53,13 @@
       code.classList.remove("invalid");
     });
 
-    // Mobile-first touch handling. Keep mouse support separately.
+    // Unified Pointer Events: works with Android/iOS touch, pen, and desktop mouse.
     const slider = $("sliderVerify"), track = $("sliderTrack"), fill = $("sliderFill");
     const thumb = $("sliderThumb"), sliderText = $("sliderText");
-    let sliderVerified = false, dragging = false, activeTouchId = null;
+    let sliderVerified = false, dragging = false, activePointerId = null;
     let startX = 0, startLeft = 0, currentLeft = 0;
-    const maxLeft = () => Math.max(0, track.getBoundingClientRect().width - thumb.getBoundingClientRect().width - 2);
+    const maxLeft = () => Math.max(0, track.clientWidth - thumb.offsetWidth - 2);
+
     function paintSlider(left, animate = false) {
       currentLeft = Math.max(0, Math.min(maxLeft(), left));
       thumb.style.transition = animate ? "left .18s ease,background .18s ease" : "none";
@@ -67,11 +68,14 @@
       fill.style.width = (sliderVerified ? track.clientWidth : currentLeft + thumb.offsetWidth / 2) + "px";
     }
     function resetSlider() {
-      dragging = false; activeTouchId = null;
+      dragging = false;
+      activePointerId = null;
       paintSlider(0, true);
     }
     function passSlider() {
-      sliderVerified = true; dragging = false; activeTouchId = null;
+      sliderVerified = true;
+      dragging = false;
+      activePointerId = null;
       slider.classList.add("is-verified");
       sliderText.textContent = "验证通过";
       thumb.textContent = "✓";
@@ -85,63 +89,54 @@
       else resetSlider();
     }
 
-    // Android/iOS: native Touch Events, with non-passive move so the page won't steal the gesture.
-    thumb.addEventListener("touchstart", event => {
-      if (sliderVerified || thumb.disabled || !event.changedTouches.length) return;
+    // Prevent the browser from converting a finger drag into page scrolling.
+    track.style.touchAction = "none";
+    thumb.style.touchAction = "none";
+    thumb.style.webkitUserSelect = "none";
+    thumb.addEventListener("pointerdown", event => {
+      if (sliderVerified || thumb.disabled || (event.pointerType === "mouse" && event.button !== 0)) return;
       event.preventDefault();
-      const touch = event.changedTouches[0];
       dragging = true;
-      activeTouchId = touch.identifier;
-      startX = touch.clientX;
+      activePointerId = event.pointerId;
+      startX = event.clientX;
       startLeft = currentLeft;
       thumb.style.transition = "none";
-    }, { passive: false });
-
-    document.addEventListener("touchmove", event => {
-      if (!dragging || activeTouchId === null) return;
-      let touch = null;
-      for (const item of event.changedTouches) {
-        if (item.identifier === activeTouchId) { touch = item; break; }
-      }
-      if (!touch) return;
-      event.preventDefault();
-      paintSlider(startLeft + touch.clientX - startX);
-    }, { passive: false, capture: true });
-
-    document.addEventListener("touchend", event => {
-      if (!dragging || activeTouchId === null) return;
-      for (const item of event.changedTouches) {
-        if (item.identifier === activeTouchId) { finishDrag(); break; }
-      }
-    }, { passive: true });
-
-    document.addEventListener("touchcancel", () => {
-      if (dragging) resetSlider();
-    }, { passive: true });
-
-    // Desktop mouse support.
-    thumb.addEventListener("mousedown", event => {
-      if (sliderVerified || event.button !== 0) return;
-      event.preventDefault();
-      dragging = true; activeTouchId = null;
-      startX = event.clientX; startLeft = currentLeft;
-      thumb.style.transition = "none";
+      try { thumb.setPointerCapture(event.pointerId); } catch (_) {}
     });
-    document.addEventListener("mousemove", event => {
-      if (!dragging || activeTouchId !== null) return;
+    thumb.addEventListener("pointermove", event => {
+      if (!dragging || event.pointerId !== activePointerId) return;
+      event.preventDefault();
       paintSlider(startLeft + event.clientX - startX);
     });
-    document.addEventListener("mouseup", finishDrag);
+    thumb.addEventListener("pointerup", event => {
+      if (!dragging || event.pointerId !== activePointerId) return;
+      finishDrag();
+    });
+    thumb.addEventListener("pointercancel", event => {
+      if (dragging && event.pointerId === activePointerId) resetSlider();
+    });
+    thumb.addEventListener("lostpointercapture", () => {
+      if (dragging) resetSlider();
+    });
     thumb.addEventListener("dragstart", event => event.preventDefault());
     thumb.addEventListener("keydown", event => {
       if (sliderVerified) return;
-      if (event.key === "ArrowRight") { event.preventDefault(); paintSlider(currentLeft + 14); }
-      else if (event.key === "ArrowLeft") { event.preventDefault(); paintSlider(currentLeft - 14); }
-      else if (event.key === "End") { event.preventDefault(); paintSlider(maxLeft()); passSlider(); }
-      else if (event.key === "Home") { event.preventDefault(); paintSlider(0); }
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        paintSlider(currentLeft + 14);
+        if (currentLeft >= maxLeft() - 5) passSlider();
+      } else if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        paintSlider(currentLeft - 14);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        paintSlider(maxLeft());
+        passSlider();
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        paintSlider(0);
+      }
     });
-    track.style.touchAction = "none";
-    thumb.style.touchAction = "none";
     setMode("password");
     paintSlider(0);
 
