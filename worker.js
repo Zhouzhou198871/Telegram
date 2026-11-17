@@ -265,6 +265,79 @@ async function githubCallback(request, env) {
   }
 }
 
+
+async function telegramLogin(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) {
+    return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
+  }
+  let body;
+  try { body = await request.json(); } catch {
+    return reply(request, env, { ok: false, error: "invalid_json" }, 400);
+  }
+  const userData = body && body.user && typeof body.user === "object" ? body.user : body;
+  if (!userData || typeof userData !== "object" || Array.isArray(userData)) {
+    return reply(request, env, { ok: false, error: "invalid_telegram_payload" }, 400);
+  }
+  const hash = String(userData.hash || "").toLowerCase();
+  const authDate = Number(userData.auth_date);
+  const telegramId = String(userData.id || "");
+  const now = Math.floor(Date.now() / 1000);
+  if (!/^[a-f0-9]{64}$/.test(hash) || !/^\\d{1,20}$/.test(telegramId) ||
+      !Number.isSafeInteger(authDate) || authDate > now + 60 || now - authDate > 86400) {
+    return reply(request, env, { ok: false, error: "invalid_or_expired_telegram_auth" }, 401);
+  }
+  const entries = Object.entries(userData).filter(([key, value]) =>
+    key !== "hash" && value !== undefined && value !== null &&
+    (typeof value === "string" || typeof value === "number" || typeof value === "boolean")
+  );
+  if (!entries.some(([key]) => key === "id") || !entries.some(([key]) => key === "auth_date")) {
+    return reply(request, env, { ok: false, error: "invalid_telegram_payload" }, 400);
+  }
+  const dataCheckString = entries
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => key + "=" + String(value))
+    .join("\\n");
+  const secretKey = await sha256(env.TELEGRAM_BOT_TOKEN);
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw", secretKey, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    "HMAC", cryptoKey, new TextEncoder().encode(dataCheckString)
+  ));
+  let expectedHash = "";
+  for (const byte of signature) expectedHash += byte.toString(16).padStart(2, "0");
+  let mismatch = expectedHash.length ^ hash.length;
+  for (let i = 0; i < 64; i++) mismatch |= expectedHash.charCodeAt(i) ^ hash.charCodeAt(i);
+  if (mismatch !== 0) {
+    return reply(request, env, { ok: false, error: "telegram_signature_invalid" }, 401);
+  }
+
+  const nowTs = now;
+  let user = await env.DB.prepare("SELECT * FROM users WHERE tg_user_id=?").bind(telegramId).first();
+  if (!user) {
+    // Telegram-only accounts receive a reserved, non-deliverable alias because users.email is NOT NULL.
+    // This does not claim or link any existing email account.
+    const email = "telegram_" + telegramId + "@telegram-login.invalid";
+    const id = crypto.randomUUID();
+    await env.DB.prepare(
+      "INSERT INTO users (id,email,tg_user_id,balance,balance_units,created_at,updated_at) VALUES (?,?,?,'0.0000',0,?,?) ON CONFLICT(tg_user_id) DO NOTHING"
+    ).bind(id, email, telegramId, nowTs, nowTs).run();
+    user = await env.DB.prepare("SELECT * FROM users WHERE tg_user_id=?").bind(telegramId).first();
+  }
+  if (!user) return reply(request, env, { ok: false, error: "telegram_account_create_failed" }, 500);
+  const token = await signToken({
+    sub: user.id, email: user.email, iat: nowTs, exp: nowTs + 604800,
+    ver: Number(user.token_version || 0)
+  }, env.JWT_SECRET);
+  return reply(request, env, {
+    ok: true, token,
+    user: {
+      id: user.id, email: user.email, tg_user_id: user.tg_user_id,
+      balance: user.balance || "0.0000", balance_units: Number(user.balance_units || 0)
+    }
+  });
+}
+
 async function userInfo(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
@@ -456,6 +529,7 @@ export default {
       if (url.pathname === "/api/auth/forgot_password" && request.method === "POST") return await forgotPassword(request, env);
       if (url.pathname === "/api/auth/reset_password" && request.method === "POST") return await resetPassword(request, env);
       if (url.pathname === "/api/auth/login" && request.method === "POST") return await login(request, env);
+      if (url.pathname === "/api/auth/telegram_login" && request.method === "POST") return await telegramLogin(request, env);
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
         try { await verifyToken(request, env); } catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
