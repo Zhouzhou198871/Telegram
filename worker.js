@@ -202,6 +202,66 @@ async function resetPassword(request,env){
  if(Number(changed.meta?.changes||0)!==1)return reply(request,env,{ok:false,error:"reset_unavailable"},404);
  await env.DB.prepare("DELETE FROM password_resets WHERE email=?").bind(email).run();return reply(request,env,{ok:true,message:"密码已重置，请使用新密码登录。"});
 }
+
+function cookieValue(request, name) {
+  const raw = request.headers.get("Cookie") || "";
+  const entry = raw.split(";").map(x => x.trim()).find(x => x.startsWith(name + "="));
+  return entry ? decodeURIComponent(entry.slice(name.length + 1)) : "";
+}
+function clearGithubStateCookie() {
+  return "github_oauth_state=; Path=/api/auth/github; Max-Age=0; HttpOnly; Secure; SameSite=Lax";
+}
+async function githubStart(request, env) {
+  if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return reply(request, env, { ok: false, error: "github_oauth_not_configured" }, 503);
+  const state = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const callback = new URL("/api/auth/github/callback", request.url).toString();
+  const target = new URL("https://github.com/login/oauth/authorize");
+  target.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
+  target.searchParams.set("redirect_uri", callback);
+  target.searchParams.set("scope", "read:user user:email");
+  target.searchParams.set("state", state);
+  return new Response(null, { status: 302, headers: { "Location": target.toString(), "Cache-Control": "no-store", "Set-Cookie": "github_oauth_state=" + encodeURIComponent(state) + "; Path=/api/auth/github; Max-Age=600; HttpOnly; Secure; SameSite=Lax" } });
+}
+async function githubCallback(request, env) {
+  const url = new URL(request.url), state = url.searchParams.get("state") || "", savedState = cookieValue(request, "github_oauth_state"), cookie = clearGithubStateCookie();
+  if (!state || !savedState || state !== savedState) return new Response("GitHub 登录状态校验失败，请返回登录页重试。", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8", "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  if (url.searchParams.get("error")) return new Response(null, { status: 302, headers: { "Location": "https://shop.lynli.me/auth.html?github_error=authorization_denied", "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  const code = url.searchParams.get("code") || "";
+  if (!code || !env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return new Response("GitHub OAuth 尚未配置完整。", { status: 503, headers: { "Content-Type": "text/plain; charset=utf-8", "Set-Cookie": cookie } });
+  try {
+    const callback = new URL("/api/auth/github/callback", request.url).toString();
+    const tokenResponse = await fetch("https://github.com/login/oauth/access_token", { method: "POST", headers: { "Accept": "application/json", "Content-Type": "application/json", "User-Agent": "Qingtian-Shop" }, body: JSON.stringify({ client_id: env.GITHUB_CLIENT_ID, client_secret: env.GITHUB_CLIENT_SECRET, code, redirect_uri: callback }) });
+    const tokenData = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokenData.access_token) throw new Error("github_token_exchange_failed");
+    const ghHeaders = { "Accept": "application/vnd.github+json", "Authorization": "Bearer " + tokenData.access_token, "User-Agent": "Qingtian-Shop", "X-GitHub-Api-Version": "2022-11-28" };
+    const [profileResponse, emailsResponse] = await Promise.all([fetch("https://api.github.com/user", { headers: ghHeaders }), fetch("https://api.github.com/user/emails", { headers: ghHeaders })]);
+    if (!profileResponse.ok || !emailsResponse.ok) throw new Error("github_profile_fetch_failed");
+    const profile = await profileResponse.json(), emails = await emailsResponse.json();
+    const primary = Array.isArray(emails) ? emails.find(x => x && x.verified && x.primary && validEmail(x.email)) : null;
+    const verified = primary || (Array.isArray(emails) ? emails.find(x => x && x.verified && validEmail(x.email)) : null);
+    if (!profile.id || !verified) throw new Error("github_verified_email_required");
+    const githubId = String(profile.id), email = String(verified.email).trim().toLowerCase(), now = Math.floor(Date.now() / 1000);
+    const identity = await env.DB.prepare("SELECT user_id FROM github_identities WHERE github_id=?").bind(githubId).first();
+    let user = identity ? await env.DB.prepare("SELECT * FROM users WHERE id=?").bind(identity.user_id).first() : null;
+    if (!user) {
+      user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
+      if (!user) {
+        const id = crypto.randomUUID();
+        await env.DB.prepare("INSERT INTO users (id,email,balance,balance_units,created_at,updated_at) VALUES (?,?,'0.0000',0,?,?) ON CONFLICT(email) DO NOTHING").bind(id,email,now,now).run();
+        user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
+      }
+      if (!user) throw new Error("github_account_link_failed");
+      await env.DB.prepare("INSERT INTO github_identities (github_id,user_id,email,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(github_id) DO UPDATE SET user_id=excluded.user_id,email=excluded.email,updated_at=excluded.updated_at").bind(githubId,user.id,email,now,now).run();
+    }
+    const token = await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 604800, ver: Number(user.token_version || 0) }, env.JWT_SECRET || "");
+    const destination = new URL("https://shop.lynli.me/auth.html"); destination.searchParams.set("github_token", token);
+    return new Response(null, { status: 302, headers: { "Location": destination.toString(), "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  } catch (error) {
+    const destination = new URL("https://shop.lynli.me/auth.html"); destination.searchParams.set("github_error", error.message === "github_verified_email_required" ? "verified_email_required" : "oauth_failed");
+    return new Response(null, { status: 302, headers: { "Location": destination.toString(), "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  }
+}
+
 async function userInfo(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
@@ -386,6 +446,8 @@ export default {
       if (url.pathname === "/health" && request.method === "GET") {
         return reply(request, env, { ok: true, service: "qingtian-shop-api" });
       }
+      if (url.pathname === "/api/auth/github/start" && request.method === "GET") return await githubStart(request, env);
+      if (url.pathname === "/api/auth/github/callback" && request.method === "GET") return await githubCallback(request, env);
       if (url.pathname === "/api/auth/send_code" && request.method === "POST") return await sendCode(request, env);
       if (url.pathname === "/api/auth/forgot_password" && request.method === "POST") return await forgotPassword(request, env);
       if (url.pathname === "/api/auth/reset_password" && request.method === "POST") return await resetPassword(request, env);
