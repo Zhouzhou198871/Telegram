@@ -37,7 +37,7 @@
     if (!document.body || document.body.dataset.page !== "login") return;
     const $ = id => document.getElementById(id);
     const githubButton = $("githubLoginButton");
-    if (githubButton) fetch("https://qingtian-shop-api.chulingli1988.workers.dev/api/auth/github/status", { cache: "no-store" }).then(r => r.json()).then(data => { if (data.enabled) githubButton.hidden = false; }).catch(() => {});
+    if (githubButton) fetch("/api/auth/github/status", { cache: "no-store" }).then(r => r.json()).then(data => { if (data.enabled) githubButton.hidden = false; }).catch(() => {});
     const form = $("loginForm"), email = $("email"), password = $("password"), code = $("code");
     const passwordPanel = $("passwordPanel"), codePanel = $("codePanel");
     const passwordTab = $("passwordTab"), codeTab = $("codeTab");
