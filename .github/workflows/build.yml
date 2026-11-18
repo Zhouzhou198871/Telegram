@@ -9,6 +9,13 @@ on:
       - "auth.html"
       - "register.html"
       - "shop.html"
+      - "shop.css"
+      - "profile.html"
+      - "profile.js"
+      - "invite.html"
+      - "invite.js"
+      - "orders.html"
+      - "orders.js"
       - "style.css"
       - "script.js"
       - "login.js"
@@ -43,10 +50,13 @@ jobs:
           node --check script.js
           node --check login.js
           node --check reset-password.js
+          node --check profile.js
+          node --check invite.js
+          node --check orders.js
       - name: Prepare Pages artifact
         run: |
           mkdir -p _site
-          cp index.html auth.html register.html shop.html style.css script.js login.js reset-password.html reset-password.js config.html terms.html privacy.html _site/
+          cp index.html auth.html register.html shop.html style.css shop.css script.js login.js reset-password.html reset-password.js config.html terms.html privacy.html profile.html profile.js invite.html invite.js orders.html orders.js _site/
           for asset in logo.jpg logo.png bg.webm bg.mp4; do
             if [ -f "$asset" ]; then cp "$asset" _site/; fi
           done
@@ -54,6 +64,10 @@ jobs:
           test -s _site/auth.html
           test -s _site/register.html
           test -s _site/shop.html
+          test -s _site/shop.css
+          for asset in logo.jpg logo.png bg.webm bg.mp4 CNAME; do
+            if [ -f "$asset" ]; then cp "$asset" _site/; fi
+          done
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
