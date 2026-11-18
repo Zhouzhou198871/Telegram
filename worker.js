@@ -557,13 +557,14 @@ async function products(request, env) {
   try {
     await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
     const result = await env.DB.prepare(
-      "SELECT product_id,supplier_product_id,name,category_name,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
+      "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
     const items = (result.results || []).map(row => ({
       product_id: row.product_id,
       supplier_product_id: row.supplier_product_id,
       name: row.name,
       category: row.category_name || "数字商品",
+      icon: String(row.icon || ""),
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
       price_cny: String(row.price_cny),
