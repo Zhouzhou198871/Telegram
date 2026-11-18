@@ -266,6 +266,99 @@ async function githubCallback(request, env) {
 }
 
 
+
+async function telegramLoginTable(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS telegram_login_sessions (nonce TEXT PRIMARY KEY, status TEXT NOT NULL, telegram_id TEXT, token TEXT, expires_at INTEGER NOT NULL, created_at INTEGER NOT NULL)").run();
+}
+async function telegramWebhookSecret(env) {
+  return b64url(await sha256(env.TELEGRAM_BOT_TOKEN + "|qingtian-shop-telegram-webhook-v1"));
+}
+async function telegramApi(env, method, payload) {
+  const response = await fetch("https://api.telegram.org/bot" + env.TELEGRAM_BOT_TOKEN + "/" + method, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {})
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || !data.ok) throw new Error("telegram_api_" + method + "_failed");
+  return data.result;
+}
+async function telegramLoginStart(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
+  await telegramLoginTable(env);
+  const now = Math.floor(Date.now() / 1000), nonce = b64url(crypto.getRandomValues(new Uint8Array(24)));
+  await env.DB.prepare("INSERT INTO telegram_login_sessions(nonce,status,expires_at,created_at) VALUES(?, 'pending', ?, ?)").bind(nonce, now + 300, now).run();
+  return reply(request, env, { ok: true, nonce, login_url: "https://t.me/qingtian_tiezibot?start=web_" + nonce, expires_in: 300 });
+}
+async function telegramLoginPoll(request, env) {
+  let body; try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+  const nonce = String(body.nonce || "");
+  if (!/^[A-Za-z0-9_-]{30,40}$/.test(nonce)) return reply(request, env, { ok: false, error: "invalid_login_session" }, 400);
+  await telegramLoginTable(env);
+  const now = Math.floor(Date.now() / 1000);
+  const row = await env.DB.prepare("SELECT status,token,expires_at FROM telegram_login_sessions WHERE nonce=?").bind(nonce).first();
+  if (!row || Number(row.expires_at) < now) {
+    await env.DB.prepare("DELETE FROM telegram_login_sessions WHERE nonce=?").bind(nonce).run();
+    return reply(request, env, { ok: false, error: "login_session_expired" }, 410);
+  }
+  if (row.status !== "confirmed" || !row.token) return reply(request, env, { ok: true, status: "pending" }, 202);
+  const consumed = await env.DB.prepare("DELETE FROM telegram_login_sessions WHERE nonce=? AND status='confirmed' RETURNING token").bind(nonce).first();
+  if (!consumed?.token) return reply(request, env, { ok: false, error: "login_session_consumed" }, 410);
+  return reply(request, env, { ok: true, status: "confirmed", token: consumed.token });
+}
+async function createTelegramSessionToken(env, telegramId) {
+  let user = await env.DB.prepare("SELECT * FROM users WHERE tg_user_id=?").bind(telegramId).first();
+  if (!user) {
+    const email = "telegram_" + telegramId + "@telegram-login.invalid", id = crypto.randomUUID(), now = Math.floor(Date.now() / 1000);
+    await env.DB.prepare("INSERT INTO users (id,email,tg_user_id,balance,balance_units,created_at,updated_at) VALUES (?,?,?,'0.0000',0,?,?) ON CONFLICT(tg_user_id) DO NOTHING").bind(id, email, telegramId, now, now).run();
+    user = await env.DB.prepare("SELECT * FROM users WHERE tg_user_id=?").bind(telegramId).first();
+  }
+  if (!user) throw new Error("telegram_account_create_failed");
+  const now = Math.floor(Date.now() / 1000);
+  return await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 604800, ver: Number(user.token_version || 0) }, env.JWT_SECRET);
+}
+async function telegramLoginWebhook(request, env) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return new Response("not configured", { status: 503 });
+  const secret = await telegramWebhookSecret(env);
+  if (request.headers.get("X-Telegram-Bot-Api-Secret-Token") !== secret) return new Response("forbidden", { status: 403 });
+  await telegramLoginTable(env);
+  const update = await request.json().catch(() => ({}));
+  const message = update.message;
+  if (message?.chat?.type === "private" && message.from?.id && typeof message.text === "string") {
+    const match = message.text.match(/^\/start\s+web_([A-Za-z0-9_-]{30,40})$/);
+    if (match) {
+      const nonce = match[1], now = Math.floor(Date.now() / 1000), telegramId = String(message.from.id);
+      const session = await env.DB.prepare("SELECT status,expires_at FROM telegram_login_sessions WHERE nonce=?").bind(nonce).first();
+      if (session && session.status === "pending" && Number(session.expires_at) >= now) {
+        await env.DB.prepare("UPDATE telegram_login_sessions SET status='awaiting_confirmation',telegram_id=? WHERE nonce=? AND status='pending'").bind(telegramId, nonce).run();
+        await telegramApi(env, "sendMessage", {
+          chat_id: message.chat.id,
+          text: "正在登录晴天号铺。请确认这是你本人发起的网页登录；如果不是，请忽略此消息。",
+          reply_markup: { inline_keyboard: [[{ text: "确认登录晴天号铺", callback_data: "tglogin:" + nonce }]] }
+        });
+      } else {
+        await telegramApi(env, "sendMessage", { chat_id: message.chat.id, text: "此登录链接已过期，请返回网站重新点击 Telegram 登录。" });
+      }
+    }
+  }
+  const callback = update.callback_query;
+  if (callback?.data?.startsWith("tglogin:") && callback.from?.id) {
+    const nonce = callback.data.slice(8), telegramId = String(callback.from.id), now = Math.floor(Date.now() / 1000);
+    const session = await env.DB.prepare("SELECT status,telegram_id,expires_at FROM telegram_login_sessions WHERE nonce=?").bind(nonce).first();
+    if (!session || session.status !== "awaiting_confirmation" || session.telegram_id !== telegramId || Number(session.expires_at) < now) {
+      await telegramApi(env, "answerCallbackQuery", { callback_query_id: callback.id, text: "登录请求已过期或不属于你的账号。", show_alert: true });
+    } else {
+      const token = await createTelegramSessionToken(env, telegramId);
+      const changed = await env.DB.prepare("UPDATE telegram_login_sessions SET status='confirmed',token=? WHERE nonce=? AND status='awaiting_confirmation' AND telegram_id=?").bind(token, nonce, telegramId).run();
+      if (Number(changed.meta?.changes || 0) === 1) {
+        await telegramApi(env, "answerCallbackQuery", { callback_query_id: callback.id, text: "登录确认成功。" });
+        await telegramApi(env, "sendMessage", { chat_id: callback.message?.chat?.id || telegramId, text: "晴天号铺登录已确认。请返回浏览器，页面将自动完成登录。" });
+      } else {
+        await telegramApi(env, "answerCallbackQuery", { callback_query_id: callback.id, text: "登录请求已处理，请返回网站。", show_alert: true });
+      }
+    }
+  }
+  return new Response("ok", { status: 200 });
+}
+
 async function telegramLogin(request, env) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) {
     return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
@@ -529,6 +622,9 @@ export default {
       if (url.pathname === "/api/auth/forgot_password" && request.method === "POST") return await forgotPassword(request, env);
       if (url.pathname === "/api/auth/reset_password" && request.method === "POST") return await resetPassword(request, env);
       if (url.pathname === "/api/auth/login" && request.method === "POST") return await login(request, env);
+      if (url.pathname === "/api/auth/telegram/start" && request.method === "POST") return await telegramLoginStart(request, env);
+      if (url.pathname === "/api/auth/telegram/poll" && request.method === "POST") return await telegramLoginPoll(request, env);
+      if (url.pathname === "/api/auth/telegram/webhook/" + await telegramWebhookSecret(env) && request.method === "POST") return await telegramLoginWebhook(request, env);
       if (url.pathname === "/api/auth/telegram_login" && request.method === "POST") return await telegramLogin(request, env);
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
