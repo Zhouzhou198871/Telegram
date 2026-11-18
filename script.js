@@ -418,9 +418,19 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
-  loadUser().then(loadProducts).catch(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    location.replace("./auth.html");
+  loadUser().then(loadProducts).catch(error => {
+    // Keep the saved session on network/server failures. Only clear it when the API
+    // explicitly rejects the credential; transient outages must not force re-login.
+    const code = String(error?.message || "");
+    const invalidSession = error?.status === 401 ||
+      ["auth_required", "invalid_token", "token_expired", "token_revoked"].includes(code);
+    if (invalidSession) {
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace("./auth.html");
+      return;
+    }
+    message($("shopMessage"), "网络暂时不可用，已保留登录状态。请点击刷新目录重试。", "error");
+    $("productGrid").replaceChildren(safeText("div", "empty-card", "暂时无法连接商品目录，请稍后刷新重试。"));
   });
 }
 
