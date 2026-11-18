@@ -284,6 +284,13 @@ async function telegramApi(env, method, payload) {
 async function telegramLoginStart(request, env) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
   await telegramLoginTable(env);
+  const webhookSecret = await telegramWebhookSecret(env);
+  await telegramApi(env, "setWebhook", {
+    url: "https://qingtian-shop-api.chulingli1988.workers.dev/api/auth/telegram/webhook/" + webhookSecret,
+    secret_token: webhookSecret,
+    allowed_updates: ["message", "callback_query"],
+    drop_pending_updates: false
+  });
   const now = Math.floor(Date.now() / 1000), nonce = b64url(crypto.getRandomValues(new Uint8Array(24)));
   await env.DB.prepare("INSERT INTO telegram_login_sessions(nonce,status,expires_at,created_at) VALUES(?, 'pending', ?, ?)").bind(nonce, now + 300, now).run();
   return reply(request, env, { ok: true, nonce, login_url: "https://t.me/qingtian_tiezibot?start=web_" + nonce, expires_in: 300 });
