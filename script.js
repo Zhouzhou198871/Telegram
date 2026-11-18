@@ -441,20 +441,27 @@ function initShop() {
   });
   const menuToggle = $("accountMenuToggle");
   const accountMenu = $("accountMenu");
-  const closeAccountMenu = () => {
-    accountMenu.hidden = true;
-    menuToggle.setAttribute("aria-expanded", "false");
-  };
-  menuToggle.addEventListener("click", event => {
-    event.stopPropagation();
-    accountMenu.hidden = !accountMenu.hidden;
-    menuToggle.setAttribute("aria-expanded", String(!accountMenu.hidden));
-  });
-  accountMenu.addEventListener("click", event => event.stopPropagation());
-  document.addEventListener("click", closeAccountMenu);
-  document.addEventListener("keydown", event => {
-    if (event.key === "Escape") closeAccountMenu();
-  });
+  if (menuToggle && accountMenu && menuToggle.dataset.menuBound !== "true") {
+    const closeAccountMenu = () => {
+      accountMenu.hidden = true;
+      menuToggle.setAttribute("aria-expanded", "false");
+    };
+    menuToggle.dataset.menuBound = "true";
+    menuToggle.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = menuToggle.getAttribute("aria-expanded") !== "true";
+      accountMenu.hidden = !open;
+      menuToggle.setAttribute("aria-expanded", String(open));
+    });
+    accountMenu.addEventListener("click", event => event.stopPropagation());
+    document.addEventListener("click", event => {
+      if (!accountMenu.contains(event.target) && !menuToggle.contains(event.target)) closeAccountMenu();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") closeAccountMenu();
+    });
+  }
   $("productSearch").addEventListener("input", drawFilteredProducts);
   $("categoryFilter").addEventListener("change", drawFilteredProducts);
   $("sortProducts").addEventListener("change", drawFilteredProducts);
