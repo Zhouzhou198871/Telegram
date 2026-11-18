@@ -171,11 +171,11 @@ async function login(request, env) {
   const now=Math.floor(Date.now()/1000);let ph=user.password_hash||null;
   if(!ph&&password){if(!validPassword(password))return reply(request,env,{ok:false,error:"weak_password"},400);ph=await hashPassword(password)}
   await env.DB.prepare("UPDATE users SET verify_code=NULL,code_expires=NULL,code_attempts=0,password_hash=COALESCE(password_hash,?),updated_at=? WHERE id=?").bind(ph,now,user.id).run();
-  const token=await signToken({sub:user.id,email,iat:now,exp:now+604800,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+  const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
   return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
  }
  if(!password||!user||!user.password_hash||!await verifyPassword(password,user.password_hash))return reply(request,env,{ok:false,error:"invalid_credentials"},401);
- const now=Math.floor(Date.now()/1000),token=await signToken({sub:user.id,email,iat:now,exp:now+604800,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+ const now=Math.floor(Date.now()/1000),token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
  return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
 }
 async function forgotPassword(request,env){
@@ -264,7 +264,7 @@ async function githubCallback(request, env) {
       if (!user) throw new Error("github_account_link_failed");
       await env.DB.prepare("INSERT INTO github_identities (github_id,user_id,email,created_at,updated_at) VALUES (?,?,?,?,?) ON CONFLICT(github_id) DO UPDATE SET user_id=excluded.user_id,email=excluded.email,updated_at=excluded.updated_at").bind(githubId,user.id,email,now,now).run();
     }
-    const token = await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 604800, ver: Number(user.token_version || 0) }, env.JWT_SECRET || "");
+    const token = await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 2592000, ver: Number(user.token_version || 0) }, env.JWT_SECRET || "");
     const destination = new URL("/shop.html", env.FRONTEND_ORIGIN || "https://shop.lynli.me"); destination.hash = "github_token=" + encodeURIComponent(token);
     return new Response(null, { status: 302, headers: { "Location": destination.toString(), "Set-Cookie": cookie, "Cache-Control": "no-store" } });
   } catch (error) {
@@ -335,7 +335,7 @@ async function createTelegramSessionToken(env, telegramId) {
   }
   if (!user) throw new Error("telegram_account_create_failed");
   const now = Math.floor(Date.now() / 1000);
-  return await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 604800, ver: Number(user.token_version || 0) }, env.JWT_SECRET);
+  return await signToken({ sub: user.id, email: user.email, iat: now, exp: now + 2592000, ver: Number(user.token_version || 0) }, env.JWT_SECRET);
 }
 async function telegramLoginWebhook(request, env) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return new Response("not configured", { status: 503 });
@@ -441,7 +441,7 @@ async function telegramLogin(request, env) {
   }
   if (!user) return reply(request, env, { ok: false, error: "telegram_account_create_failed" }, 500);
   const token = await signToken({
-    sub: user.id, email: user.email, iat: nowTs, exp: nowTs + 604800,
+    sub: user.id, email: user.email, iat: nowTs, exp: nowTs + 2592000,
     ver: Number(user.token_version || 0)
   }, env.JWT_SECRET);
   return reply(request, env, {
