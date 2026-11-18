@@ -3,6 +3,8 @@
 (function(){
   const params = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const referralCode = String(params.get("ref") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (referralCode) localStorage.setItem("qingtian_referral_code", referralCode);
   const githubToken = hashParams.get("github_token") || params.get("github_token");
   if (githubToken) {
     localStorage.setItem("qingtian_shop_token", githubToken);
@@ -37,7 +39,11 @@
     if (!document.body || document.body.dataset.page !== "login") return;
     const $ = id => document.getElementById(id);
     const githubButton = $("githubLoginButton");
-    if (githubButton) fetch("/api/auth/github/status", { cache: "no-store" }).then(r => r.json()).then(data => { if (data.enabled) githubButton.hidden = false; }).catch(() => {});
+    if (githubButton) {
+      const refCode = localStorage.getItem("qingtian_referral_code") || "";
+      githubButton.href = "/api/auth/github/start" + (refCode ? "?ref=" + encodeURIComponent(refCode) : "");
+      fetch("/api/auth/github/status", { cache: "no-store" }).then(r => r.json()).then(data => { if (data.enabled) githubButton.hidden = false; }).catch(() => {});
+    }
     const form = $("loginForm"), email = $("email"), password = $("password"), code = $("code");
     const passwordPanel = $("passwordPanel"), codePanel = $("codePanel");
     const passwordTab = $("passwordTab"), codeTab = $("codeTab");
@@ -184,7 +190,7 @@
       try {
         await api("/api/auth/send_code", {
           method: "POST",
-          body: JSON.stringify({ email: email.value.trim().toLowerCase() })
+          body: JSON.stringify({ email: email.value.trim().toLowerCase(), referral_code: localStorage.getItem("qingtian_referral_code") || "" })
         });
         showMessage("验证码已发送，请检查邮箱。", "success");
         cooldown = 60;
