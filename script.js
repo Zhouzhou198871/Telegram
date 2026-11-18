@@ -211,7 +211,7 @@ function initPolicyModal(){
 }
 
 function initAuth(){
- if(token()){location.replace("./shop.html");return;}
+ if(token()){localStorage.removeItem("qingtian_referral_code");location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),password=$("password"),confirmPassword=$("confirmPassword"),passwordError=$("passwordError"),confirmPasswordError=$("confirmPasswordError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  const languageToggle=$("languageToggle");if(languageToggle)languageToggle.addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
