@@ -90,7 +90,7 @@ function updateShopHeading(){
  heading.textContent=document.body.dataset.shopView==="products"?dict.allProducts:dict.catalogHeading;
 }
 function setShopView(view, options={}){
- const next=view==="products"?"products":"home";
+ const next=view==="products"?"products":view==="nodes"?"nodes":"home";
  document.body.dataset.shopView=next;
  document.querySelectorAll("[data-shop-view]").forEach(link=>{
   const active=link.dataset.shopView===next;
@@ -99,6 +99,7 @@ function setShopView(view, options={}){
  });
  updateShopHeading();
  if(options.scroll&&next==="products")$("catalog")?.scrollIntoView({behavior:"smooth",block:"start"});
+ else if(options.scroll&&next==="nodes")$("nodeCatalog")?.scrollIntoView({behavior:"smooth",block:"start"});
  else if(options.scroll&&next==="home")window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -384,6 +385,25 @@ function productBrandIcon(item) {
   return slug ? "https://cdn.simpleicons.org/" + slug : "";
 }
 
+function createProductCover(item) {
+  const wrap=document.createElement("div");
+  wrap.className="product-cover";
+  const candidates=[item.image_url,item.cover_url,item.product_image_url,item.banner_url,item.image];
+  const imageUrl=candidates.find(value=>typeof value==="string"&&/^https?:\\/\\//i.test(value));
+  const fallback=()=>{
+    const art=document.createElement("div");art.className="product-cover-art";
+    const label=document.createElement("span");label.className="product-cover-kicker";label.textContent=String(item.category||"DIGITAL GOODS");
+    const name=document.createElement("strong");name.textContent=String(item.name||"精选数字商品");
+    const sub=document.createElement("small");sub.textContent="QINGTIAN · DIGITAL STORE";
+    art.append(label,name,sub);wrap.replaceChildren(art);
+  };
+  if(imageUrl){
+    const image=document.createElement("img");image.className="product-cover-image";image.alt=String(item.name||"商品图片");image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=imageUrl;
+    image.addEventListener("error",fallback,{once:true});wrap.append(image);
+  }else fallback();
+  return wrap;
+}
+
 function createProductIcon(item) {
   const wrap = document.createElement("div");
   wrap.className = "product-icon-wrap";
@@ -440,6 +460,7 @@ function drawFilteredProducts() {
     card.className = "product-card shop-product-card";
     const rawCategory = String(item.category || "").trim();
     const categoryLabel = categoryNames[rawCategory.toLowerCase()] || categoryNames[rawCategory] || rawCategory || "商品";
+    card.appendChild(createProductCover(item));
     const cardHead = document.createElement("div");
     cardHead.className = "product-card-head";
     cardHead.appendChild(createProductIcon(item));
@@ -674,6 +695,20 @@ function initShop() {
     event.preventDefault();
     setShopView(link.dataset.shopView,{scroll:true});
   }));
+  const accountToggle=$("accountMenuToggle"),accountMenu=$("accountMenu");
+  accountToggle?.addEventListener("click",()=>{
+    const opening=accountMenu.hidden;
+    accountMenu.hidden=!opening;
+    accountToggle.setAttribute("aria-expanded",String(opening));
+  });
+  document.addEventListener("click",event=>{
+    if(accountMenu&&!accountMenu.hidden&&!event.target.closest(".account-menu-wrap")){
+      accountMenu.hidden=true;accountToggle?.setAttribute("aria-expanded","false");
+    }
+  });
+  document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"&&accountMenu&&!accountMenu.hidden){accountMenu.hidden=true;accountToggle?.setAttribute("aria-expanded","false");accountToggle?.focus();}
+  });
   setShopView("home");
   const languageToggle=$("languageToggle");
   if(languageToggle)languageToggle.addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",currentShopLanguage()==="zh"?"en":"zh");applyShopLanguage();if(allProducts.length)drawFilteredProducts();});
@@ -696,19 +731,14 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
-  loadUser().then(()=>{loadProducts();loadNodeProducts();}).catch(error => {
-    // Keep the saved session on network/server failures. Only clear it when the API
-    // explicitly rejects the credential; transient outages must not force re-login.
-    const code = String(error?.message || "");
-    const invalidSession = error?.status === 401 ||
-      ["auth_required", "invalid_token", "token_expired", "token_revoked"].includes(code);
-    if (invalidSession) {
-      localStorage.removeItem(TOKEN_KEY);
-      location.replace("./auth.html");
-      return;
-    }
+  loadUser().catch(error => {
+    // Do not block public catalog requests when account-profile hydration is unavailable.
+    const code=String(error?.message||"");
+    const invalidSession=error?.status===401||["auth_required","invalid_token","token_expired","token_revoked"].includes(code);
+    if(invalidSession){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;}
     message($("shopMessage"),SHOP_I18N[currentShopLanguage()].temporaryError,"error");
-    $("productGrid").replaceChildren(safeText("div", "empty-card", "暂时无法连接商品目录，请稍后刷新重试。"));
+  }).finally(()=>{
+    if(token()){loadProducts();loadNodeProducts();}
   });
 }
 
