@@ -4,31 +4,46 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f8fafc">
-  <meta name="description" content="晴天商城数字商品">
-  <title>商品商城 · 晴天</title>
-  <link rel="stylesheet" href="./shop.css?v=light-theme-session-20261118">
+  <meta name="description" content="晴天号铺商品商城">
+  <title>晴天号铺 · 商品商城</title>
+  <link rel="stylesheet" href="./shop.css?v=account-card-cn-20261118">
 </head>
 <body data-page="shop">
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
   <header class="topbar">
-    <a class="brand" href="./shop.html"><span class="brand-mark">Q</span><span class="brand-name">QINGTIAN<span> / STORE</span></span></a>
+    <a class="brand" href="./shop.html" aria-label="晴天号铺首页">
+      <img class="brand-logo" src="./logo.jpg" alt="晴天号铺">
+    </a>
     <div class="top-actions">
-      <span class="account-pill" id="accountEmail">正在验证…</span>
-      <span class="balance-pill">余额 <strong id="balance">—</strong> USDT</span>
-      <button class="text-button" id="logout" type="button">退出</button>
-      <a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系客服 ↗</a>
+      <div class="account-menu-wrap">
+        <button class="avatar-button" id="accountMenuToggle" type="button" aria-label="打开账户信息" aria-expanded="false" aria-controls="accountMenu">
+          <span class="avatar-initial" id="avatarInitial">晴</span>
+        </button>
+        <section class="account-menu-card" id="accountMenu" hidden aria-label="账户信息">
+          <div class="account-card-head">
+            <span class="avatar-large" id="avatarInitialLarge">晴</span>
+            <div class="account-card-identity">
+              <strong>我的账户</strong>
+              <span id="accountEmail">正在验证…</span>
+            </div>
+          </div>
+          <div class="account-balance-row"><span>账户余额</span><strong><b id="balance">—</b> USDT</strong></div>
+          <a class="account-card-link" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系客服 <span>↗</span></a>
+          <button class="account-logout" id="logout" type="button">退出登录</button>
+        </section>
+      </div>
     </div>
   </header>
   <main class="shop-main">
     <section class="shop-hero">
-      <div class="eyebrow"><span class="pulse"></span> DIGITAL GOODS · LIVE CATALOG</div>
+      <div class="eyebrow"><span class="pulse"></span> 精选数字商品 · 实时目录</div>
       <h1>精选商品<span>，即刻交付。</span></h1>
       <p class="hero-copy">商品库存与售价实时读取。下单前请核对商品信息。</p>
     </section>
     <section class="catalog-section">
       <div class="section-heading">
-        <div><div class="section-kicker">THE CATALOG</div><h2>商品目录<span class="heading-dot">.</span></h2></div>
-        <button class="secondary-button" id="refreshProducts" type="button">刷新目录 ↻</button>
+        <div><div class="section-kicker">全部商品</div><h2>商品目录<span class="heading-dot">。</span></h2></div>
+        <button class="secondary-button" id="refreshProducts" type="button">刷新商品 ↻</button>
       </div>
       <p class="form-message" id="shopMessage" role="status" aria-live="polite"></p>
       <div class="product-grid" id="productGrid" aria-live="polite">
@@ -39,14 +54,14 @@
   <div class="modal-backdrop" id="deliveryModal" hidden>
     <section class="delivery-modal" role="dialog" aria-modal="true" aria-labelledby="deliveryTitle">
       <button class="modal-close" id="closeModal" type="button" aria-label="关闭">×</button>
-      <div class="eyebrow">ORDER DELIVERED</div>
+      <div class="eyebrow">订单交付</div>
       <h2 id="deliveryTitle">购买成功</h2>
       <p class="modal-copy">请及时保存以下交付内容。</p>
       <pre class="delivery-content" id="deliveryContent"></pre>
       <button class="primary-button full-button" id="copyDelivery" type="button">复制卡密</button>
     </section>
   </div>
-  <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 (lynli.me) 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
+  <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
   <script src="./script.js" defer></script>
 </body>
 </html>
