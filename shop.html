@@ -22,8 +22,8 @@
       <a class="shop-nav-link" href="#catalog" data-shop-view="products" data-i18n="shopping">商品购买</a>
     </nav>
     <div class="top-actions">
-      <details class="account-menu-wrap" id="accountMenuWrap">
-        <summary class="avatar-button" id="accountMenuToggle" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
+      <div class="account-menu-wrap">
+        <a class="avatar-button account-profile-link" id="accountMenuToggle" href="./profile.html" aria-label="进入账户信息">
           <span class="avatar-trigger-photo" aria-hidden="true">
             <svg class="account-user-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="8" r="3.5" fill="currentColor"/>
@@ -31,8 +31,8 @@
             </svg>
           </span>
           <span class="account-status-text">已登录</span>
-        </summary>
-        <section class="account-menu-card" id="accountMenu" hidden aria-label="账户菜单">
+        </a>
+        <section class="account-menu-card" id="accountMenu" hidden aria-label="账户数据">
           <div class="account-card-head">
             <span class="avatar-large" id="avatarInitialLarge">晴</span>
             <img class="avatar-large-image" id="avatarImageLarge" alt="账户头像" hidden>
@@ -42,14 +42,10 @@
             </div>
           </div>
           <div class="account-balance-row"><span data-i18n="balanceLabel">账户余额</span><strong><b id="balance">¥0.00</b></strong></div>
-          <a class="account-card-link" href="./profile.html" data-i18n="accountInfo">账户信息 <span>›</span></a>
-          <a class="account-card-link" href="./invite.html" data-i18n="inviteRewards">邀请奖励 <span>›</span></a>
-          <a class="account-card-link" href="./orders.html" data-i18n="orderHistory">历史订单 <span>›</span></a>
-          <a class="account-card-link" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="support">联系客服 <span>↗</span></a>
-          <button class="account-card-link language-toggle" id="languageToggle" type="button"><span data-i18n="language">语言</span><strong id="languageToggleLabel">English</strong></button>
           <button class="account-logout" id="logout" type="button" data-i18n="logout">退出登录</button>
+          <button class="language-toggle" id="languageToggle" type="button" hidden><span id="languageToggleLabel">English</span></button>
         </section>
-      </details>
+      </div>
     </div>
   </header>
   <main class="shop-main">
