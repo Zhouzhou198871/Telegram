@@ -259,9 +259,29 @@ export default async function handler(req, res) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
-    const env = { ...process.env, DB: new NeonD1Compat(getSql()) };
-    const internal = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
-    if (internal) return jsonResponse(res, internal.status, internal.body);
+    const env = {
+      ...process.env,
+      DB: new NeonD1Compat(getSql()),
+      INTERNAL_HANDLER: async (internalMethod, internalPath, payload) => {
+        const body = payload === undefined ? Buffer.alloc(0) : Buffer.from(JSON.stringify(payload));
+        const ts = String(Math.floor(Date.now()/1000));
+        const nonce = crypto.randomUUID();
+        const signed = ts + "\\n" + nonce + "\\n" + String(internalMethod).toUpperCase() + "\\n" + internalPath + "\\n" + body.toString("utf8");
+        const signature = createHmac("sha256", process.env.INTERNAL_API_SECRET || "").update(signed).digest("hex");
+        const internalUrl = new URL(internalPath, "https://internal.local");
+        const internalHeaders = new Headers({
+          "X-Worker-Timestamp": ts,
+          "X-Worker-Nonce": nonce,
+          "X-Worker-Signature": signature
+        });
+        const result = await handleInternal(String(internalMethod).toUpperCase(), internalUrl, internalHeaders, body, getSql());
+        if (!result) throw new Error("internal_route_not_found");
+        if (result.status < 200 || result.status >= 300) {
+          throw new Error(String(result.body?.error || "internal_request_failed"));
+        }
+        return result.body;
+      }
+    };
     const request = new Request(url, {
       method,
       headers,
