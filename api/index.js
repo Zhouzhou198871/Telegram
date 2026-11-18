@@ -266,7 +266,7 @@ export default async function handler(req, res) {
         const body = payload === undefined ? Buffer.alloc(0) : Buffer.from(JSON.stringify(payload));
         const ts = String(Math.floor(Date.now()/1000));
         const nonce = crypto.randomUUID();
-        const signed = ts + "\\n" + nonce + "\\n" + String(internalMethod).toUpperCase() + "\\n" + internalPath + "\\n" + body.toString("utf8");
+        const signed = ts + "\n" + nonce + "\n" + String(internalMethod).toUpperCase() + "\n" + internalPath + "\n" + body.toString("utf8");
         const signature = createHmac("sha256", process.env.INTERNAL_API_SECRET || "").update(signed).digest("hex");
         const internalUrl = new URL(internalPath, "https://internal.local");
         const internalHeaders = new Headers({
