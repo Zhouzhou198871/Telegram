@@ -308,7 +308,9 @@ function drawFilteredProducts() {
     return;
   }
   const fragment = document.createDocumentFragment();
-  const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
+  const categoryNames = currentShopLanguage()==="en"
+    ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
+    : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
     const card = document.createElement("article");
@@ -341,7 +343,9 @@ function renderProducts(items) {
   const current = select.value;
   const categories = [...new Set(allProducts.map(item => String(item.category || "").trim()).filter(Boolean))];
   select.replaceChildren(new Option(SHOP_I18N[currentShopLanguage()].allCategories, ""));
-  const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
+  const categoryNames = currentShopLanguage()==="en"
+    ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
+    : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
   for (const category of categories) {
     const label = categoryNames[category.toLowerCase()] || categoryNames[category] || category;
     select.add(new Option(label, category));
@@ -352,7 +356,7 @@ function renderProducts(items) {
 
 async function loadProducts() {
   const grid = $("productGrid");
-  grid.replaceChildren(safeText("div", "loading-card", "正在连接商品目录…"));
+  grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
   try {
     const data = await api("/api/products");
     renderProducts(data.items || []);
