@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f9fc"><title>账户信息 · 晴天号铺</title>
+<link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=account-profile-rmb-invite-i18n-20261118">
+<style>
+body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
+.profile-header{width:min(900px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
+.profile-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#3984d8;font-size:19px;font-weight:800}
+.profile-brand img{width:42px;height:42px;object-fit:cover;border-radius:12px}
+.profile-actions{display:flex;gap:9px;align-items:center}
+.profile-actions a,.profile-actions button{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#3b82f6;padding:9px 12px;text-decoration:none;font-size:13px;cursor:pointer}
+.profile-main{width:min(760px,calc(100% - 32px));margin:24px auto 60px}
+.profile-breadcrumb{font-size:13px;color:#8491a3;margin:0 0 22px}.profile-breadcrumb a{color:#3984d8;text-decoration:none}
+.profile-main h1{font-size:27px;margin:0 0 8px;color:#243247}.profile-subtitle{color:#748196;font-size:14px;line-height:1.7;margin:0 0 22px}
+.profile-panel{padding:22px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.profile-avatar-row{display:flex;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid #edf1f6;margin-bottom:20px}
+.profile-avatar{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#e8f1ff;color:#3984d8;font-size:30px;font-weight:800}
+.profile-avatar img{width:100%;height:100%;object-fit:cover}
+.profile-avatar-actions{display:flex;flex-direction:column;gap:7px}
+.profile-avatar-actions button{padding:9px 13px;border:1px solid #dbe5f2;border-radius:9px;background:#f4f8ff;color:#3984d8;font-size:13px}
+.profile-hint{font-size:12px;color:#94a0b1}
+.profile-field{display:flex;flex-direction:column;gap:8px;margin:17px 0}
+.profile-field label{font-size:14px;color:#46566d;font-weight:700}
+.profile-field input{width:100%;height:46px;border:1px solid #d8e0e9;border-radius:10px;padding:0 13px;color:#243247;background:#fff;font-size:15px;outline:none}
+.profile-field input:focus{border-color:#75a8f5;box-shadow:0 0 0 3px rgba(59,130,246,.1)}
+.profile-field input[readonly]{background:#f8fafc;color:#8793a4}
+.profile-balance{display:flex;justify-content:space-between;align-items:center;padding:15px 0;border-top:1px solid #edf1f6;color:#64748b;font-size:14px}
+.profile-balance strong{color:#16834a;font-size:20px}
+.profile-save{width:100%;height:48px;border:0;border-radius:10px;background:#397ee8;color:#fff;font-size:16px;font-weight:700;margin-top:10px}
+.profile-message{min-height:22px;font-size:13px;color:#64748b;margin:10px 0 0}.profile-message.error{color:#dc2626}.profile-message.success{color:#16834a}
+@media(max-width:480px){.profile-panel{padding:17px}.profile-main h1{font-size:24px}.profile-brand{font-size:17px}.profile-avatar{width:74px;height:74px}}
+</style></head>
+<body data-page="profile">
+<header class="profile-header">
+<a class="profile-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a>
+<div class="profile-actions"><button id="languageToggle" type="button">English</button><a href="./shop.html" data-i18n="backShop">返回商城</a></div>
+</header>
+<main class="profile-main">
+<nav class="profile-breadcrumb"><a href="./shop.html" data-i18n="home">首页</a>　/　<span data-i18n="accountInfo">账户信息</span></nav>
+<h1 data-i18n="title">账户信息</h1><p class="profile-subtitle" data-i18n="subtitle">管理你的头像、昵称和账户资料。</p>
+<section class="profile-panel">
+<div class="profile-avatar-row">
+<div class="profile-avatar"><span id="avatarFallback">晴</span><img id="avatarPreview" alt="账户头像" hidden></div>
+<div class="profile-avatar-actions"><input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><button id="chooseAvatar" type="button" data-i18n="chooseAvatar">上传头像</button><span class="profile-hint" data-i18n="avatarHint">支持 JPG、PNG、WebP，自动压缩</span></div>
+</div>
+<div class="profile-field"><label for="nickname" data-i18n="nickname">昵称</label><input id="nickname" maxlength="24" placeholder="请输入昵称" data-i18n-placeholder="nicknamePlaceholder"></div>
+<div class="profile-field"><label for="email" data-i18n="email">登录邮箱</label><input id="email" readonly></div>
+<div class="profile-balance"><span data-i18n="balance">账户余额</span><strong id="balance">¥0.00</strong></div>
+<button class="profile-save" id="saveProfile" type="button" data-i18n="save">保存资料</button>
+<p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
+</section></main>
+<script src="./profile.js?v=20261118-profile-v1" defer></script>
+</body></html>
