@@ -755,6 +755,117 @@ async function buyStatus(request, env, orderId) {
 }
 
 
+
+function nodeHexBytes(value) {
+  const s=String(value||"").trim();
+  if(!/^[a-f0-9]{64}$/i.test(s))throw new Error("delivery_encryption_not_configured");
+  return Uint8Array.from(s.match(/.{2}/g),x=>parseInt(x,16));
+}
+function nodeB64(bytes) {
+  let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s);
+}
+async function encryptNodePayload(value,env) {
+  const key=await crypto.subtle.importKey("raw",nodeHexBytes(env.DELIVERY_ENCRYPTION_KEY),{name:"AES-GCM"},false,["encrypt"]);
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(value)));
+  const packed=new Uint8Array(iv.length+encrypted.length);packed.set(iv);packed.set(encrypted,iv.length);
+  return nodeB64(packed);
+}
+async function decryptNodePayload(value,env) {
+  const raw=Uint8Array.from(atob(String(value||"")),c=>c.charCodeAt(0));
+  if(raw.length<29)throw new Error("node_delivery_invalid");
+  const key=await crypto.subtle.importKey("raw",nodeHexBytes(env.DELIVERY_ENCRYPTION_KEY),{name:"AES-GCM"},false,["decrypt"]);
+  const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw.slice(0,12)},key,raw.slice(12));
+  return JSON.parse(new TextDecoder().decode(clear));
+}
+function yamlScalar(value){return JSON.stringify(String(value));}
+function nodeClashYaml(proxy){
+  const keys=["name","type","server","port","uuid","alterId","cipher","network","tls","udp","flow","servername","client-fingerprint","username","password","obfs","obfs-password","sni","skip-cert-verify"];
+  const lines=["mixed-port: 7890","allow-lan: false","mode: rule","log-level: info","proxies:"];
+  lines.push("  - name: "+yamlScalar(proxy.name));
+  for(const key of keys){if(proxy[key]===undefined||proxy[key]===null)continue;const val=proxy[key];lines.push("    "+key+": "+(typeof val==="boolean"||typeof val==="number"?String(val):yamlScalar(val)));}
+  if(proxy["reality-opts"]){lines.push("    reality-opts:");for(const [k,v] of Object.entries(proxy["reality-opts"]))lines.push("      "+k+": "+yamlScalar(v));}
+  if(proxy["ws-opts"]){lines.push("    ws-opts:");lines.push("      path: "+yamlScalar(proxy["ws-opts"].path||"/"));if(proxy["ws-opts"].headers){lines.push("      headers:");for(const [k,v] of Object.entries(proxy["ws-opts"].headers))lines.push("        "+k+": "+yamlScalar(v));}}
+  lines.push("proxy-groups:","  - name: Proxy","    type: select","    proxies:","      - "+yamlScalar(proxy.name),"      - DIRECT","rules:","  - MATCH,Proxy","");
+  return lines.join("\n");
+}
+async function nodeProducts(request,env){
+  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
+  const result=await env.DB.prepare("SELECT product_id,name,protocol,description FROM node_products WHERE active=TRUE AND server_present=TRUE AND provisioning_ready=TRUE ORDER BY display_order").all();
+  const products=[];
+  for(const p of result.results||[]){
+    const pkgs=await env.DB.prepare("SELECT package_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices FROM node_packages WHERE product_id=? AND active=TRUE ORDER BY display_order").bind(p.product_id).all();
+    products.push({...p,packages:(pkgs.results||[]).map(x=>({...x,price_cny:Number(x.price_cny),duration_days:Number(x.duration_days),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes),max_devices:Number(x.max_devices||1)}))});
+  }
+  return reply(request,env,{ok:true,products});
+}
+async function refundNodeOrder(env,orderId,reason){
+  const now=Math.floor(Date.now()/1000);
+  await env.DB.prepare("WITH failed AS (UPDATE node_orders SET status='refunded',error_code=?,updated_at=? WHERE order_id=? AND status='provisioning' RETURNING user_id,amount_units) UPDATE users SET balance_units=users.balance_units+failed.amount_units,balance=ROUND((users.balance_units+failed.amount_units)/10000.0,4),updated_at=? FROM failed WHERE users.id=failed.user_id")
+    .bind(String(reason||"node_provision_failed").slice(0,100),now,orderId,now).run();
+}
+async function userNodeOrders(request,env){
+  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
+  if(request.method==="GET"){
+    const rows=await env.DB.prepare("SELECT o.order_id,o.product_id,o.package_id,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100").bind(claims.sub).all();
+    const orders=[];
+    for(const r of rows.results||[]){
+      let delivery=null;if(r.delivery_ciphertext&&r.status==="fulfilled"){try{delivery=await decryptNodePayload(r.delivery_ciphertext,env)}catch{}}
+      orders.push({order_id:r.order_id,product_id:r.product_id,package_id:r.package_id,product_name:r.product_name||"节点服务",package_name:r.package_name||"",amount_cny:(Number(r.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),status:r.status,error_code:r.error_code||null,created_at:Number(r.created_at),updated_at:Number(r.updated_at),delivery});
+    }
+    return reply(request,env,{ok:true,orders});
+  }
+  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+  const packageId=String(body.package_id||"").trim();
+  const idem=String(request.headers.get("Idempotency-Key")||body.idempotency_key||"").trim();
+  if(!packageId||idem.length<8||idem.length>120)return reply(request,env,{ok:false,error:"invalid_node_order"},400);
+  const existing=await env.DB.prepare("SELECT order_id,status,delivery_ciphertext,error_code FROM node_orders WHERE user_id=? AND idempotency_key=?").bind(claims.sub,idem).first();
+  if(existing){
+    let delivery=null;if(existing.delivery_ciphertext&&existing.status==="fulfilled"){try{delivery=await decryptNodePayload(existing.delivery_ciphertext,env)}catch{}}
+    return reply(request,env,{ok:true,order_id:existing.order_id,status:existing.status,delivery,error_code:existing.error_code||null});
+  }
+  const pkg=await env.DB.prepare("SELECT g.package_id,g.product_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices,p.name AS product_name,p.protocol,p.provisioning_ready,p.server_present,p.active AS product_active FROM node_packages g JOIN node_products p ON p.product_id=g.product_id WHERE g.package_id=? AND g.active=TRUE").bind(packageId).first();
+  if(!pkg||!pkg.product_active||!pkg.provisioning_ready||!pkg.server_present)return reply(request,env,{ok:false,error:"node_package_unavailable"},404);
+  if(pkg.traffic_limit_bytes!==null&&Number(pkg.traffic_limit_bytes)>0)return reply(request,env,{ok:false,error:"traffic_plans_not_ready"},409);
+  const cents=Math.round(Number(pkg.price_cny)*100),units=cents*25;
+  if(!Number.isSafeInteger(units)||units<1)return reply(request,env,{ok:false,error:"invalid_package_price"},409);
+  const orderId=crypto.randomUUID(),now=Math.floor(Date.now()/1000);
+  let inserted;
+  try{
+    inserted=await env.DB.prepare("WITH debit AS (UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=? RETURNING id) INSERT INTO node_orders(order_id,user_id,product_id,package_id,amount_units,status,idempotency_key,created_at,updated_at,expires_at) SELECT ?,?,?,?,?,'provisioning',?,?,?,? FROM debit RETURNING order_id")
+      .bind(units,units,now,claims.sub,units,orderId,claims.sub,pkg.product_id,pkg.package_id,units,idem,now,now,now+900).first();
+  }catch(e){
+    const dupe=await env.DB.prepare("SELECT order_id,status FROM node_orders WHERE user_id=? AND idempotency_key=?").bind(claims.sub,idem).first();
+    if(dupe)return reply(request,env,{ok:true,order_id:dupe.order_id,status:dupe.status});
+    throw e;
+  }
+  if(!inserted)return reply(request,env,{ok:false,error:"insufficient_balance",required_cny:(units/10000*INTERNAL_CNY_PER_USDT).toFixed(2)},402);
+  let account;
+  try{
+    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days)});
+    account=provisioned.account;
+    if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
+    const delivery={protocol:pkg.protocol,uri:account.uri,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将 Clash YAML 保存为 .yaml 文件后导入 Mihomo / Clash Meta。"};
+    const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
+    await env.DB.batch([
+      env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
+      env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),claims.sub,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
+    ]);
+    return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery},201);
+  }catch(e){
+    if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref})}catch{}}
+    await refundNodeOrder(env,orderId,String(e.message||"node_provision_failed"));
+    return reply(request,env,{ok:false,order_id:orderId,status:"refunded",error:"node_provision_failed"},502);
+  }
+}
+async function nodeOrderStatus(request,env,orderId){
+  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
+  const row=await env.DB.prepare("SELECT o.order_id,o.status,o.amount_units,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.order_id=? AND o.user_id=?").bind(orderId,claims.sub).first();
+  if(!row)return reply(request,env,{ok:false,error:"order_not_found"},404);
+  let delivery=null;if(row.delivery_ciphertext&&row.status==="fulfilled"){try{delivery=await decryptNodePayload(row.delivery_ciphertext,env)}catch{}}
+  return reply(request,env,{ok:true,order_id:row.order_id,status:row.status,product_name:row.product_name,package_name:row.package_name,amount_cny:(Number(row.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),error_code:row.error_code||null,created_at:Number(row.created_at),updated_at:Number(row.updated_at),delivery});
+}
+
 function hexBytes(bytes) { return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
 
 async function changeUserPassword(request, env) {
@@ -926,6 +1037,10 @@ export default {
       if (url.pathname === "/api/admin/recharge/confirm" && request.method === "POST") return await confirmRecharge(request, env);
       if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
       if (url.pathname === "/api/user/orders" && request.method === "GET") return await userOrders(request, env);
+      if (url.pathname === "/api/node-products" && request.method === "GET") return await nodeProducts(request, env);
+      if (url.pathname === "/api/user/node-orders" && ["GET","POST"].includes(request.method)) return await userNodeOrders(request, env);
+      const nodeOrderMatch = url.pathname.match(/^\/api\/user\/node-orders\/([a-f0-9-]{36})$/i);
+      if (nodeOrderMatch && request.method === "GET") return await nodeOrderStatus(request, env, nodeOrderMatch[1]);
       if (url.pathname === "/api/products" && request.method === "GET") {
         try { await verifyToken(request, env); } catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
         return await products(request, env);
