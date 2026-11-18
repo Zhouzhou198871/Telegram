@@ -472,3 +472,18 @@ body[data-page="shop"] .account-status-text{display:inline-flex;align-items:cent
 body[data-page="shop"] .menu-chevron{display:block;width:16px;height:16px;flex:0 0 16px;color:#8a9bb0;transition:transform .18s ease}
 body[data-page="shop"] .account-menu-wrap[open] .menu-chevron{transform:rotate(180deg)}
 @media(max-width:560px){body[data-page="shop"] .avatar-button{height:42px;min-height:42px;padding:4px 9px 4px 5px;gap:7px}body[data-page="shop"] .avatar-trigger-photo{width:32px;height:32px;flex-basis:32px}body[data-page="shop"] .account-user-icon{width:19px;height:19px}body[data-page="shop"] .account-status-text{font-size:12px}body[data-page="shop"] .menu-chevron{width:15px;height:15px;flex-basis:15px}}
+
+
+/* Storefront primary navigation: a concise Home / Products structure. */
+body[data-page="shop"] .shop-primary-nav{display:flex;align-items:center;gap:8px;margin-left:auto;margin-right:22px}
+body[data-page="shop"] .shop-nav-link{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 16px;border-radius:999px;color:#64748b;text-decoration:none;font-size:14px;font-weight:650;transition:background .18s,color .18s}
+body[data-page="shop"] .shop-nav-link:hover{background:#eff6ff;color:#2563eb}
+body[data-page="shop"] .shop-nav-link.is-active{background:#eaf2ff;color:#2563eb}
+body[data-page="shop"][data-shop-view="products"] .shop-hero{display:none}
+body[data-page="shop"][data-shop-view="products"] .catalog-section{padding-top:38px}
+body[data-page="shop"] .breadcrumb{display:none!important}
+@media(max-width:560px){
+ body[data-page="shop"] .shop-primary-nav{gap:2px;margin-right:6px}
+ body[data-page="shop"] .shop-nav-link{min-height:34px;padding:0 10px;font-size:12px}
+ body[data-page="shop"] .topbar{flex-wrap:wrap}
+}
