@@ -506,6 +506,78 @@ async function loadProducts() {
   }
 }
 
+
+async function loadNodeProducts() {
+  const grid=$("nodeProductGrid");
+  if(!grid)return;
+  grid.replaceChildren(safeText("div","loading-card","正在读取自营节点套餐…"));
+  try{
+    const data=await api("/api/node-products"),items=Array.isArray(data.products)?data.products:[];
+    grid.replaceChildren();
+    if(!items.length){grid.appendChild(safeText("div","empty-card","节点套餐暂未开放，请稍后刷新。"));return;}
+    const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto"};
+    for(const item of items){
+      const card=document.createElement("article");card.className="product-card node-product-card";
+      const head=document.createElement("div");head.className="product-card-head";
+      const icon=document.createElement("div");icon.className="product-icon-wrap";icon.appendChild(safeText("span","product-icon-fallback",item.protocol==="mtproto"?"T":String(item.name||"节").slice(0,1)));
+      const title=document.createElement("div");title.className="product-title-wrap";
+      title.appendChild(safeText("div","product-category","自营节点"));
+      title.appendChild(safeText("h3","product-name",item.name||labels[item.protocol]||"节点线路"));
+      head.append(icon,title);card.append(head);
+      card.appendChild(safeText("span","node-protocol-tag",labels[item.protocol]||item.protocol));
+      card.appendChild(safeText("p","product-description",item.description||"自有服务器线路，购买后自动开通。"));
+      const plans=document.createElement("div");plans.className="node-plan-list";
+      for(const pkg of item.packages||[]){
+        const button=document.createElement("button");button.type="button";button.className="node-plan-button";
+        const span=document.createElement("span");span.textContent=pkg.name||String(pkg.duration_days)+" 天";
+        const price=document.createElement("strong");price.textContent="¥"+Number(pkg.price_cny||0).toFixed(2);
+        button.append(span,price);
+        button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
+        plans.append(button);
+      }
+      if(!plans.childElementCount)plans.append(safeText("div","empty-card","套餐准备中"));
+      card.append(plans);grid.append(card);
+    }
+  }catch(error){
+    grid.replaceChildren(safeText("div","empty-card","节点套餐暂时无法加载，请稍后刷新。"));
+    message($("nodeShopMessage"),"节点服务暂时不可用。","error");
+  }
+}
+async function buyNodePackage(pkg,button,protocol){
+  if(button.disabled)return;
+  button.disabled=true;
+  const old=button.innerHTML;button.textContent="正在开通…";
+  message($("nodeShopMessage"),"正在扣除余额并开通节点，请勿重复提交。");
+  try{
+    const result=await api("/api/user/node-orders",{
+      method:"POST",
+      headers:{"Idempotency-Key":crypto.randomUUID()},
+      body:JSON.stringify({package_id:pkg.package_id})
+    });
+    if(result.status!=="fulfilled"||!result.delivery)throw new Error(result.error||result.status||"node_provision_failed");
+    showNodeDelivery(result.delivery);
+    message($("nodeShopMessage"),"节点已开通，配置已生成。","success");
+    await loadUser();
+  }catch(error){
+    const text=error.status===402||error.message==="insufficient_balance"?"余额不足，请先充值。":
+      error.message==="node_package_unavailable"?"该套餐暂不可购买。":
+      "节点开通未完成，若余额发生变化请到账户信息查看订单状态。";
+    message($("nodeShopMessage"),text,"error");
+  }finally{
+    button.disabled=false;
+    button.innerHTML=old;
+  }
+}
+function showNodeDelivery(delivery){
+  const content=delivery.clash_yaml||delivery.uri||"";
+  $("deliveryTitle").textContent=delivery.protocol==="mtproto"?"Telegram 代理已开通":"节点已开通";
+  $("deliveryContent").textContent=content;
+  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":"复制 Clash 配置";
+  const modalCopy=document.querySelector(".modal-copy");
+  if(modalCopy)modalCopy.textContent=delivery.instructions||"请立即复制并保存节点配置。";
+  $("deliveryModal").hidden=false;
+}
+
 function showDelivery(content) {
   $("deliveryContent").textContent = String(content || "");
   $("deliveryModal").hidden = false;
@@ -608,6 +680,7 @@ function initShop() {
   $("categoryFilter").addEventListener("change", () => {drawFilteredProducts();updateShopHeading();});
   $("sortProducts").addEventListener("change", drawFilteredProducts);
   $("refreshProducts").addEventListener("click", loadProducts);
+  $("refreshNodeProducts")?.addEventListener("click",loadNodeProducts);
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
   $("deliveryModal").addEventListener("click", event => {
     if (event.target === $("deliveryModal")) $("deliveryModal").hidden = true;
@@ -622,7 +695,7 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
-  loadUser().then(loadProducts).catch(error => {
+  loadUser().then(()=>{loadProducts();loadNodeProducts();}).catch(error => {
     // Keep the saved session on network/server failures. Only clear it when the API
     // explicitly rejects the credential; transient outages must not force re-login.
     const code = String(error?.message || "");
