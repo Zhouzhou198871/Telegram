@@ -5,6 +5,8 @@ const TOKEN_KEY = "qingtian_shop_token";
 
 // Consume OAuth tokens before the shop initializes any authenticated API requests.
 (() => {
+  const referralCode = String(new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (referralCode) localStorage.setItem("qingtian_referral_code", referralCode);
   const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
   const oauthToken = params.get("github_token");
   if (oauthToken) {
@@ -227,7 +229,7 @@ function initAuth(){
   setFieldError(email,emailError,"");message(msg,"");
   send.disabled=true;send.textContent=authText("sending");
   try{
-   await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});
+   await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),referral_code:localStorage.getItem("qingtian_referral_code")||""})});
    message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;
    const tick=()=>{send.textContent=cooldown+authText("retry");};tick();
    timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);
@@ -256,6 +258,7 @@ function initAuth(){
    const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim(),password:passwordValue})});
    if(!result.token)throw new Error(result.error||"login_failed");
    localStorage.setItem(TOKEN_KEY,result.token);
+   localStorage.removeItem("qingtian_referral_code");
    window.location.replace("/shop.html");
   }catch(error){
    const errorCode=String(error.message||"");
