@@ -308,6 +308,7 @@ async function loadUser() {
   const email = String(user.email || "晴天用户"), nickname = String(user.nickname || "我的账户");
   const initial = (nickname.trim()[0] || email.trim()[0] || "晴").toUpperCase();
   $("accountEmail").textContent = email; $("accountName").textContent = nickname;
+  const triggerName = $("accountTriggerName"); if (triggerName) triggerName.textContent = nickname || "晴天";
   setAvatar("avatarImage","avatarInitial",user.avatar_url,initial);
   setAvatar("avatarImageLarge","avatarInitialLarge",user.avatar_url,initial);
   $("balance").textContent = "¥" + Number(user.balance_cny ?? (Number(user.balance || 0) * 4)).toFixed(2);
