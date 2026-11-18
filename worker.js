@@ -278,7 +278,10 @@ async function telegramApi(env, method, payload) {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload || {})
   });
   const data = await response.json().catch(() => ({}));
-  if (!response.ok || !data.ok) throw new Error("telegram_api_" + method + "_failed");
+  if (!response.ok || !data.ok) {
+    const description = String(data.description || "telegram_api_error").replace(/[^a-zA-Z0-9 _.,:;()/-]/g, "").slice(0, 240);
+    throw new Error("telegram_api_" + method + "_failed: " + description);
+  }
   return data.result;
 }
 async function telegramLoginStart(request, env) {
