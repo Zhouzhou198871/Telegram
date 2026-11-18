@@ -8,6 +8,7 @@
   const githubToken = hashParams.get("github_token") || params.get("github_token");
   if (githubToken) {
     localStorage.setItem("qingtian_shop_token", githubToken);
+    localStorage.removeItem("qingtian_referral_code");
     params.delete("github_token");
     hashParams.delete("github_token");
     const query = params.toString();
@@ -239,6 +240,7 @@
         const result = await api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
         if (!result.token) throw new Error(result.error || "login_failed");
         localStorage.setItem(TOKEN_KEY, result.token);
+        localStorage.removeItem("qingtian_referral_code");
         window.location.replace("/shop.html");
       } catch (error) {
         const reasonCode = String(error.message || "");
