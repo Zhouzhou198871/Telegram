@@ -73,10 +73,10 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
 .social-auth-copy strong{color:#263449;font-size:14px;font-weight:750;line-height:1.25}
 .social-auth-copy small{color:#8a96a8;font-size:11px;line-height:1.3}
 .social-auth-arrow{color:#a0aaba;font-size:25px;line-height:1}
-.telegram-auth-card{padding-right:10px}
-.telegram-widget-host{display:flex;align-items:center;justify-content:flex-end;flex:0 0 auto;min-width:1px;max-width:132px;overflow:hidden}
+.telegram-auth-card{flex-wrap:wrap;padding-right:15px}
+.telegram-widget-host{display:flex;align-items:center;justify-content:center;flex:1 0 100%;width:100%;min-width:0;max-width:none;min-height:40px;overflow:visible;padding:5px 0 1px}
 .telegram-widget-host iframe{max-width:100%!important}
-@media(max-width:360px){.social-auth-card{gap:9px;padding:10px}.social-auth-icon{flex-basis:36px;width:36px;height:36px}.social-auth-copy strong{font-size:13px}.social-auth-copy small{font-size:10px}.telegram-widget-host{max-width:112px}}
+@media(max-width:360px){.social-auth-card{gap:9px;padding:10px}.social-auth-icon{flex-basis:36px;width:36px;height:36px}.social-auth-copy strong{font-size:13px}.social-auth-copy small{font-size:10px}}
 </style>
 </head>
 <body data-page="login">
@@ -130,7 +130,36 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
     (() => {
       const host = document.getElementById("telegramWidgetHost");
       const message = document.getElementById("loginMessage");
+      const githubButton = document.getElementById("githubLoginButton");
       const api = "https://qingtian-shop-api.chulingli1988.workers.dev";
+
+      // Complete the GitHub OAuth callback and expose the button only when OAuth is enabled.
+      const hashParams = new URLSearchParams(window.location.hash.slice(1));
+      const githubToken = hashParams.get("github_token");
+      if (githubToken) {
+        localStorage.setItem("qingtian_shop_token", githubToken);
+        history.replaceState(null, "", window.location.pathname + window.location.search);
+        window.location.replace("./shop.html");
+        return;
+      }
+      const queryParams = new URLSearchParams(window.location.search);
+      const githubError = queryParams.get("github_error");
+      if (githubError && message) {
+        const errors = {
+          authorization_denied: "你已取消 GitHub 授权。",
+          verified_email_required: "GitHub 账号需要至少一个已验证邮箱。",
+          oauth_failed: "GitHub 登录失败，请稍后重试。"
+        };
+        message.textContent = errors[githubError] || "GitHub 登录失败，请重试。";
+        message.className = "form-message error";
+      }
+      if (githubButton) {
+        fetch(api + "/api/auth/github/status", { cache: "no-store" })
+          .then(response => response.json())
+          .then(data => { if (data && data.ok && data.enabled) githubButton.hidden = false; })
+          .catch(() => {});
+      }
+
       if (!host) return;
       window.onTelegramAuth = async function(user) {
         try {
