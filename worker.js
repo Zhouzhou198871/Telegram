@@ -807,6 +807,8 @@ async function refundNodeOrder(env,orderId,reason){
 async function userNodeOrders(request,env){
   let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
   if(request.method==="GET"){
+    const currentTime=Math.floor(Date.now()/1000);
+    await env.DB.prepare("UPDATE node_accounts SET status='expired',updated_at=? WHERE user_id=? AND status='active' AND expires_at<=?").bind(currentTime,claims.sub,currentTime).run();
     const rows=await env.DB.prepare("SELECT o.order_id,o.product_id,o.package_id,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100").bind(claims.sub).all();
     const orders=[];
     for(const r of rows.results||[]){
