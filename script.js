@@ -312,6 +312,75 @@ async function loadUser() {
 
 let allProducts = [];
 
+const PRODUCT_BRAND_ICONS = [
+  [/chatgpt|openai|gpt[- ]?4|gpt[- ]?5/i, "openai"],
+  [/claude|anthropic/i, "claude"],
+  [/gemini|google ai/i, "googlegemini"],
+  [/discord/i, "discord"],
+  [/telegram/i, "telegram"],
+  [/spotify/i, "spotify"],
+  [/netflix/i, "netflix"],
+  [/youtube/i, "youtube"],
+  [/tiktok/i, "tiktok"],
+  [/instagram/i, "instagram"],
+  [/facebook|meta/i, "facebook"],
+  [/whatsapp/i, "whatsapp"],
+  [/microsoft|office 365|office365|onedrive|outlook/i, "microsoft"],
+  [/windows/i, "windows"],
+  [/apple|icloud/i, "apple"],
+  [/adobe|photoshop|premiere/i, "adobe"],
+  [/steam/i, "steam"],
+  [/github/i, "github"],
+  [/notion/i, "notion"],
+  [/canva/i, "canva"],
+  [/figma/i, "figma"],
+  [/dropbox/i, "dropbox"],
+  [/zoom/i, "zoom"],
+  [/perplexity/i, "perplexity"],
+  [/capcut/i, "capcut"],
+  [/midjourney/i, "midjourney"],
+  [/cursor/i, "cursor"],
+  [/vscode|visual studio code/i, "visualstudiocode"],
+  [/x\.com|twitter/i, "x"]
+];
+
+function productBrandIcon(item) {
+  const name = String(item.name || "");
+  const custom = [item.icon_url, item.logo_url, item.image_url].find(value =>
+    typeof value === "string" && /^https:\/\//i.test(value)
+  );
+  if (custom) return custom;
+  const match = PRODUCT_BRAND_ICONS.find(([pattern]) => pattern.test(name));
+  return match ? "https://cdn.simpleicons.org/" + match[1] : "";
+}
+
+function createProductIcon(item) {
+  const wrap = document.createElement("div");
+  wrap.className = "product-icon-wrap";
+  const fallback = document.createElement("span");
+  fallback.className = "product-icon-fallback";
+  fallback.textContent = (String(item.name || "软").trim().charAt(0) || "软").toUpperCase();
+  fallback.setAttribute("aria-hidden", "true");
+  const iconUrl = productBrandIcon(item);
+  if (!iconUrl) {
+    wrap.appendChild(fallback);
+    return wrap;
+  }
+  const image = document.createElement("img");
+  image.className = "product-icon-image";
+  image.alt = "";
+  image.loading = "lazy";
+  image.decoding = "async";
+  image.referrerPolicy = "no-referrer";
+  image.src = iconUrl;
+  image.addEventListener("error", () => {
+    image.remove();
+    wrap.appendChild(fallback);
+  }, { once: true });
+  wrap.appendChild(image);
+  return wrap;
+}
+
 function drawFilteredProducts() {
   const grid = $("productGrid");
   const query = String($("productSearch")?.value || "").trim().toLowerCase();
@@ -341,8 +410,15 @@ function drawFilteredProducts() {
     card.className = "product-card shop-product-card";
     const rawCategory = String(item.category || "").trim();
     const categoryLabel = categoryNames[rawCategory.toLowerCase()] || categoryNames[rawCategory] || rawCategory || "商品";
-    card.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
-    card.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
+    const cardHead = document.createElement("div");
+    cardHead.className = "product-card-head";
+    cardHead.appendChild(createProductIcon(item));
+    const titleWrap = document.createElement("div");
+    titleWrap.className = "product-title-wrap";
+    titleWrap.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
+    titleWrap.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
+    cardHead.appendChild(titleWrap);
+    card.appendChild(cardHead);
     const description = String(item.description || item.description_zh || item.summary || "").trim();
     if (description) card.appendChild(safeText("p", "product-description", description, ""));
     const meta = document.createElement("div");
