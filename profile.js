@@ -56,6 +56,7 @@
     document.querySelectorAll("[data-service-panel]").forEach(panel => { panel.hidden=panel.dataset.servicePanel!==tab; });
     if (tab==="history") loadRechargeHistory();
     if (tab==="api") loadApiCenter();
+    if (tab==="nodes") loadNodeOrders();
   }
   async function loadRechargeHistory() {
     const body=$("rechargeHistoryBody"); body.replaceChildren();
@@ -148,6 +149,31 @@
       const msg=error.message==="invalid_current_password"?"当前密码不正确。":error.message==="weak_password"?"新密码格式不符合要求。":"密码修改失败，请稍后重试。";
       message("passwordMessage",msg,"error");
     } finally {button.disabled=false;}
+  }
+  async function loadNodeOrders() {
+    const root=$("nodeOrderList");root.replaceChildren();
+    try {
+      const data=await api("/api/user/node-orders"),orders=data.orders||[];
+      if(!orders.length){const empty=document.createElement("div");empty.className="node-order-empty";empty.textContent="暂无节点订单。可前往商城的「节点服务」选择线路套餐。";root.append(empty);return;}
+      const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto"};
+      const statuses={fulfilled:"已开通",provisioning:"正在开通",refunded:"已退款",failed:"开通失败"};
+      for(const order of orders){
+        const card=document.createElement("article");card.className="node-order-card";
+        const title=document.createElement("h4");title.textContent=(order.product_name||labels[order.protocol]||"节点服务")+" · "+(order.package_name||"套餐");card.append(title);
+        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="订单："+order.order_id+"\n金额："+money(order.amount_cny)+"\n创建："+dateText(order.created_at)+(order.delivery?.expires_at?"\n到期："+dateText(order.delivery.expires_at):"");card.append(meta);
+        const status=document.createElement("div");status.className="node-order-status";status.textContent=statuses[order.status]||order.status;card.append(status);
+        const actions=document.createElement("div");actions.className="node-order-actions";
+        if(order.delivery?.clash_yaml){
+          const copy=document.createElement("button");copy.type="button";copy.textContent="复制 Clash 配置";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(order.delivery.clash_yaml);message("nodeOrderMessage","配置已复制，可导入 Mihomo / Clash Meta。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);
+          const download=document.createElement("button");download.type="button";download.textContent="下载 YAML 文件";download.addEventListener("click",()=>{const blob=new Blob([order.delivery.clash_yaml],{type:"text/yaml;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="qingtian-node-"+order.order_id.slice(0,8)+".yaml";a.click();URL.revokeObjectURL(url);});actions.append(download);
+        }else if(order.delivery?.uri){
+          const open=document.createElement("a");open.href=order.delivery.uri;open.textContent="打开 Telegram 代理";actions.append(open);
+          const copy=document.createElement("button");copy.type="button";copy.textContent="复制代理链接";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(order.delivery.uri);message("nodeOrderMessage","Telegram 代理链接已复制。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);
+        }
+        if(actions.childElementCount)card.append(actions);
+        root.append(card);
+      }
+    } catch {message("nodeOrderMessage","节点订单读取失败，请稍后刷新。","error");}
   }
   async function init() {
     if(!token()){location.replace("./auth.html");return;}
