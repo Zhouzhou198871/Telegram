@@ -128,9 +128,52 @@ async function verifyInternal(method, url, headers, rawBody, db) {
 async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
   const buyStatusMatch = path.match(/^\/api\/internal\/buy\/([a-f0-9-]{36})$/i);
-  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch) return null;
+  const catalogSync = path === "/api/internal/catalog_sync" && method === "POST";
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
+
+  if (catalogSync) {
+    const state = await db.unsafe("SELECT COALESCE(MAX(updated_at),0) AS last FROM shop_catalog");
+    const last = Number(state[0]?.last || 0), now = Math.floor(Date.now()/1000);
+    if (now - last < 600) return {status:200,body:{ok:true,skipped:true,last_updated:last}};
+    const catalogKey = process.env.SHOP_BUY_API_KEY || "";
+    if (!catalogKey) return {status:503,body:{ok:false,error:"supplier_not_configured"}};
+    try {
+      const headersUpstream = {"x-api-key":catalogKey};
+      const [productResponse,categoryResponse] = await Promise.all([
+        fetch("http://167.253.96.220:8001/api/products?categoryId=0",{headers:headersUpstream,signal:AbortSignal.timeout(18000)}),
+        fetch("http://167.253.96.220:8001/api/categories",{headers:headersUpstream,signal:AbortSignal.timeout(12000)})
+      ]);
+      if (!productResponse.ok) throw new Error("supplier_catalog_http_" + productResponse.status);
+      const productData = await productResponse.json();
+      let rows = Array.isArray(productData) ? productData : (productData.Data || productData.data || []);
+      if (!Array.isArray(rows) && rows && typeof rows === "object") rows = rows.Items || rows.items || [];
+      if (!Array.isArray(rows) || !rows.length) throw new Error("supplier_catalog_empty");
+      let categoryRows = [];
+      if (categoryResponse.ok) {
+        const categoryData = await categoryResponse.json();
+        categoryRows = Array.isArray(categoryData) ? categoryData : (categoryData.Data || categoryData.data || []);
+        if (!Array.isArray(categoryRows) && categoryRows && typeof categoryRows === "object") categoryRows = categoryRows.Items || categoryRows.items || [];
+      }
+      const categoryMap = new Map(categoryRows.filter(x=>x&&x.ID).map(x=>[String(x.ID),String(x.Name||x.Title||"其他商品")]));
+      const items = rows.filter(x=>x&&String(x.ID||x.LinkId||"").trim()).map(x=>{
+        const id=String(x.ID||x.LinkId).trim(),price=Number(x.Price||0),stock=Math.max(0,Number(x.InStock||0)),sale=x.IsOnSale===true;
+        return {product_id:id,supplier_product_id:id,name:String(x.Name||"未命名商品"),category_id:String(x.CategoryId||""),category_name:categoryMap.get(String(x.CategoryId||""))||"其他商品",price_cny:Number.isFinite(price)?price:0,price_usdt:Math.round(price/4*10000)/10000,stock,is_on_sale:sale,is_local_inventory:false,purchasable:sale&&stock>0,source:x,updated_at:now};
+      });
+      for(let i=0;i<items.length;i+=500){
+        const json=JSON.stringify(items.slice(i,i+500)).replace(/'/g,"''");
+        await db.unsafe(`INSERT INTO shop_catalog(product_id,supplier_product_id,name,category_id,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source,updated_at)
+          SELECT x.product_id,x.supplier_product_id,x.name,x.category_id,x.category_name,x.price_cny,x.price_usdt,x.stock,x.is_on_sale,x.is_local_inventory,x.purchasable,x.source,x.updated_at
+          FROM jsonb_to_recordset('${json}'::jsonb) AS x(product_id text,supplier_product_id text,name text,category_id text,category_name text,price_cny numeric,price_usdt numeric,stock integer,is_on_sale boolean,is_local_inventory boolean,purchasable boolean,source jsonb,updated_at bigint)
+          ON CONFLICT(product_id) DO UPDATE SET supplier_product_id=EXCLUDED.supplier_product_id,name=EXCLUDED.name,category_id=EXCLUDED.category_id,category_name=EXCLUDED.category_name,price_cny=EXCLUDED.price_cny,price_usdt=EXCLUDED.price_usdt,stock=EXCLUDED.stock,is_on_sale=EXCLUDED.is_on_sale,is_local_inventory=EXCLUDED.is_local_inventory,purchasable=EXCLUDED.purchasable,source=EXCLUDED.source,updated_at=EXCLUDED.updated_at`);
+      }
+      await db.unsafe("UPDATE shop_catalog SET stock=0,is_on_sale=false,purchasable=false WHERE updated_at < $1",[now]);
+      return {status:200,body:{ok:true,count:items.length,sellable:items.filter(x=>x.is_on_sale&&x.stock>0).length,updated_at:now}};
+    } catch (error) {
+      return {status:503,body:{ok:false,error:String(error.message||"catalog_sync_failed").slice(0,120)}};
+    }
+  }
 
   if (path === "/api/internal/send_email" && method === "POST") {
     let data = {};
