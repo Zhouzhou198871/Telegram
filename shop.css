@@ -462,3 +462,13 @@ body[data-page="shop"] .hero-tags span{display:inline-flex;align-items:center;mi
  body[data-page="shop"] .hero-tags{gap:7px;margin-top:16px}
  body[data-page="shop"] .hero-tags span{min-height:29px;padding:6px 10px;font-size:11px}
 }
+
+
+/* Clean, aligned mobile account status control. */
+body[data-page="shop"] .avatar-button{min-height:46px;height:46px;padding:5px 12px 5px 7px;display:inline-flex;align-items:center;justify-content:center;gap:9px;border:1px solid #dbeafe;border-radius:999px;background:#fff;color:#3984d8;box-shadow:0 4px 14px rgba(37,99,235,.07)}
+body[data-page="shop"] .avatar-trigger-photo{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:50%;background:#e6f2ff;color:#3984d8}
+body[data-page="shop"] .account-user-icon{display:block;width:20px;height:20px}
+body[data-page="shop"] .account-status-text{display:inline-flex;align-items:center;color:#3976ce;font-size:13px;font-weight:650;line-height:1;white-space:nowrap}
+body[data-page="shop"] .menu-chevron{display:block;width:16px;height:16px;flex:0 0 16px;color:#8a9bb0;transition:transform .18s ease}
+body[data-page="shop"] .account-menu-wrap[open] .menu-chevron{transform:rotate(180deg)}
+@media(max-width:560px){body[data-page="shop"] .avatar-button{height:42px;min-height:42px;padding:4px 9px 4px 5px;gap:7px}body[data-page="shop"] .avatar-trigger-photo{width:32px;height:32px;flex-basis:32px}body[data-page="shop"] .account-user-icon{width:19px;height:19px}body[data-page="shop"] .account-status-text{font-size:12px}body[data-page="shop"] .menu-chevron{width:15px;height:15px;flex-basis:15px}}
