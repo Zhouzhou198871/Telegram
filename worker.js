@@ -93,6 +93,9 @@ function validEmail(email) {
 }
 
 async function originRequest(env, method, path, payload) {
+  if (typeof env.INTERNAL_HANDLER === "function") {
+    return await env.INTERNAL_HANDLER(method, path, payload);
+  }
   if (!env.SERVER_ORIGIN || !env.INTERNAL_API_SECRET) throw new Error("origin_not_configured");
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = String(Math.floor(Date.now() / 1000));
