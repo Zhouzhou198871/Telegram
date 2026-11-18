@@ -126,9 +126,27 @@ async function originRequest(env, method, path, payload) {
   return data;
 }
 
+const INTERNAL_CNY_PER_USDT = 4;
+
+function makeReferralCode() {
+  const bytes = crypto.getRandomValues(new Uint8Array(5));
+  return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+
+async function ensureReferralCode(env, user) {
+  if (user.referral_code) return user.referral_code;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const code = makeReferralCode();
+    await env.DB.prepare("UPDATE users SET referral_code=? WHERE id=? AND referral_code IS NULL").bind(code, user.id).run();
+    const row = await env.DB.prepare("SELECT referral_code FROM users WHERE id=?").bind(user.id).first();
+    if (row?.referral_code) return row.referral_code;
+  }
+  throw new Error("referral_code_unavailable");
+}
+
 async function findUserById(env, id) {
   return await env.DB.prepare(
-    "SELECT id,email,tg_user_id,balance,balance_units,verify_code,code_expires,code_sent_at,code_attempts FROM users WHERE id=?"
+    "SELECT id,email,tg_user_id,balance,balance_units,verify_code,code_expires,code_sent_at,code_attempts,nickname,avatar_data_url,referrer_user_id,referral_code FROM users WHERE id=?"
   ).bind(id).first();
 }
 
@@ -140,6 +158,10 @@ async function sendCode(request, env) {
   if (!validEmail(email)) return reply(request, env, { ok: false, error: "invalid_email" }, 400);
   const now = Math.floor(Date.now() / 1000);
   const existing = await env.DB.prepare("SELECT id,code_sent_at FROM users WHERE email=?").bind(email).first();
+  const referralCode = String(body.referral_code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  const referrer = !existing && referralCode
+    ? await env.DB.prepare("SELECT id FROM users WHERE referral_code=?").bind(referralCode).first()
+    : null;
   if (existing && existing.code_sent_at && now - Number(existing.code_sent_at) < 60) {
     return reply(request, env, { ok: false, error: "too_many_requests", retry_after: 60 - (now - Number(existing.code_sent_at)) }, 429);
   }
@@ -147,8 +169,8 @@ async function sendCode(request, env) {
   const digest = b64url(await sha256(env.CODE_PEPPER + "|" + email + "|" + code));
   const userId = existing?.id || crypto.randomUUID();
   await env.DB.prepare(
-    "INSERT INTO users (id,email,balance,balance_units,verify_code,code_expires,code_sent_at,code_attempts,created_at,updated_at) VALUES (?,?, '0.0000',0,?,?,?,0,?,?) ON CONFLICT(email) DO UPDATE SET verify_code=excluded.verify_code,code_expires=excluded.code_expires,code_sent_at=excluded.code_sent_at,code_attempts=0,updated_at=excluded.updated_at"
-  ).bind(userId, email, digest, now + 300, now, now, now).run();
+    "INSERT INTO users (id,email,balance,balance_units,verify_code,code_expires,code_sent_at,code_attempts,created_at,updated_at,referrer_user_id) VALUES (?,?, '0.0000',0,?,?,?,0,?,?,?) ON CONFLICT(email) DO UPDATE SET verify_code=excluded.verify_code,code_expires=excluded.code_expires,code_sent_at=excluded.code_sent_at,code_attempts=0,updated_at=excluded.updated_at"
+  ).bind(userId, email, digest, now + 300, now, now, now, referrer?.id || null).run();
   try {
     await originRequest(env, "POST", "/api/internal/send_email", { email, code });
   } catch {
@@ -221,17 +243,21 @@ function githubStatus(request, env) {
 async function githubStart(request, env) {
   if (!env.GITHUB_CLIENT_ID || !env.GITHUB_CLIENT_SECRET) return reply(request, env, { ok: false, error: "github_oauth_not_configured" }, 503);
   const state = b64url(crypto.getRandomValues(new Uint8Array(32)));
+  const referralCode = String(new URL(request.url).searchParams.get("ref") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
   const callback = new URL("/api/auth/github/callback", request.url).toString();
   const target = new URL("https://github.com/login/oauth/authorize");
   target.searchParams.set("client_id", env.GITHUB_CLIENT_ID);
   target.searchParams.set("redirect_uri", callback);
   target.searchParams.set("scope", "read:user user:email");
   target.searchParams.set("state", state);
-  return new Response(null, { status: 302, headers: { "Location": target.toString(), "Cache-Control": "no-store", "Set-Cookie": "github_oauth_state=" + encodeURIComponent(state) + "; Path=/api/auth/github; Max-Age=600; HttpOnly; Secure; SameSite=Lax" } });
+  return new Response(null, { status: 302, headers: { "Location": target.toString(), "Cache-Control": "no-store", "Set-Cookie": "github_oauth_state=" + encodeURIComponent(state + (referralCode ? "." + referralCode : "")) + "; Path=/api/auth/github; Max-Age=600; HttpOnly; Secure; SameSite=Lax" } });
 }
 async function githubCallback(request, env) {
   const url = new URL(request.url), state = url.searchParams.get("state") || "", savedState = cookieValue(request, "github_oauth_state"), cookie = clearGithubStateCookie();
-  if (!state || !savedState || state !== savedState) return new Response("GitHub 登录状态校验失败，请返回登录页重试。", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8", "Set-Cookie": cookie, "Cache-Control": "no-store" } });
+  const savedParts = savedState.split(".");
+  const savedNonce = savedParts[0] || "";
+  const referralCode = (savedParts[1] || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (!state || !savedNonce || state !== savedNonce) return new Response("GitHub 登录状态校验失败，请返回登录页重试。", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8", "Set-Cookie": cookie, "Cache-Control": "no-store" } });
   if (url.searchParams.get("error")) {
     const destination = new URL("/auth.html", env.FRONTEND_ORIGIN || "https://shop.lynli.me");
     destination.searchParams.set("github_error", "authorization_denied");
@@ -258,7 +284,8 @@ async function githubCallback(request, env) {
       user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
       if (!user) {
         const id = crypto.randomUUID();
-        await env.DB.prepare("INSERT INTO users (id,email,balance,balance_units,created_at,updated_at) VALUES (?,?,'0.0000',0,?,?) ON CONFLICT(email) DO NOTHING").bind(id,email,now,now).run();
+        const referrer = referralCode ? await env.DB.prepare("SELECT id FROM users WHERE referral_code=? AND id<>?").bind(referralCode,id).first() : null;
+        await env.DB.prepare("INSERT INTO users (id,email,balance,balance_units,created_at,updated_at,referrer_user_id) VALUES (?,?,'0.0000',0,?,?,?) ON CONFLICT(email) DO NOTHING").bind(id,email,now,now,referrer?.id || null).run();
         user = await env.DB.prepare("SELECT * FROM users WHERE email=?").bind(email).first();
       }
       if (!user) throw new Error("github_account_link_failed");
@@ -459,12 +486,68 @@ async function userInfo(request, env) {
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
   const user = await findUserById(env, claims.sub);
   if (!user) return reply(request, env, { ok: false, error: "user_not_found" }, 404);
+  const referralCode = await ensureReferralCode(env, user);
+  const bonus = await env.DB.prepare("SELECT COALESCE(SUM(amount_units),0) AS total FROM referral_rewards WHERE referrer_user_id=? AND credited_at IS NOT NULL").bind(user.id).first();
+  const balanceUnits = Number(user.balance_units || 0);
+  const bonusUnits = Number(bonus?.total || 0);
   return reply(request, env, {
     ok: true,
     user: {
       id: user.id, email: user.email, tg_user_id: user.tg_user_id,
-      balance: user.balance, balance_units: user.balance_units
+      nickname: user.nickname || "", avatar_url: user.avatar_data_url || "",
+      referral_code: referralCode,
+      balance: user.balance, balance_units: balanceUnits,
+      balance_cny: (balanceUnits / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+      invite_bonus_units: bonusUnits,
+      invite_bonus_cny: (bonusUnits / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+      currency: "CNY", internal_cny_per_usdt: INTERNAL_CNY_PER_USDT
     }
+  });
+}
+
+async function updateUserProfile(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  let body;
+  try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+  const nickname = String(body.nickname || "").trim().replace(/[\\u0000-\\u001f\\u007f]/g, "").slice(0, 24);
+  const avatar = body.avatar_data_url === undefined ? null : String(body.avatar_data_url || "");
+  if (!nickname) return reply(request, env, { ok: false, error: "nickname_required" }, 400);
+  if (avatar !== null && avatar && (!/^data:image\\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar) || avatar.length > 420000)) {
+    return reply(request, env, { ok: false, error: "invalid_avatar" }, 400);
+  }
+  if (avatar === null) {
+    await env.DB.prepare("UPDATE users SET nickname=?,updated_at=? WHERE id=?").bind(nickname, Math.floor(Date.now()/1000), claims.sub).run();
+  } else {
+    await env.DB.prepare("UPDATE users SET nickname=?,avatar_data_url=?,updated_at=? WHERE id=?").bind(nickname, avatar || null, Math.floor(Date.now()/1000), claims.sub).run();
+  }
+  return reply(request, env, { ok: true, message: "profile_updated" });
+}
+
+async function userReferrals(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const user = await findUserById(env, claims.sub);
+  if (!user) return reply(request, env, { ok: false, error: "user_not_found" }, 404);
+  const referralCode = await ensureReferralCode(env, user);
+  const [count, totals, rewards] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE referrer_user_id=?").bind(user.id).first(),
+    env.DB.prepare("SELECT COALESCE(SUM(amount_units),0) AS total FROM referral_rewards WHERE referrer_user_id=? AND credited_at IS NOT NULL").bind(user.id).first(),
+    env.DB.prepare("SELECT r.amount_units,r.created_at,u.email FROM referral_rewards r JOIN users u ON u.id=r.referred_user_id WHERE r.referrer_user_id=? AND r.credited_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 50").bind(user.id).all()
+  ]);
+  const totalUnits = Number(totals?.total || 0);
+  return reply(request, env, {
+    ok: true, referral_code: referralCode,
+    referral_url: "https://shop.lynli.me/auth.html?ref=" + encodeURIComponent(referralCode),
+    invited_count: Number(count?.total || 0),
+    reward_cny: (totalUnits / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+    rewards: (rewards.results || []).map(row => ({
+      email: String(row.email || "").replace(/^(.{2}).+(@.*)$/, "$1***$2"),
+      amount_cny: (Number(row.amount_units || 0) / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+      created_at: Number(row.created_at || 0)
+    }))
   });
 }
 
@@ -472,7 +555,7 @@ async function products(request, env) {
   try {
     await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
     const result = await env.DB.prepare(
-      "SELECT product_id,supplier_product_id,name,category_name,price_usdt,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
+      "SELECT product_id,supplier_product_id,name,category_name,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
     const items = (result.results || []).map(row => ({
       product_id: row.product_id,
@@ -481,7 +564,8 @@ async function products(request, env) {
       category: row.category_name || "数字商品",
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
-      currency: "USDT",
+      price_cny: String(row.price_cny),
+      currency: "CNY",
       is_local_inventory: Boolean(row.is_local_inventory),
       purchasable: Boolean(row.purchasable)
     }));
@@ -503,12 +587,25 @@ async function refund(env, order) {
   ]);
 }
 
+async function creditReferralReward(env, purchase) {
+  const rewardUnits = Math.floor(Number(purchase.amount_units || 0) * 5 / 100);
+  if (rewardUnits < 1) return;
+  const now = Math.floor(Date.now() / 1000);
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO referral_rewards (order_id,referrer_user_id,referred_user_id,amount_units,created_at) SELECT ?,referrer_user_id,id,?,? FROM users WHERE id=? AND referrer_user_id IS NOT NULL ON CONFLICT(order_id) DO NOTHING")
+      .bind(purchase.order_id, rewardUnits, now, purchase.user_id),
+    env.DB.prepare("WITH claimed AS (UPDATE referral_rewards SET credited_at=? WHERE order_id=? AND credited_at IS NULL RETURNING referrer_user_id,amount_units) UPDATE users SET balance_units=users.balance_units+claimed.amount_units,balance=ROUND((users.balance_units+claimed.amount_units)/10000.0,4),updated_at=? FROM claimed WHERE users.id=claimed.referrer_user_id")
+      .bind(now, purchase.order_id, now)
+  ]);
+}
+
 async function syncServerStatus(env, purchase, user) {
   const path = "/api/internal/buy/" + encodeURIComponent(purchase.order_id) + "?user_id=" + encodeURIComponent(user.id);
   const data = await originRequest(env, "GET", path);
   if (data.status === "delivered" && data.content) {
     await env.DB.prepare("UPDATE web_purchases SET status='delivered',server_order_id=?,updated_at=? WHERE order_id=? AND status IN ('reserved','pending')")
       .bind(purchase.order_id, Math.floor(Date.now() / 1000), purchase.order_id).run();
+    await creditReferralReward(env, purchase);
     return { ...data, status: "delivered" };
   }
   if (data.status === "failed") {
@@ -600,6 +697,7 @@ async function buy(request, env) {
   if (result.status === "delivered" && result.content) {
     await env.DB.prepare("UPDATE web_purchases SET status='delivered',server_order_id=?,updated_at=? WHERE order_id=?")
       .bind(purchase.order_id, Math.floor(Date.now() / 1000), purchase.order_id).run();
+    await creditReferralReward(env, purchase);
     return reply(request, env, { ok: true, order_id: purchase.order_id, status: "delivered", content: result.content });
   }
   if (result.status === "failed") {
@@ -669,6 +767,8 @@ export default {
       if (url.pathname === "/api/auth/telegram/webhook/" + await telegramWebhookSecret(env) && request.method === "POST") return await telegramLoginWebhook(request, env);
       if (url.pathname === "/api/auth/telegram_login" && request.method === "POST") return await telegramLogin(request, env);
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
+      if (url.pathname === "/api/user/profile" && request.method === "POST") return await updateUserProfile(request, env);
+      if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
         try { await verifyToken(request, env); } catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
         return await products(request, env);
