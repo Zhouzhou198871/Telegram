@@ -8,7 +8,7 @@
   <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118-v2">
   <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118-v2">
   <title>晴天号铺 · 商品商城</title>
-  <link rel="stylesheet" href="./shop.css?v=storefront-visual-pass-20261118-v3">
+  <link rel="stylesheet" href="./shop.css?v=storefront-visual-pass-20261118-v4">
 </head>
 <body data-page="shop">
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -20,12 +20,16 @@
     <div class="top-actions">
       <details class="account-menu-wrap" id="accountMenuWrap">
         <summary class="avatar-button" id="accountMenuToggle" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
-          <span class="avatar-trigger-photo">
-            <span class="avatar-initial" id="avatarInitial">晴</span>
-            <img class="avatar-image" id="avatarImage" alt="账户头像" hidden>
+          <span class="avatar-trigger-photo" aria-hidden="true">
+            <svg class="account-user-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="3.5" fill="currentColor"/>
+              <path d="M5.5 20c.35-3.55 3.1-5.75 6.5-5.75s6.15 2.2 6.5 5.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
           </span>
-          <span class="account-trigger-name" id="accountTriggerName">晴天</span>
-          <svg class="menu-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="account-status-text">已登录</span>
+          <svg class="menu-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="m6.5 9 5.5 5.5L17.5 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
         </summary>
         <section class="account-menu-card" id="accountMenu" hidden aria-label="账户菜单">
           <div class="account-card-head">
