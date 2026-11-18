@@ -92,7 +92,11 @@ export default async function handler(req, res) {
     const host = headers.get("x-forwarded-host") || headers.get("host") || "localhost";
     const proto = headers.get("x-forwarded-proto") || "https";
     const url = new URL(req.url || "/", proto + "://" + host);
+    const routePath = req.query?.path;
+    if (Array.isArray(routePath) && routePath.length) url.pathname = "/api/" + routePath.map(String).join("/");
+    else if (typeof routePath === "string" && routePath) url.pathname = "/api/" + routePath;
     if (url.pathname === "/api/health") url.pathname = "/health";
+    console.log("qingtian-api-route", req.url, JSON.stringify(req.query || {}), url.pathname);
     const chunks = [];
     if (!["GET", "HEAD"].includes(method)) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
