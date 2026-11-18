@@ -133,3 +133,76 @@ body[data-page="shop"] .delivery-modal h2{color:#172033}
 body[data-page="shop"] .modal-copy{color:#64748b}
 body[data-page="shop"] .delivery-content{background:#f8fafc;color:#166534;border-color:#dbe2ea}
 body[data-page="shop"] .modal-backdrop{background:rgba(15,23,42,.38)}
+
+
+/* Enforce one light theme across the entire storefront (including nested panels). */
+:root,html,body,body[data-page="shop"]{
+  color-scheme:light !important;
+  background:#f8fafc !important;
+  color:#172033 !important;
+}
+html,body{
+  background:linear-gradient(145deg,#f8fafc 0%,#eff6ff 55%,#f8fafc 100%) !important;
+}
+body[data-page="shop"]{
+  min-height:100vh !important;
+  background:linear-gradient(145deg,#f8fafc 0%,#eff6ff 55%,#f8fafc 100%) !important;
+}
+body[data-page="shop"] .vidage,
+body[data-page="shop"] .vidage-video,
+body[data-page="shop"] .screen-shade,
+body[data-page="shop"] .ambient{
+  display:none !important;
+  opacity:0 !important;
+  background:transparent !important;
+}
+body[data-page="shop"] main,
+body[data-page="shop"] .shop-main,
+body[data-page="shop"] .topbar,
+body[data-page="shop"] .footer,
+body[data-page="shop"] .catalog-section,
+body[data-page="shop"] .shop-hero{
+  background:transparent !important;
+  color:#172033 !important;
+}
+body[data-page="shop"] h1,
+body[data-page="shop"] h2,
+body[data-page="shop"] h3,
+body[data-page="shop"] .brand,
+body[data-page="shop"] .brand-mark,
+body[data-page="shop"] .product-name{
+  color:#172033 !important;
+}
+body[data-page="shop"] p,
+body[data-page="shop"] .hero-copy,
+body[data-page="shop"] .product-stock,
+body[data-page="shop"] .footer-note,
+body[data-page="shop"] .account-pill,
+body[data-page="shop"] .balance-pill,
+body[data-page="shop"] .text-button,
+body[data-page="shop"] .secondary-button,
+body[data-page="shop"] .modal-copy{
+  color:#64748b !important;
+}
+body[data-page="shop"] .account-pill,
+body[data-page="shop"] .balance-pill,
+body[data-page="shop"] .text-button,
+body[data-page="shop"] .secondary-button,
+body[data-page="shop"] .product-card,
+body[data-page="shop"] .loading-card,
+body[data-page="shop"] .empty-card,
+body[data-page="shop"] .delivery-modal,
+body[data-page="shop"] .delivery-content{
+  background:rgba(255,255,255,.92) !important;
+  border-color:#dbe2ea !important;
+  color:#172033 !important;
+  box-shadow:0 10px 30px rgba(15,23,42,.06) !important;
+}
+body[data-page="shop"] .delivery-content{color:#166534 !important}
+body[data-page="shop"] .modal-backdrop{background:rgba(15,23,42,.28) !important}
+body[data-page="shop"] .nav-cta,
+body[data-page="shop"] .primary-button{
+  color:#fff !important;
+  background:linear-gradient(135deg,#3b82f6,#2563eb) !important;
+  border-color:#3b82f6 !important;
+}
