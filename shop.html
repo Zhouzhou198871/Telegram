@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f8fafc">
   <meta name="description" content="晴天号铺商品商城">
-  <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118">
-  <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118">
+  <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118-v2">
+  <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118-v2">
   <title>晴天号铺 · 商品商城</title>
-  <link rel="stylesheet" href="./shop.css?v=market-layout-cn-20261118">
+  <link rel="stylesheet" href="./shop.css?v=market-layout-cn-20261118-v2">
 </head>
 <body data-page="shop">
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -41,7 +41,7 @@
     </div>
   </header>
   <main class="shop-main">
-    <nav class="breadcrumb" aria-label="当前位置"><a href="./shop.html">首页</a><span>/</span><span>商品购买</span><span>/</span><strong>全部商品</strong></nav>
+    <nav class="breadcrumb" aria-label="当前位置"><a href="./shop.html" aria-label="返回商城首页">首页</a><span aria-hidden="true">/</span><a href="./shop.html#catalog" aria-label="进入商品购买目录">商品购买</a><span aria-hidden="true">/</span><strong aria-current="page">全部商品</strong></nav>
     <section class="shop-hero">
       <div class="hero-copy-card">
         <div class="eyebrow"><span class="pulse"></span> 晴天号铺 · 商品商城</div>
@@ -53,7 +53,7 @@
       </div>
     </section>
     <section class="catalog-section" id="accountInfo">
-      <div class="section-heading">
+      <div class="section-heading" id="catalog">
         <div><div class="section-kicker">商品选购</div><h2>全部商品</h2></div>
         <button class="secondary-button" id="refreshProducts" type="button">刷新商品 ↻</button>
       </div>
@@ -108,6 +108,6 @@
     });
   })();
   </script>
-  <script src="./script.js?v=account-menu-fix-20261118" defer></script>
+  <script src="./script.js?v=account-menu-interaction-v2-20261118" defer></script>
 </body>
 </html>
