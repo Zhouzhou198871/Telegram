@@ -290,7 +290,7 @@ async function telegramLoginStart(request, env) {
   const webhookSecret = await telegramWebhookSecret(env);
   try {
     await telegramApi(env, "setWebhook", {
-      url: "https://qingtian-shop-api.chulingli1988.workers.dev/api/auth/telegram/webhook/" + webhookSecret,
+      url: (env.PUBLIC_APP_URL || "https://shop.lynli.me") + "/api/auth/telegram/webhook/" + webhookSecret,
       secret_token: webhookSecret,
       allowed_updates: ["message", "callback_query"],
       drop_pending_updates: false
