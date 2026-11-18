@@ -2,6 +2,18 @@
 
 const API_BASE = "";
 const TOKEN_KEY = "qingtian_shop_token";
+
+// Consume OAuth tokens before the shop initializes any authenticated API requests.
+(() => {
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const oauthToken = params.get("github_token");
+  if (oauthToken) {
+    localStorage.setItem(TOKEN_KEY, oauthToken);
+    params.delete("github_token");
+    const cleanHash = params.toString();
+    history.replaceState(null, "", window.location.pathname + window.location.search + (cleanHash ? "#" + cleanHash : ""));
+  }
+})();
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem(TOKEN_KEY) || "";
 
