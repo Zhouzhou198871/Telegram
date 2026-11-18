@@ -525,6 +525,7 @@ async function loadNodeProducts() {
       title.appendChild(safeText("h3","product-name",item.name||labels[item.protocol]||"节点线路"));
       head.append(icon,title);card.append(head);
       card.appendChild(safeText("span","node-protocol-tag",labels[item.protocol]||item.protocol));
+      card.appendChild(safeText("span","node-protocol-tag",item.provisioning_ready?"已接入":"接入准备中"));
       card.appendChild(safeText("p","product-description",item.description||"自有服务器线路，购买后自动开通。"));
       const plans=document.createElement("div");plans.className="node-plan-list";
       for(const pkg of item.packages||[]){
@@ -535,7 +536,7 @@ async function loadNodeProducts() {
         button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
         plans.append(button);
       }
-      if(!plans.childElementCount)plans.append(safeText("div","empty-card","套餐准备中"));
+      if(!plans.childElementCount)plans.append(safeText("div","empty-card",item.server_present?"套餐准备中":"线路接入中"));
       card.append(plans);grid.append(card);
     }
   }catch(error){
