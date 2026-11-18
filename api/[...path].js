@@ -92,6 +92,7 @@ export default async function handler(req, res) {
     const host = headers.get("x-forwarded-host") || headers.get("host") || "localhost";
     const proto = headers.get("x-forwarded-proto") || "https";
     const url = new URL(req.url || "/", proto + "://" + host);
+    if (url.pathname === "/api/health") url.pathname = "/health";
     const chunks = [];
     if (!["GET", "HEAD"].includes(method)) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
