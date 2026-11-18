@@ -188,7 +188,11 @@ async function handleInternal(method, url, headers, rawBody, db) {
       const liveResponse = await fetch("http://167.253.96.220:8001/api/products?categoryId=0", {headers:{"x-api-key":apiKey},signal:AbortSignal.timeout(15000)});
       if (!liveResponse.ok) throw new Error("supplier_catalog_http_" + liveResponse.status);
       const liveData = await liveResponse.json();
-      const liveRows = Array.isArray(liveData) ? liveData : (liveData.Data || liveData.data || []);
+      let liveRows = Array.isArray(liveData) ? liveData : (liveData.Data || liveData.data || []);
+      if (!Array.isArray(liveRows) && liveRows && typeof liveRows === "object") {
+        liveRows = liveRows.Items || liveRows.items || [];
+      }
+      if (!Array.isArray(liveRows)) liveRows = [];
       const live = liveRows.find(row => String(row.ID || row.LinkId || "") === productId);
       if (!live || live.IsOnSale !== true || Number(live.InStock || 0) < 1) {
         await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code='supplier_product_unavailable',updated_at=$2 WHERE order_id=$1",[orderId,Math.floor(Date.now()/1000)]);
