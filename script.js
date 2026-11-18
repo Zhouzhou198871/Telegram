@@ -11,6 +11,7 @@ const TOKEN_KEY = "qingtian_shop_token";
   const oauthToken = params.get("github_token");
   if (oauthToken) {
     localStorage.setItem(TOKEN_KEY, oauthToken);
+    localStorage.removeItem("qingtian_referral_code");
     params.delete("github_token");
     const cleanHash = params.toString();
     history.replaceState(null, "", window.location.pathname + window.location.search + (cleanHash ? "#" + cleanHash : ""));
