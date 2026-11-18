@@ -312,6 +312,27 @@ async function loadUser() {
 
 let allProducts = [];
 
+const PRODUCT_SOURCE_ICONS = {
+  "shop-amazon-circle-fill": "amazon",
+  "shop-discord": "discord",
+  "shop-google-voice-logo": "googlevoice",
+  "shop-google": "google",
+  "shop-instagram": "instagram",
+  "shop-linkedin": "linkedin",
+  "shop-skype": "skype",
+  "shop-steam": "steam",
+  "shop-tiktok": "tiktok",
+  "shop-telegram": "telegram",
+  "shop-textnow": "textnow",
+  "shop-twitter-circle-fill": "x",
+  "shop-whatsapp": "whatsapp",
+  "shop-yahoo": "yahoo",
+  "shop-youtube": "youtube",
+  "shop-facebook": "facebook",
+  "shop-microsoft": "microsoft",
+  "shop-apple": "apple"
+};
+
 const PRODUCT_BRAND_ICONS = [
   [/chatgpt|openai|gpt[- ]?4|gpt[- ]?5/i, "openai"],
   [/claude|anthropic/i, "claude"],
@@ -341,7 +362,14 @@ const PRODUCT_BRAND_ICONS = [
   [/midjourney/i, "midjourney"],
   [/cursor/i, "cursor"],
   [/vscode|visual studio code/i, "visualstudiocode"],
-  [/x\.com|twitter/i, "x"]
+  [/x\.com|twitter/i, "x"],
+  [/amazon/i, "amazon"],
+  [/google voice/i, "googlevoice"],
+  [/google|gmail/i, "google"],
+  [/linkedin/i, "linkedin"],
+  [/skype|teams/i, "skype"],
+  [/textnow/i, "textnow"],
+  [/yahoo/i, "yahoo"]
 ];
 
 function productBrandIcon(item) {
@@ -350,8 +378,10 @@ function productBrandIcon(item) {
     typeof value === "string" && /^https:\/\//i.test(value)
   );
   if (custom) return custom;
-  const match = PRODUCT_BRAND_ICONS.find(([pattern]) => pattern.test(name));
-  return match ? "https://cdn.simpleicons.org/" + match[1] : "";
+  const sourceIcon = String(item.icon || item.source?.Icon || "").trim().toLowerCase();
+  const slug = PRODUCT_SOURCE_ICONS[sourceIcon] ||
+    PRODUCT_BRAND_ICONS.find(([pattern]) => pattern.test(name))?.[1];
+  return slug ? "https://cdn.simpleicons.org/" + slug : "";
 }
 
 function createProductIcon(item) {
