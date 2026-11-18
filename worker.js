@@ -511,10 +511,10 @@ async function updateUserProfile(request, env) {
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
   let body;
   try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
-  const nickname = String(body.nickname || "").trim().replace(/[\\u0000-\\u001f\\u007f]/g, "").slice(0, 24);
+  const nickname = String(body.nickname || "").trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 24);
   const avatar = body.avatar_data_url === undefined ? null : String(body.avatar_data_url || "");
   if (!nickname) return reply(request, env, { ok: false, error: "nickname_required" }, 400);
-  if (avatar !== null && avatar && (!/^data:image\\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar) || avatar.length > 420000)) {
+  if (avatar !== null && avatar && (!/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(avatar) || avatar.length > 420000)) {
     return reply(request, env, { ok: false, error: "invalid_avatar" }, 400);
   }
   if (avatar === null) {
