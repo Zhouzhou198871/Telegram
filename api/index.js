@@ -127,12 +127,12 @@ async function verifyInternal(method, url, headers, rawBody, db) {
 
 async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
-  const buyStatusMatch = path.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
-  if (path !== "/api/send_email" && path !== "/api/buy" && !buyStatusMatch) return null;
+  const buyStatusMatch = path.match(/^\/api\/internal\/buy\/([a-f0-9-]{36})$/i);
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
 
-  if (path === "/api/send_email" && method === "POST") {
+  if (path === "/api/internal/send_email" && method === "POST") {
     let data = {};
     try { data = JSON.parse(rawBody.toString("utf8") || "{}"); } catch { return {status:400,body:{ok:false,error:"invalid_json"}}; }
     const email = String(data.email || "").trim();
@@ -157,7 +157,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
     return {status:200,body:{ok:true}};
   }
 
-  if (path === "/api/buy" && method === "POST") {
+  if (path === "/api/internal/buy" && method === "POST") {
     let data = {};
     try { data = JSON.parse(rawBody.toString("utf8") || "{}"); } catch { return {status:400,body:{ok:false,status:"failed",error_code:"invalid_json"}}; }
     const orderId = String(data.order_id || "");
@@ -169,12 +169,12 @@ async function handleInternal(method, url, headers, rawBody, db) {
       const row = prior[0];
       return {status:200,body:{ok:true,status:row.status,order_id:orderId,content:row.delivery_ciphertext ? decryptDelivery(row.delivery_ciphertext) : null,error_code:row.error_code,supplier_order_id:row.supplier_order_id}};
     }
-    const productRows = await db.unsafe("SELECT * FROM shop_catalog WHERE product_id=$1", [String(data.product_id || "")]);
+    const productRows = await db.unsafe("SELECT * FROM products WHERE supplier_product_id=$1", [productId]);
     const product = productRows[0];
-    if (!product || !product.is_on_sale || Number(product.stock||0)<1 || !product.purchasable) {
+    if (!product || Number(product.active) !== 1 || product.stock_status !== "in_stock") {
       return {status:200,body:{ok:true,status:"failed",error_code:"product_not_enabled_for_purchase"}};
     }
-    if (String(product.price_usdt) !== String(data.expected_price_usdt)) {
+    if (Math.round(Number(product.sell_price_usdt)*10000) !== Math.round(Number(data.expected_price_usdt)*10000)) {
       return {status:200,body:{ok:true,status:"failed",error_code:"price_changed"}};
     }
     const now = Math.floor(Date.now()/1000);
