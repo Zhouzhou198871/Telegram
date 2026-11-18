@@ -264,7 +264,11 @@ function initAuth(){
 }
 async function loadUser() {
   const data = await api("/api/user/info");
-  $("accountEmail").textContent = data.user.email;
+  const email = String(data.user.email || "晴天用户");
+  $("accountEmail").textContent = email;
+  const initial = (email.trim()[0] || "晴").toUpperCase();
+  $("avatarInitial").textContent = initial;
+  $("avatarInitialLarge").textContent = initial;
   $("balance").textContent = Number(data.user.balance || 0).toFixed(4);
 }
 
@@ -280,7 +284,10 @@ function renderProducts(items) {
     if (!item || typeof item !== "object") continue;
     const card = document.createElement("article");
     card.className = "product-card shop-product-card";
-    card.appendChild(safeText("div", "product-category", item.category, "DIGITAL PRODUCT"));
+    const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
+    const rawCategory = String(item.category || "").trim();
+    const categoryLabel = categoryNames[rawCategory.toLowerCase()] || categoryNames[rawCategory] || rawCategory || "商品";
+    card.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
     card.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
     const meta = document.createElement("div");
     meta.className = "product-meta";
@@ -402,6 +409,22 @@ function initShop() {
   $("logout").addEventListener("click", () => {
     localStorage.removeItem(TOKEN_KEY);
     location.replace("./auth.html");
+  });
+  const menuToggle = $("accountMenuToggle");
+  const accountMenu = $("accountMenu");
+  const closeAccountMenu = () => {
+    accountMenu.hidden = true;
+    menuToggle.setAttribute("aria-expanded", "false");
+  };
+  menuToggle.addEventListener("click", event => {
+    event.stopPropagation();
+    accountMenu.hidden = !accountMenu.hidden;
+    menuToggle.setAttribute("aria-expanded", String(!accountMenu.hidden));
+  });
+  accountMenu.addEventListener("click", event => event.stopPropagation());
+  document.addEventListener("click", closeAccountMenu);
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeAccountMenu();
   });
   $("refreshProducts").addEventListener("click", loadProducts);
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
