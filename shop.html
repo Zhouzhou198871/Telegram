@@ -8,7 +8,7 @@
   <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118-v2">
   <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118-v2">
   <title>晴天号铺 · 商品商城</title>
-  <link rel="stylesheet" href="./shop.css?v=storefront-home-nav-20261118-v1">
+  <link rel="stylesheet" href="./shop.css?v=site-ui-20261118-v2">
 </head>
 <body data-page="shop" data-shop-view="home">
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
@@ -25,10 +25,8 @@
       <div class="account-menu-wrap">
         <a class="avatar-button account-profile-link" id="accountMenuToggle" href="./profile.html" aria-label="进入账户信息">
           <span class="avatar-trigger-photo" aria-hidden="true">
-            <svg class="account-user-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="8" r="3.5" fill="currentColor"/>
-              <path d="M5.5 20c.35-3.55 3.1-5.75 6.5-5.75s6.15 2.2 6.5 5.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
+            <span class="avatar-initial" id="avatarInitial">晴</span>
+            <img class="avatar-image" id="avatarImage" alt="" hidden>
           </span>
           <span class="account-status-text">已登录</span>
         </a>
@@ -61,7 +59,7 @@
     </section>
     <section class="catalog-section" id="accountInfo">
       <div class="section-heading" id="catalog">
-        <div><div class="section-kicker" data-i18n="catalogEyebrow">商品选购</div><h2 data-i18n="catalogHeading">上架商品</h2></div>
+        <div><div class="section-kicker" data-i18n="catalogEyebrow">商品购买</div><h2 data-i18n="catalogHeading">上架商品</h2></div>
         <button class="secondary-button" id="refreshProducts" type="button" data-i18n="refreshProducts">刷新商品 ↻</button>
       </div>
       <p class="form-message" id="shopMessage" role="status" aria-live="polite"></p>
@@ -98,31 +96,6 @@
     .language-toggle{width:100%;border:0;background:#fff;cursor:pointer;font-family:inherit}
     .language-toggle strong{color:#3984d8;font-size:13px}
   </style>
-  <script>
-  (() => {
-    const wrap = document.getElementById("accountMenuWrap");
-    const toggle = document.getElementById("accountMenuToggle");
-    const menu = document.getElementById("accountMenu");
-    if (!wrap || !toggle || !menu) return;
-    // Native <details>/<summary> owns the open state; no competing click toggles.
-    toggle.dataset.menuBound = "true";
-    const syncMenu = () => {
-      menu.hidden = !wrap.open;
-      toggle.setAttribute("aria-expanded", String(wrap.open));
-    };
-    wrap.addEventListener("toggle", syncMenu);
-    document.addEventListener("click", event => {
-      if (wrap.open && !wrap.contains(event.target)) wrap.open = false;
-    });
-    document.addEventListener("keydown", event => {
-      if (event.key === "Escape" && wrap.open) {
-        wrap.open = false;
-        toggle.focus();
-      }
-    });
-    syncMenu();
-  })();
-  </script>
   <script src="./script.js?v=storefront-home-nav-20261118-v1" defer></script>
 
 
