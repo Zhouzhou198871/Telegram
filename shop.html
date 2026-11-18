@@ -20,17 +20,17 @@
     <nav class="shop-primary-nav" aria-label="商城主导航">
       <a class="shop-nav-link is-active" href="#home" data-shop-view="home" aria-current="page">首页</a>
       <a class="shop-nav-link" href="#catalog" data-shop-view="products" data-i18n="shopping">商品购买</a>
-      <a class="shop-nav-link" href="#nodeCatalog">节点服务</a>
+      <a class="shop-nav-link" href="#nodeCatalog" data-shop-view="nodes">节点服务</a>
     </nav>
     <div class="top-actions">
       <div class="account-menu-wrap">
-        <a class="avatar-button account-profile-link" id="accountMenuToggle" href="./profile.html" aria-label="进入账户信息">
+        <button class="avatar-button account-profile-link" id="accountMenuToggle" type="button" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
           <span class="avatar-trigger-photo" aria-hidden="true">
             <span class="avatar-initial" id="avatarInitial">晴</span>
             <img class="avatar-image" id="avatarImage" alt="" hidden>
           </span>
           <span class="account-status-text">已登录</span>
-        </a>
+        </button>
         <section class="account-menu-card" id="accountMenu" hidden aria-label="账户数据">
           <div class="account-card-head">
             <span class="avatar-large" id="avatarInitialLarge">晴</span>
@@ -41,6 +41,7 @@
             </div>
           </div>
           <div class="account-balance-row"><span data-i18n="balanceLabel">账户余额</span><strong><b id="balance">¥0.00</b></strong></div>
+          <a class="account-card-link" href="./profile.html">账户信息与充值服务 <span>›</span></a>
           <button class="account-logout" id="logout" type="button" data-i18n="logout">退出登录</button>
           <button class="language-toggle" id="languageToggle" type="button" hidden><span id="languageToggleLabel">English</span></button>
         </section>
