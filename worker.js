@@ -753,6 +753,131 @@ async function buyStatus(request, env, orderId) {
   return reply(request, env, { ok: true, status: purchase.status });
 }
 
+
+function hexBytes(bytes) { return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
+
+async function changeUserPassword(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  let body;
+  try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+  const current = typeof body.current_password === "string" ? body.current_password : "";
+  const next = typeof body.new_password === "string" ? body.new_password : "";
+  if (!validPassword(next)) return reply(request, env, { ok: false, error: "weak_password" }, 400);
+  if (current === next) return reply(request, env, { ok: false, error: "password_unchanged" }, 400);
+  const user = await env.DB.prepare("SELECT password_hash FROM users WHERE id=?").bind(claims.sub).first();
+  if (!user || !user.password_hash || !await verifyPassword(current, user.password_hash)) {
+    return reply(request, env, { ok: false, error: "invalid_current_password" }, 401);
+  }
+  const hash = await hashPassword(next), now = Math.floor(Date.now()/1000);
+  await env.DB.prepare("UPDATE users SET password_hash=?,token_version=COALESCE(token_version,0)+1,updated_at=? WHERE id=?")
+    .bind(hash, now, claims.sub).run();
+  return reply(request, env, { ok: true, message: "password_changed", relogin_required: true });
+}
+
+async function userRechargeOrders(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  if (request.method === "POST") {
+    let body;
+    try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+    const amount = String(body.amount_cny ?? "").trim();
+    if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(amount)) return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
+    const cents = Math.round(Number(amount) * 100);
+    if (!Number.isSafeInteger(cents) || cents < 8000 || cents > 5000000) {
+      return reply(request, env, { ok: false, error: "amount_out_of_range" }, 400);
+    }
+    const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
+    const creditUnits = Math.round(cents * 25); // ¥4 = 1 USDT; balance is stored in 1/10000 USDT.
+    await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?, 'USDT_TRC20','pending',?,?)")
+      .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, now, now).run();
+    return reply(request, env, { ok: true, order: { order_id: orderId, amount_cny: (cents/100).toFixed(2), payment_method: "USDT_TRC20", status: "pending", created_at: now }, payment_instructions: "请先联系官方客服获取实时收款地址；付款后提交订单号与凭证，由客服核验入账。" }, 201);
+  }
+  const result = await env.DB.prepare("SELECT order_id,amount_cny,payment_method,status,created_at,updated_at,paid_at FROM recharge_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100")
+    .bind(claims.sub).all();
+  return reply(request, env, { ok: true, orders: (result.results || []).map(row => ({
+    order_id: String(row.order_id), amount_cny: Number(row.amount_cny).toFixed(2),
+    payment_method: String(row.payment_method), status: String(row.status),
+    created_at: Number(row.created_at), updated_at: Number(row.updated_at), paid_at: row.paid_at ? Number(row.paid_at) : null
+  })) });
+}
+
+async function userApiKeys(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  if (request.method === "GET") {
+    const result = await env.DB.prepare("SELECT id,key_prefix,label,created_at,last_used_at,revoked_at FROM user_api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 20").bind(claims.sub).all();
+    return reply(request, env, { ok: true, eligible: (await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(claims.sub).first()).balance_units >= 500000,
+      keys: (result.results || []).map(row => ({ id: row.id, key_prefix: row.key_prefix, label: row.label, created_at: Number(row.created_at), last_used_at: row.last_used_at ? Number(row.last_used_at) : null, revoked: Boolean(row.revoked_at) })) });
+  }
+  let body;
+  try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+  const user = await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(claims.sub).first();
+  if (!user || Number(user.balance_units || 0) < 500000) return reply(request, env, { ok: false, error: "api_balance_requirement", required_cny: 200 }, 403);
+  const active = await env.DB.prepare("SELECT COUNT(*) AS total FROM user_api_keys WHERE user_id=? AND revoked_at IS NULL").bind(claims.sub).first();
+  if (Number(active?.total || 0) >= 5) return reply(request, env, { ok: false, error: "api_key_limit" }, 409);
+  const label = String(body.label || "默认 API 密钥").trim().slice(0, 40) || "默认 API 密钥";
+  const key = "qt_live_" + hexBytes(crypto.getRandomValues(new Uint8Array(32)));
+  const hash = hexBytes(await sha256(key)), id = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
+  await env.DB.prepare("INSERT INTO user_api_keys(id,user_id,key_prefix,key_hash,label,created_at) VALUES(?,?,?,?,?,?)")
+    .bind(id, claims.sub, key.slice(0, 16), hash, label, now).run();
+  return reply(request, env, { ok: true, key: { id, key, key_prefix: key.slice(0,16), label, created_at: now }, warning: "完整密钥仅显示这一次，请立即复制保存。" }, 201);
+}
+
+async function revokeUserApiKey(request, env, keyId) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const now = Math.floor(Date.now()/1000);
+  const result = await env.DB.prepare("UPDATE user_api_keys SET revoked_at=? WHERE id=? AND user_id=? AND revoked_at IS NULL")
+    .bind(now, keyId, claims.sub).run();
+  if (Number(result.meta?.changes || 0) !== 1) return reply(request, env, { ok: false, error: "api_key_not_found" }, 404);
+  return reply(request, env, { ok: true });
+}
+
+async function userApiUsage(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const result = await env.DB.prepare("SELECT id,endpoint,method,status_code,created_at FROM user_api_usage WHERE user_id=? ORDER BY created_at DESC LIMIT 100")
+    .bind(claims.sub).all();
+  return reply(request, env, { ok: true, logs: (result.results || []).map(row => ({ id: row.id, endpoint: row.endpoint, method: row.method, status_code: Number(row.status_code), created_at: Number(row.created_at) })) });
+}
+
+async function publicApiAccount(request, env) {
+  const header = request.headers.get("Authorization") || "";
+  const key = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!/^qt_live_[a-f0-9]{64}$/.test(key)) return reply(request, env, { ok: false, error: "api_key_required" }, 401);
+  const hash = hexBytes(await sha256(key));
+  const row = await env.DB.prepare("SELECT k.id AS key_id,k.user_id,u.email,u.balance_units,u.nickname FROM user_api_keys k JOIN users u ON u.id=k.user_id WHERE k.key_hash=? AND k.revoked_at IS NULL")
+    .bind(hash).first();
+  if (!row) return reply(request, env, { ok: false, error: "invalid_api_key" }, 401);
+  const now = Math.floor(Date.now()/1000), balanceUnits = Number(row.balance_units || 0);
+  if (balanceUnits < 500000) return reply(request, env, { ok: false, error: "api_balance_requirement", required_cny: 200 }, 403);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE user_api_keys SET last_used_at=? WHERE id=?").bind(now, row.key_id),
+    env.DB.prepare("INSERT INTO user_api_usage(id,key_id,user_id,endpoint,method,status_code,created_at) VALUES(?,?,?,?,?,200,?)")
+      .bind(crypto.randomUUID(), row.key_id, row.user_id, "/api/v1/account", "GET", now)
+  ]);
+  return reply(request, env, { ok: true, data: { email: row.email, nickname: row.nickname || "", balance_cny: (balanceUnits / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2), currency: "CNY" } });
+}
+
+async function confirmRecharge(request, env) {
+  if (!env.ADMIN_API_KEY || request.headers.get("X-Admin-Key") !== env.ADMIN_API_KEY) return reply(request, env, { ok: false, error: "unauthorized" }, 401);
+  let body;
+  try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+  const orderId = String(body.order_id || "").trim();
+  if (!orderId) return reply(request, env, { ok: false, error: "invalid_order_id" }, 400);
+  const now = Math.floor(Date.now()/1000);
+  const paid = await env.DB.prepare("WITH paid AS (UPDATE recharge_orders SET status='paid',paid_at=?,updated_at=? WHERE order_id=? AND status='pending' RETURNING user_id,credit_units) UPDATE users SET balance_units=users.balance_units+paid.credit_units,balance=ROUND((users.balance_units+paid.credit_units)/10000.0,4),updated_at=? FROM paid WHERE users.id=paid.user_id RETURNING users.id")
+    .bind(now, now, orderId, now).first();
+  if (!paid) return reply(request, env, { ok: false, error: "recharge_order_not_pending" }, 409);
+  return reply(request, env, { ok: true, order_id: orderId, credited: true });
+}
+
 async function adminCredit(request, env) {
   if (!env.ADMIN_API_KEY || request.headers.get("X-Admin-Key") !== env.ADMIN_API_KEY) {
     return reply(request, env, { ok: false, error: "unauthorized" }, 401);
@@ -790,6 +915,14 @@ export default {
       if (url.pathname === "/api/auth/telegram_login" && request.method === "POST") return await telegramLogin(request, env);
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/user/profile" && request.method === "POST") return await updateUserProfile(request, env);
+      if (url.pathname === "/api/user/change-password" && request.method === "POST") return await changeUserPassword(request, env);
+      if (url.pathname === "/api/user/recharge-orders" && ["GET","POST"].includes(request.method)) return await userRechargeOrders(request, env);
+      if (url.pathname === "/api/user/api-keys" && ["GET","POST"].includes(request.method)) return await userApiKeys(request, env);
+      if (url.pathname === "/api/user/api-usage" && request.method === "GET") return await userApiUsage(request, env);
+      const revokeKeyMatch = url.pathname.match(/^\/api\/user\/api-keys\/([a-f0-9-]{36})$/i);
+      if (revokeKeyMatch && request.method === "DELETE") return await revokeUserApiKey(request, env, revokeKeyMatch[1]);
+      if (url.pathname === "/api/v1/account" && request.method === "GET") return await publicApiAccount(request, env);
+      if (url.pathname === "/api/admin/recharge/confirm" && request.method === "POST") return await confirmRecharge(request, env);
       if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
       if (url.pathname === "/api/user/orders" && request.method === "GET") return await userOrders(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
