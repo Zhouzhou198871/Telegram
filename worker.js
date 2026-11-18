@@ -462,8 +462,20 @@ async function userInfo(request, env) {
 
 async function products(request, env) {
   try {
-    const data = await originRequest(env, "GET", "/api/products");
-    return reply(request, env, data);
+    const result = await env.DB.prepare(
+      "SELECT product_id,supplier_product_id,name,category_name,price_usdt,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
+    ).all();
+    const items = (result.results || []).map(row => ({
+      product_id: row.product_id,
+      name: row.name,
+      category: row.category_name || "数字商品",
+      price_usdt: String(row.price_usdt),
+      stock: Number(row.stock || 0),
+      currency: "USDT",
+      is_local_inventory: Boolean(row.is_local_inventory),
+      purchasable: Boolean(row.purchasable)
+    }));
+    return reply(request, env, { ok: true, count: items.length, items, updated_at: Math.floor(Date.now()/1000) });
   } catch {
     return reply(request, env, { ok: false, error: "catalog_unavailable" }, 503);
   }
@@ -510,9 +522,13 @@ async function buy(request, env) {
     return reply(request, env, { ok: false, error: "invalid_order_request" }, 400);
   }
 
-  const catalog = await originRequest(env, "GET", "/api/products").catch(() => null);
-  const product = catalog?.items?.find(x => x.product_id === productId);
-  if (!product) return reply(request, env, { ok: false, error: "product_unavailable" }, 409);
+  const product = await env.DB.prepare(
+    "SELECT product_id,supplier_product_id,price_usdt,stock,is_on_sale,purchasable FROM shop_catalog WHERE product_id=?"
+  ).bind(productId).first();
+  if (!product || !product.is_on_sale || Number(product.stock || 0) < 1) {
+    return reply(request, env, { ok: false, error: "product_unavailable" }, 409);
+  }
+  if (!product.purchasable) return reply(request, env, { ok: false, error: "product_not_enabled_for_purchase" }, 409);
   const amount = amountUnits(product.price_usdt);
   if (!amount) return reply(request, env, { ok: false, error: "invalid_product_price" }, 503);
 
@@ -559,6 +575,7 @@ async function buy(request, env) {
       order_id: purchase.order_id,
       user_id: user.id,
       product_id: productId,
+      supplier_product_id: product.supplier_product_id,
       email: user.email,
       tg_user_id: user.tg_user_id || null,
       expected_price_usdt: product.price_usdt
