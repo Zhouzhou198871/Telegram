@@ -470,6 +470,7 @@ async function userInfo(request, env) {
 
 async function products(request, env) {
   try {
+    await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,price_usdt,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
