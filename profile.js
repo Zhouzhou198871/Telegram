@@ -27,6 +27,11 @@
     const img=$("avatarPreview"), fallback=$("avatarFallback");
     if (url) { img.src=url; img.hidden=false; fallback.hidden=true; }
     else { img.hidden=true; fallback.hidden=false; fallback.textContent=(nickname || "晴").trim()[0] || "晴"; }
+    const headerImg=$("headerAvatarImage"), headerFallback=$("headerAvatarFallback");
+    if (headerImg && headerFallback) {
+      if (url) { headerImg.src=url; headerImg.hidden=false; headerFallback.hidden=true; }
+      else { headerImg.hidden=true; headerFallback.hidden=false; headerFallback.textContent=(nickname || "晴").trim()[0] || "晴"; }
+    }
   }
   async function compressAvatar(file) {
     if (!file || !/^image\/(jpeg|png|webp)$/.test(file.type) || file.size > 10*1024*1024) throw new Error("invalid_avatar");
