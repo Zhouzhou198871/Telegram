@@ -389,7 +389,7 @@ function createProductCover(item) {
   const wrap=document.createElement("div");
   wrap.className="product-cover";
   const candidates=[item.image_url,item.cover_url,item.product_image_url,item.banner_url,item.image];
-  const imageUrl=candidates.find(value=>typeof value==="string"&&/^https?:\\/\\//i.test(value));
+  const imageUrl=candidates.find(value=>typeof value==="string"&&(value.startsWith("https://")||value.startsWith("http://")));
   const fallback=()=>{
     const art=document.createElement("div");art.className="product-cover-art";
     const label=document.createElement("span");label.className="product-cover-kicker";label.textContent=String(item.category||"DIGITAL GOODS");
