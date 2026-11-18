@@ -20,10 +20,12 @@
     <div class="top-actions">
       <details class="account-menu-wrap" id="accountMenuWrap">
         <summary class="avatar-button" id="accountMenuToggle" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
-          <span class="avatar-initial" id="avatarInitial">晴</span>
-          <img class="avatar-image" id="avatarImage" alt="账户头像" hidden>
-          <span class="login-state" data-i18n="loggedIn">已登录</span>
-          <span class="menu-chevron" aria-hidden="true">⌄</span>
+          <span class="avatar-trigger-photo">
+            <span class="avatar-initial" id="avatarInitial">晴</span>
+            <img class="avatar-image" id="avatarImage" alt="账户头像" hidden>
+          </span>
+          <span class="account-trigger-name" id="accountTriggerName">晴天</span>
+          <svg class="menu-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </summary>
         <section class="account-menu-card" id="accountMenu" hidden aria-label="账户菜单">
           <div class="account-card-head">
