@@ -20,6 +20,7 @@
     <nav class="shop-primary-nav" aria-label="商城主导航">
       <a class="shop-nav-link is-active" href="#home" data-shop-view="home" aria-current="page">首页</a>
       <a class="shop-nav-link" href="#catalog" data-shop-view="products" data-i18n="shopping">商品购买</a>
+      <a class="shop-nav-link" href="#nodeCatalog">节点服务</a>
     </nav>
     <div class="top-actions">
       <div class="account-menu-wrap">
@@ -79,7 +80,7 @@
         <div><div class="section-kicker">自营线路</div><h2>节点服务</h2></div>
         <button class="secondary-button" id="refreshNodeProducts" type="button">刷新节点</button>
       </div>
-      <p class="node-catalog-desc">自有服务器线路，购买后自动开通。Clash 配置可直接导入 Mihomo / Clash Meta；MTProto 为 Telegram 专用代理。</p>
+      <p class="node-catalog-desc">自有服务器线路，已接入协议可自动开通。按时长套餐先行开放；流量计量完成后再开放流量包。Clash 配置可导入 Mihomo / Clash Meta；MTProto 为 Telegram 专用代理。</p>
       <p class="form-message" id="nodeShopMessage" role="status" aria-live="polite"></p>
       <div class="product-grid node-product-grid" id="nodeProductGrid">
         <div class="loading-card">正在读取自营节点套餐…</div>
@@ -120,7 +121,7 @@
     @media(max-width:560px){.node-catalog-section{padding:16px;margin-top:20px}.node-plan-button{padding:9px 10px}}
 
   </style>
-  <script src="./script.js?v=product-icons-compact-20261118-v2" defer></script>
+  <script src="./script.js?v=node-catalog-20261119-v1" defer></script>
 
 
 </body>
