@@ -1,7 +1,7 @@
 import worker from "../worker.js";
 import postgres from "postgres";
 import nodemailer from "nodemailer";
-import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv } from "node:crypto";
+import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv, createHash } from "node:crypto";
 
 export const config = { api: { bodyParser: false } };
 let sqlClient;
@@ -136,8 +136,8 @@ async function handleInternal(method, url, headers, rawBody, db) {
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
 
   if (nodeProvision || nodeRevoke) {
-    const serverOrigin = String(process.env.SERVER_ORIGIN || "").trim();
-    if (!serverOrigin || !process.env.INTERNAL_API_SECRET) return {status:503,body:{ok:false,error:"node_origin_not_configured"}};
+    const serverApiOrigin = String(process.env.NODE_SERVER_API_ORIGIN || "http://167.253.96.220:8001").trim();
+    if (!serverApiOrigin || !process.env.INTERNAL_API_SECRET) return {status:503,body:{ok:false,error:"node_origin_not_configured"}};
     const originPath = nodeProvision ? "/api/nodes/provision" : "/api/nodes/revoke";
     const ts = String(Math.floor(Date.now()/1000));
     const nonce = Array.from(cryptoRandom(16),b=>b.toString(16).padStart(2,"0")).join("");
@@ -145,13 +145,23 @@ async function handleInternal(method, url, headers, rawBody, db) {
     const signed = ts + "\n" + nonce + "\nPOST\n" + originPath + "\n" + bodyText;
     const signature = createHmac("sha256",process.env.INTERNAL_API_SECRET).update(signed).digest("hex");
     try {
-      const response = await fetch(new URL(originPath,serverOrigin), {
+      const response = await fetch(new URL(originPath,serverApiOrigin), {
         method:"POST",
         headers:{"Content-Type":"application/json","X-Worker-Timestamp":ts,"X-Worker-Nonce":nonce,"X-Worker-Signature":signature},
         body:rawBody,
         signal:AbortSignal.timeout(65000)
       });
       const result = await response.json().catch(()=>({ok:false,error:"node_origin_invalid_response"}));
+      if (!response.ok || !result.ok) return {status:response.status,body:result};
+      if (nodeProvision) {
+        const packed = Buffer.from(String(result.encrypted || ""), "base64");
+        if (packed.length < 29) return {status:502,body:{ok:false,error:"node_delivery_envelope_invalid"}};
+        const key = createHash("sha256").update(process.env.INTERNAL_API_SECRET + "|node-manager-response").digest();
+        const decipher = createDecipheriv("aes-256-gcm",key,packed.subarray(0,12));
+        decipher.setAuthTag(packed.subarray(packed.length-16));
+        const clear = Buffer.concat([decipher.update(packed.subarray(12,packed.length-16)),decipher.final()]);
+        return {status:200,body:{ok:true,account:JSON.parse(clear.toString("utf8"))}};
+      }
       return {status:response.status,body:result};
     } catch {
       return {status:502,body:{ok:false,error:"node_origin_unavailable"}};
