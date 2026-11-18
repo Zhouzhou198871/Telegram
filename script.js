@@ -87,7 +87,7 @@ function updateShopHeading(){
  const heading=$("catalogHeading")||document.querySelector(".section-heading h2");
  if(!heading)return;
  const dict=SHOP_I18N[currentShopLanguage()];
- heading.textContent=document.body.dataset.shopView==="products"?dict.productHeading:dict.catalogHeading;
+ heading.textContent=document.body.dataset.shopView==="products"?dict.allProducts:dict.catalogHeading;
 }
 function setShopView(view, options={}){
  const next=view==="products"?"products":"home";
