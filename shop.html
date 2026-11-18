@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f8fafc">
   <meta name="description" content="晴天号铺商品商城">
+  <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118">
+  <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118">
   <title>晴天号铺 · 商品商城</title>
   <link rel="stylesheet" href="./shop.css?v=market-layout-cn-20261118">
 </head>
@@ -79,6 +81,33 @@
     </section>
   </div>
   <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
-  <script src="./script.js" defer></script>
+  <script>
+  (() => {
+    const toggle = document.getElementById("accountMenuToggle");
+    const menu = document.getElementById("accountMenu");
+    const wrap = toggle && toggle.closest(".account-menu-wrap");
+    if (!toggle || !menu || !wrap || toggle.dataset.menuBound === "true") return;
+    toggle.dataset.menuBound = "true";
+    const close = () => {
+      menu.hidden = true;
+      toggle.setAttribute("aria-expanded", "false");
+    };
+    toggle.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = toggle.getAttribute("aria-expanded") !== "true";
+      menu.hidden = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+    });
+    menu.addEventListener("click", event => event.stopPropagation());
+    document.addEventListener("click", event => {
+      if (!wrap.contains(event.target)) close();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") close();
+    });
+  })();
+  </script>
+  <script src="./script.js?v=account-menu-fix-20261118" defer></script>
 </body>
 </html>
