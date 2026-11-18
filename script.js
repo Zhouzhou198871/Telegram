@@ -272,19 +272,33 @@ async function loadUser() {
   $("balance").textContent = Number(data.user.balance || 0).toFixed(4);
 }
 
-function renderProducts(items) {
+let allProducts = [];
+
+function drawFilteredProducts() {
   const grid = $("productGrid");
+  const query = String($("productSearch")?.value || "").trim().toLowerCase();
+  const category = String($("categoryFilter")?.value || "");
+  const sort = String($("sortProducts")?.value || "default");
+  let items = allProducts.filter(item => {
+    const name = String(item.name || "").toLowerCase();
+    const rawCategory = String(item.category || "").trim();
+    return (!query || name.includes(query) || rawCategory.toLowerCase().includes(query)) &&
+      (!category || rawCategory === category);
+  });
+  if (sort === "price-asc") items.sort((a,b) => Number(a.price_usdt || 0) - Number(b.price_usdt || 0));
+  if (sort === "price-desc") items.sort((a,b) => Number(b.price_usdt || 0) - Number(a.price_usdt || 0));
+  if (sort === "stock-desc") items.sort((a,b) => Number(b.stock || 0) - Number(a.stock || 0));
   grid.replaceChildren();
-  if (!Array.isArray(items) || items.length === 0) {
-    grid.appendChild(safeText("div", "empty-card", "暂无上架商品"));
+  if (!items.length) {
+    grid.appendChild(safeText("div", "empty-card", allProducts.length ? "没有找到符合条件的商品" : "暂无上架商品"));
     return;
   }
   const fragment = document.createDocumentFragment();
+  const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
     const card = document.createElement("article");
     card.className = "product-card shop-product-card";
-    const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
     const rawCategory = String(item.category || "").trim();
     const categoryLabel = categoryNames[rawCategory.toLowerCase()] || categoryNames[rawCategory] || rawCategory || "商品";
     card.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
@@ -305,6 +319,21 @@ function renderProducts(items) {
   }
   if (!fragment.childElementCount) grid.appendChild(safeText("div", "empty-card", "暂无上架商品"));
   else grid.appendChild(fragment);
+}
+
+function renderProducts(items) {
+  allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object") : [];
+  const select = $("categoryFilter");
+  const current = select.value;
+  const categories = [...new Set(allProducts.map(item => String(item.category || "").trim()).filter(Boolean))];
+  select.replaceChildren(new Option("全部分类", ""));
+  const categoryNames = {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
+  for (const category of categories) {
+    const label = categoryNames[category.toLowerCase()] || categoryNames[category] || category;
+    select.add(new Option(label, category));
+  }
+  if (categories.includes(current)) select.value = current;
+  drawFilteredProducts();
 }
 
 async function loadProducts() {
@@ -426,6 +455,9 @@ function initShop() {
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") closeAccountMenu();
   });
+  $("productSearch").addEventListener("input", drawFilteredProducts);
+  $("categoryFilter").addEventListener("change", drawFilteredProducts);
+  $("sortProducts").addEventListener("change", drawFilteredProducts);
   $("refreshProducts").addEventListener("click", loadProducts);
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
   $("deliveryModal").addEventListener("click", event => {
