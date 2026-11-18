@@ -461,9 +461,11 @@ async function telegramLogin(request, env) {
     // This does not claim or link any existing email account.
     const email = "telegram_" + telegramId + "@telegram-login.invalid";
     const id = crypto.randomUUID();
+    const referralCode = String(body.referral_code || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+    const referrer = referralCode ? await env.DB.prepare("SELECT id FROM users WHERE referral_code=? AND id<>?").bind(referralCode,id).first() : null;
     await env.DB.prepare(
-      "INSERT INTO users (id,email,tg_user_id,balance,balance_units,created_at,updated_at) VALUES (?,?,?,'0.0000',0,?,?) ON CONFLICT(tg_user_id) DO NOTHING"
-    ).bind(id, email, telegramId, nowTs, nowTs).run();
+      "INSERT INTO users (id,email,tg_user_id,balance,balance_units,created_at,updated_at,referrer_user_id) VALUES (?,?,?,'0.0000',0,?,?,?) ON CONFLICT(tg_user_id) DO NOTHING"
+    ).bind(id, email, telegramId, nowTs, nowTs, referrer?.id || null).run();
     user = await env.DB.prepare("SELECT * FROM users WHERE tg_user_id=?").bind(telegramId).first();
   }
   if (!user) return reply(request, env, { ok: false, error: "telegram_account_create_failed" }, 500);
