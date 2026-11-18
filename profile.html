@@ -11,6 +11,11 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 .profile-brand img{width:42px;height:42px;object-fit:cover;border-radius:12px}
 .profile-actions{display:flex;gap:9px;align-items:center}
 .profile-actions a,.profile-actions button{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#3b82f6;padding:9px 12px;text-decoration:none;font-size:13px;cursor:pointer}
+.profile-login-card{display:flex;align-items:center;gap:9px;min-height:42px;padding:5px 13px 5px 6px;border:1px solid #e1e8f0;border-radius:999px;background:#fff;color:#334155;text-decoration:none;font-size:13px;font-weight:700;box-shadow:0 3px 12px rgba(15,23,42,.06)}
+.profile-login-avatar{width:30px;height:30px;flex:0 0 30px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#e8f1ff;color:#3984d8;font-size:13px;font-weight:800}
+.profile-login-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.profile-login-card:active{transform:scale(.98)}
+@media(max-width:480px){.profile-login-card{min-height:38px;padding-right:10px}.profile-login-avatar{width:28px;height:28px;flex-basis:28px}}
 .profile-main{width:min(760px,calc(100% - 32px));margin:24px auto 60px}
 .profile-breadcrumb{font-size:13px;color:#8491a3;margin:0 0 22px}.profile-breadcrumb a{color:#3984d8;text-decoration:none}
 .profile-main h1{font-size:27px;margin:0 0 8px;color:#243247}.profile-subtitle{color:#748196;font-size:14px;line-height:1.7;margin:0 0 22px}
@@ -73,7 +78,7 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 <body data-page="profile">
 <header class="profile-header">
 <a class="profile-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a>
-<div class="profile-actions"><button id="languageToggle" type="button">English</button><a href="./shop.html" data-i18n="backShop">返回商城</a></div>
+<div class="profile-actions"><a class="profile-login-card" href="./profile.html" aria-label="已登录，进入账户信息"><span class="profile-login-avatar"><span id="headerAvatarFallback">晴</span><img id="headerAvatarImage" alt="" hidden></span><span>已登录</span></a><a href="./shop.html" data-i18n="backShop">返回商城</a></div>
 </header>
 <main class="profile-main">
 <nav class="profile-breadcrumb" aria-label="当前位置"><strong>当前位置：</strong><a href="./shop.html">首页</a><span aria-hidden="true"> / </span><span aria-current="page">账户信息</span></nav>
