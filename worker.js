@@ -533,7 +533,7 @@ async function userReferrals(request, env) {
   if (!user) return reply(request, env, { ok: false, error: "user_not_found" }, 404);
   const referralCode = await ensureReferralCode(env, user);
   const [count, totals, rewards] = await Promise.all([
-    env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE referrer_user_id=?").bind(user.id).first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE referrer_user_id=? AND verify_code IS NULL").bind(user.id).first(),
     env.DB.prepare("SELECT COALESCE(SUM(amount_units),0) AS total FROM referral_rewards WHERE referrer_user_id=? AND credited_at IS NOT NULL").bind(user.id).first(),
     env.DB.prepare("SELECT r.amount_units,r.created_at,u.email FROM referral_rewards r JOIN users u ON u.id=r.referred_user_id WHERE r.referrer_user_id=? AND r.credited_at IS NOT NULL ORDER BY r.created_at DESC LIMIT 50").bind(user.id).all()
   ]);
