@@ -711,6 +711,26 @@ async function buy(request, env) {
   return reply(request, env, { ok: true, order_id: purchase.order_id, status: "pending", message: "订单已受理，卡密准备中。" }, 202);
 }
 
+async function userOrders(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const result = await env.DB.prepare(
+    "SELECT p.order_id,p.product_id,p.amount_units,p.status,p.error_code,p.created_at,p.updated_at,c.name AS product_name FROM web_purchases p LEFT JOIN shop_catalog c ON c.product_id=p.product_id WHERE p.user_id=? ORDER BY p.created_at DESC LIMIT 100"
+  ).bind(claims.sub).all();
+  const orders = (result.results || []).map(row => ({
+    order_id: String(row.order_id),
+    product_id: String(row.product_id || ""),
+    product_name: String(row.product_name || row.product_id || "数字商品"),
+    amount_cny: (Number(row.amount_units || 0) / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+    currency: "CNY",
+    status: String(row.status || "pending"),
+    created_at: Number(row.created_at || 0),
+    updated_at: Number(row.updated_at || 0)
+  }));
+  return reply(request, env, { ok: true, count: orders.length, orders });
+}
+
 async function buyStatus(request, env, orderId) {
   let claims;
   try { claims = await verifyToken(request, env); }
@@ -771,6 +791,7 @@ export default {
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/user/profile" && request.method === "POST") return await updateUserProfile(request, env);
       if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
+      if (url.pathname === "/api/user/orders" && request.method === "GET") return await userOrders(request, env);
       if (url.pathname === "/api/products" && request.method === "GET") {
         try { await verifyToken(request, env); } catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
         return await products(request, env);
