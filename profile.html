@@ -30,6 +30,21 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 .profile-balance strong{color:#16834a;font-size:20px}
 .profile-save{width:100%;height:48px;border:0;border-radius:10px;background:#397ee8;color:#fff;font-size:16px;font-weight:700;margin-top:10px}
 .profile-message{min-height:22px;font-size:13px;color:#64748b;margin:10px 0 0}.profile-message.error{color:#dc2626}.profile-message.success{color:#16834a}
+.profile-wallet{margin:0 0 18px;padding:22px;border-radius:18px;background:linear-gradient(135deg,#173d72,#2868b6);color:#fff;box-shadow:0 12px 28px rgba(30,80,145,.16)}
+.profile-wallet-label{font-size:13px;color:#d8e8ff}.profile-wallet-amount{display:block;font-size:32px;line-height:1.25;font-weight:850;letter-spacing:.2px;margin-top:8px;font-variant-numeric:tabular-nums}
+.profile-recharge{margin:18px 0 0;padding:19px;border:1px solid #e0e8f2;border-radius:15px;background:#f9fbff}
+.profile-recharge h2,.profile-history h2{font-size:17px;color:#243247;margin:0 0 7px}.profile-recharge-desc{font-size:12px;color:#8491a3;line-height:1.65;margin:0 0 14px}
+.recharge-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:0 0 12px}
+.recharge-preset{min-height:42px;border:1px solid #d9e3ef;border-radius:10px;background:#fff;color:#3c526d;font-size:14px;font-weight:700;cursor:pointer}
+.recharge-preset[aria-pressed="true"]{border-color:#397ee8;background:#edf5ff;color:#2466c5;box-shadow:inset 0 0 0 1px #397ee8}
+.recharge-input-wrap{display:flex;align-items:center;height:48px;border:1px solid #d8e0e9;border-radius:10px;background:#fff;padding:0 13px;gap:8px}
+.recharge-input-wrap span{font-size:18px;color:#64748b;font-weight:700}.recharge-input-wrap input{width:100%;height:44px;border:0;outline:0;background:transparent;color:#243247;font-size:18px;font-weight:700}
+.recharge-hint{font-size:12px;color:#8a96a7;line-height:1.6;margin:9px 0 13px}
+.recharge-contact{display:flex;min-height:46px;align-items:center;justify-content:center;border-radius:10px;background:#397ee8;color:#fff;text-decoration:none;font-size:14px;font-weight:750}
+.recharge-contact[aria-disabled="true"]{opacity:.45;pointer-events:none}
+.profile-history{margin-top:20px;padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.history-table-wrap{overflow-x:auto}.recharge-table{width:100%;border-collapse:collapse;min-width:520px;font-size:13px}.recharge-table th,.recharge-table td{padding:12px 9px;text-align:left;border-bottom:1px solid #edf1f6;color:#607087}.recharge-table th{font-weight:700;color:#8a96a7;background:#fafcff}.recharge-empty{padding:28px 12px;text-align:center;color:#94a0b1;font-size:13px;line-height:1.7}
+@media(max-width:480px){.profile-wallet{padding:19px}.profile-wallet-amount{font-size:29px}.profile-recharge,.profile-history{padding:15px}.recharge-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-balance strong{font-size:18px}}
 @media(max-width:480px){.profile-panel{padding:17px}.profile-main h1{font-size:24px}.profile-brand{font-size:17px}.profile-avatar{width:74px;height:74px}}
 </style></head>
 <body data-page="profile">
@@ -48,8 +63,32 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 <div class="profile-field"><label for="nickname" data-i18n="nickname">昵称</label><input id="nickname" maxlength="24" placeholder="请输入昵称" data-i18n-placeholder="nicknamePlaceholder"></div>
 <div class="profile-field"><label for="email" data-i18n="email">登录邮箱</label><input id="email" readonly></div>
 <div class="profile-balance"><span data-i18n="balance">账户余额</span><strong id="balance">¥0.00</strong></div>
+<section class="profile-recharge" aria-labelledby="rechargeTitle">
+<h2 id="rechargeTitle" data-i18n="rechargeTitle">余额充值</h2>
+<p class="profile-recharge-desc" data-i18n="rechargeDesc">选择充值金额，提交后联系客服获取当前收款方式。</p>
+<div class="recharge-presets" role="group" aria-label="充值金额">
+<button class="recharge-preset" type="button" data-recharge-amount="80" aria-pressed="true">¥80</button>
+<button class="recharge-preset" type="button" data-recharge-amount="160" aria-pressed="false">¥160</button>
+<button class="recharge-preset" type="button" data-recharge-amount="300" aria-pressed="false">¥300</button>
+<button class="recharge-preset" type="button" data-recharge-amount="500" aria-pressed="false">¥500</button>
+</div>
+<label class="profile-field" for="rechargeAmount"><span data-i18n="customAmount">自定义金额（人民币）</span>
+<span class="recharge-input-wrap"><span>¥</span><input id="rechargeAmount" type="number" inputmode="decimal" min="80" max="50000" step="0.01" value="80" placeholder="最低 ¥80"></span></label>
+<p class="recharge-hint" id="rechargeHint" data-i18n="rechargeHint">最低充值 ¥80（约 10 USDT）。目前通过 USDT（TRC20）人工确认收款；请先联系客服获取实时收款地址。</p>
+<a class="recharge-contact" id="rechargeContact" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="rechargeContact">确认金额并联系客服</a>
+</section>
 <button class="profile-save" id="saveProfile" type="button" data-i18n="save">保存资料</button>
 <p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
-</section></main>
-<script src="./profile.js?v=20261118-profile-v1" defer></script>
+</section>
+<section class="profile-history" aria-labelledby="rechargeHistoryTitle">
+<h2 id="rechargeHistoryTitle" data-i18n="rechargeHistoryTitle">充值详细记录</h2>
+<div class="history-table-wrap">
+<table class="recharge-table">
+<thead><tr><th data-i18n="historyTime">时间</th><th data-i18n="historyOrder">订单号</th><th data-i18n="historyAmount">充值金额</th><th data-i18n="historyMethod">充值方式</th><th data-i18n="historyStatus">状态</th></tr></thead>
+</table>
+</div>
+<div class="recharge-empty" id="rechargeHistoryEmpty" role="status" data-i18n="historyNotSynced">充值明细暂未同步到网页账户，暂不展示未经核实的记录。</div>
+</section>
+</main>
+<script src="./profile.js?v=20261118-profile-recharge-v1" defer></script>
 </body></html>
