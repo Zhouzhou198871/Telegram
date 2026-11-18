@@ -129,9 +129,34 @@ async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
   const buyStatusMatch = path.match(/^\/api\/internal\/buy\/([a-f0-9-]{36})$/i);
   const catalogSync = path === "/api/internal/catalog_sync" && method === "POST";
-  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync) return null;
+  const nodeProvision = path === "/api/internal/nodes/provision" && method === "POST";
+  const nodeRevoke = path === "/api/internal/nodes/revoke" && method === "POST";
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync && !nodeProvision && !nodeRevoke) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
+
+  if (nodeProvision || nodeRevoke) {
+    const serverOrigin = String(process.env.SERVER_ORIGIN || "").trim();
+    if (!serverOrigin || !process.env.INTERNAL_API_SECRET) return {status:503,body:{ok:false,error:"node_origin_not_configured"}};
+    const originPath = nodeProvision ? "/api/nodes/provision" : "/api/nodes/revoke";
+    const ts = String(Math.floor(Date.now()/1000));
+    const nonce = cryptoRandom(16).toString("hex");
+    const bodyText = rawBody.toString("utf8");
+    const signed = ts + "\n" + nonce + "\nPOST\n" + originPath + "\n" + bodyText;
+    const signature = createHmac("sha256",process.env.INTERNAL_API_SECRET).update(signed).digest("hex");
+    try {
+      const response = await fetch(new URL(originPath,serverOrigin), {
+        method:"POST",
+        headers:{"Content-Type":"application/json","X-Worker-Timestamp":ts,"X-Worker-Nonce":nonce,"X-Worker-Signature":signature},
+        body:rawBody,
+        signal:AbortSignal.timeout(65000)
+      });
+      const result = await response.json().catch(()=>({ok:false,error:"node_origin_invalid_response"}));
+      return {status:response.status,body:result};
+    } catch {
+      return {status:502,body:{ok:false,error:"node_origin_unavailable"}};
+    }
+  }
 
   if (catalogSync) {
     const state = await db.unsafe("SELECT COALESCE(MAX(updated_at),0) AS last FROM shop_catalog");
