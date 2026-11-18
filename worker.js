@@ -281,16 +281,6 @@ async function telegramApi(env, method, payload) {
   if (!response.ok || !data.ok) throw new Error("telegram_api_" + method + "_failed");
   return data.result;
 }
-async function telegramLoginStatus(request, env) {
-  if (!env.TELEGRAM_BOT_TOKEN) return reply(request, env, { ok: false, error: "telegram_bot_token_missing" }, 503);
-  try {
-    const response = await fetch("https://api.telegram.org/bot" + env.TELEGRAM_BOT_TOKEN + "/getMe");
-    const data = await response.json();
-    return reply(request, env, { ok: Boolean(response.ok && data.ok), bot_username: data.result?.username || null, bot_id: data.result?.id || null, error_code: data.error_code || null });
-  } catch {
-    return reply(request, env, { ok: false, error: "telegram_api_unreachable" }, 502);
-  }
-}
 async function telegramLoginStart(request, env) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
   await telegramLoginTable(env);
@@ -643,7 +633,6 @@ export default {
       if (url.pathname === "/api/auth/forgot_password" && request.method === "POST") return await forgotPassword(request, env);
       if (url.pathname === "/api/auth/reset_password" && request.method === "POST") return await resetPassword(request, env);
       if (url.pathname === "/api/auth/login" && request.method === "POST") return await login(request, env);
-      if (url.pathname === "/api/auth/telegram/status" && request.method === "GET") return await telegramLoginStatus(request, env);
       if (url.pathname === "/api/auth/telegram/start" && request.method === "POST") return await telegramLoginStart(request, env);
       if (url.pathname === "/api/auth/telegram/poll" && request.method === "POST") return await telegramLoginPoll(request, env);
       if (url.pathname === "/api/auth/telegram/webhook/" + await telegramWebhookSecret(env) && request.method === "POST") return await telegramLoginWebhook(request, env);
