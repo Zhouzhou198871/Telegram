@@ -1,7 +1,22 @@
 "use strict";
 
-const API_BASE = "https://qingtian-shop-api.chulingli1988.workers.dev";
+const API_BASE = "";
 const TOKEN_KEY = "qingtian_shop_token";
+
+// Consume OAuth tokens before the shop initializes any authenticated API requests.
+(() => {
+  const referralCode = String(new URLSearchParams(window.location.search).get("ref") || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (referralCode) localStorage.setItem("qingtian_referral_code", referralCode);
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const oauthToken = params.get("github_token");
+  if (oauthToken) {
+    localStorage.setItem(TOKEN_KEY, oauthToken);
+    localStorage.removeItem("qingtian_referral_code");
+    params.delete("github_token");
+    const cleanHash = params.toString();
+    history.replaceState(null, "", window.location.pathname + window.location.search + (cleanHash ? "#" + cleanHash : ""));
+  }
+})();
 const $ = id => document.getElementById(id);
 const token = () => localStorage.getItem(TOKEN_KEY) || "";
 
@@ -61,8 +76,22 @@ function safeText(tag, className, value, fallback = "") {
 
 function formatPrice(value) {
   const n = Number(value);
-  return Number.isFinite(n) ? n.toFixed(4) + " USDT" : "价格暂不可用";
+  return Number.isFinite(n) ? "¥" + n.toFixed(2) : "价格暂不可用";
 }
+const SHOP_I18N = {
+ zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",shopping:"商品购买",allProducts:"全部商品",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品库存与售价实时读取，支持在线下单。下单前请核对商品信息。",tagStock:"实时库存",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品选购",refreshProducts:"刷新商品 ↻",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在连接商品目录…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogEmpty:"暂无上架商品。",catalogFailed:"目录连接失败，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请点击刷新目录重试。"},
+ en:{loggedIn:"Signed in",balanceLabel:"Account balance",accountInfo:"Account details",inviteRewards:"Referral rewards",orderHistory:"Order history",support:"Support",language:"Language",logout:"Sign out",home:"Home",shopping:"Shop",allProducts:"All products",heroEyebrow:"Qingtian Store · Digital goods",heroTitle:"Selected accounts and digital goods",heroSubtitle:"Shop securely · Instant delivery",heroCopy:"Inventory and prices are updated live. Please review product details before ordering.",tagStock:"Live stock",tagPrice:"Clear pricing",tagDelivery:"Online delivery",catalogEyebrow:"Shop products",refreshProducts:"Refresh ↻",searchPlaceholder:"Search products…",category:"Category",allCategories:"All categories",sort:"Sort products",defaultSort:"Default sort",priceLowHigh:"Price: low to high",priceHighLow:"Price: high to low",stockHighLow:"Stock: high to low",loadingCatalog:"Connecting to product catalog…",noProducts:"No products available",noMatches:"No matching products found",stockLabel:"Stock",buyNow:"Buy now",notAvailable:"Unavailable",submitting:"Submitting…",checking:"Checking product and balance…",delivered:"Purchase complete. Your code has been delivered.",insufficient:"Insufficient balance. Please contact support to top up.",catalogUpdated:"Product catalog updated.",catalogEmpty:"No products available.",catalogFailed:"Could not connect to the catalog. Please try again.",temporaryError:"Network unavailable. Your session is saved; refresh the catalog to retry."}
+};
+function currentShopLanguage(){return localStorage.getItem("qingtian_shop_language")==="en"?"en":"zh";}
+function applyShopLanguage(){
+ const lang=currentShopLanguage(),dict=SHOP_I18N[lang];document.documentElement.lang=lang==="en"?"en":"zh-CN";
+ document.querySelectorAll("[data-i18n]").forEach(el=>{const v=dict[el.dataset.i18n];if(v===undefined)return;const tail=el.lastElementChild;if(tail){el.textContent=v+" ";el.appendChild(tail);}else el.textContent=v;});
+ document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{const v=dict[el.dataset.i18nPlaceholder];if(v!==undefined)el.placeholder=v;});
+ const label=$("languageToggleLabel");if(label)label.textContent=lang==="zh"?"English":"中文";
+ const category=$("categoryFilter"),sort=$("sortProducts");if(category?.options[0])category.options[0].textContent=dict.allCategories;
+ if(sort?.options.length>=4){sort.options[0].textContent=dict.defaultSort;sort.options[1].textContent=dict.priceLowHigh;sort.options[2].textContent=dict.priceHighLow;sort.options[3].textContent=dict.stockHighLow;}
+}
+function setAvatar(imageId,initialId,url,initial){const image=$(imageId),fallback=$(initialId);if(!image||!fallback)return;if(url){image.src=url;image.hidden=false;fallback.hidden=true;}else{image.removeAttribute("src");image.hidden=true;fallback.hidden=false;fallback.textContent=initial||"晴";}}
 
 const AUTH_I18N = {
  zh:{eyebrow:"SECURE EMAIL ACCESS",title:"欢迎回来",subtitle:"使用邮箱验证码，安全进入你的晴天号铺账户。",support:"联系客服 ↗",emailLabel:"邮箱地址",codeLabel:"邮箱验证码",codePlaceholder:"输入 6 位验证码",sendCode:"获取验证码",sending:"发送中…",resend:"重新获取",retry:" 秒后重试",login:"安全登录",logging:"正在登录…",agreePrefix:"我已阅读并同意",terms:"用户协议",privacy:"隐私政策",securityNote:"验证码 5 分钟内有效，请勿向任何人透露。",invalidEmail:"请输入有效的邮箱地址。",invalidCode:"请输入 6 位数字验证码。",needAgreement:"请先勾选并同意用户协议和隐私政策。",passwordLabel:"设置密码",confirmPasswordLabel:"确认密码",passwordPlaceholder:"请设置8-20位包含字母和数字的密码",confirmPasswordPlaceholder:"请再次输入密码",invalidPassword:"密码须为8-20位，且同时包含字母和数字。",passwordMismatch:"两次输入的密码不一致",registered:"该邮箱已注册，请直接登录或更换邮箱。",sent:"验证码已发送，请检查邮箱。",sendFailed:"验证码发送失败，请稍后重试。",tooMany:"发送过于频繁，请稍后再试。",wrongCode:"验证码不正确。",expired:"验证码已过期，请重新获取。",tooManyAttempts:"验证次数过多，请重新获取验证码。",loginFailed:"登录失败，请检查验证码后重试。",requestTimeout:"服务器响应超时，请稍后重试。",networkError:"网络连接失败，请检查网络后重试。",serverError:"服务器暂时出现故障，请稍后重试。"},
@@ -182,7 +211,7 @@ function initPolicyModal(){
 }
 
 function initAuth(){
- if(token()){location.replace("./shop.html");return;}
+ if(token()){localStorage.removeItem("qingtian_referral_code");location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
  const emailError=$("emailError"),codeError=$("codeError"),password=$("password"),confirmPassword=$("confirmPassword"),passwordError=$("passwordError"),confirmPasswordError=$("confirmPasswordError"),legalError=$("legalError");let cooldown=0,timer=null;window.authCodeCooldown=0;
  const languageToggle=$("languageToggle");if(languageToggle)languageToggle.addEventListener("click",()=>setAuthLanguage(authLanguage==="zh"?"en":"zh"));setAuthLanguage(authLanguage);initParticleBackground();
@@ -201,7 +230,7 @@ function initAuth(){
   setFieldError(email,emailError,"");message(msg,"");
   send.disabled=true;send.textContent=authText("sending");
   try{
-   await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase()})});
+   await api("/api/auth/send_code",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),referral_code:localStorage.getItem("qingtian_referral_code")||""})});
    message(msg,authText("sent"),"success");cooldown=60;window.authCodeCooldown=cooldown;
    const tick=()=>{send.textContent=cooldown+authText("retry");};tick();
    timer=setInterval(()=>{cooldown--;window.authCodeCooldown=cooldown;if(cooldown<=0){clearInterval(timer);timer=null;send.disabled=false;send.textContent=authText("resend");}else tick();},1000);
@@ -230,6 +259,7 @@ function initAuth(){
    const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:email.value.trim().toLowerCase(),code:code.value.trim(),password:passwordValue})});
    if(!result.token)throw new Error(result.error||"login_failed");
    localStorage.setItem(TOKEN_KEY,result.token);
+   localStorage.removeItem("qingtian_referral_code");
    window.location.replace("/shop.html");
   }catch(error){
    const errorCode=String(error.message||"");
@@ -251,34 +281,57 @@ function initAuth(){
  });
 }
 async function loadUser() {
-  const data = await api("/api/user/info");
-  $("accountEmail").textContent = data.user.email;
-  $("balance").textContent = Number(data.user.balance || 0).toFixed(4);
+  const data = await api("/api/user/info"), user = data.user || {};
+  const email = String(user.email || "晴天用户"), nickname = String(user.nickname || "我的账户");
+  const initial = (nickname.trim()[0] || email.trim()[0] || "晴").toUpperCase();
+  $("accountEmail").textContent = email; $("accountName").textContent = nickname;
+  setAvatar("avatarImage","avatarInitial",user.avatar_url,initial);
+  setAvatar("avatarImageLarge","avatarInitialLarge",user.avatar_url,initial);
+  $("balance").textContent = "¥" + Number(user.balance_cny ?? (Number(user.balance || 0) * 4)).toFixed(2);
 }
 
-function renderProducts(items) {
+let allProducts = [];
+
+function drawFilteredProducts() {
   const grid = $("productGrid");
+  const query = String($("productSearch")?.value || "").trim().toLowerCase();
+  const category = String($("categoryFilter")?.value || "");
+  const sort = String($("sortProducts")?.value || "default");
+  let items = allProducts.filter(item => {
+    const name = String(item.name || "").toLowerCase();
+    const rawCategory = String(item.category || "").trim();
+    return (!query || name.includes(query) || rawCategory.toLowerCase().includes(query)) &&
+      (!category || rawCategory === category);
+  });
+  if (sort === "price-asc") items.sort((a,b) => Number(a.price_cny ?? Number(a.price_usdt || 0) * 4) - Number(b.price_cny ?? Number(b.price_usdt || 0) * 4));
+  if (sort === "price-desc") items.sort((a,b) => Number(b.price_cny ?? Number(b.price_usdt || 0) * 4) - Number(a.price_cny ?? Number(a.price_usdt || 0) * 4));
+  if (sort === "stock-desc") items.sort((a,b) => Number(b.stock || 0) - Number(a.stock || 0));
   grid.replaceChildren();
-  if (!Array.isArray(items) || items.length === 0) {
-    grid.appendChild(safeText("div", "empty-card", "暂无上架商品"));
+  if (!items.length) {
+    const t=SHOP_I18N[currentShopLanguage()];grid.appendChild(safeText("div","empty-card",allProducts.length?t.noMatches:t.noProducts));
     return;
   }
   const fragment = document.createDocumentFragment();
+  const categoryNames = currentShopLanguage()==="en"
+    ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
+    : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
     const card = document.createElement("article");
     card.className = "product-card shop-product-card";
-    card.appendChild(safeText("div", "product-category", item.category, "DIGITAL PRODUCT"));
+    const rawCategory = String(item.category || "").trim();
+    const categoryLabel = categoryNames[rawCategory.toLowerCase()] || categoryNames[rawCategory] || rawCategory || "商品";
+    card.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
     card.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
     const meta = document.createElement("div");
     meta.className = "product-meta";
-    meta.appendChild(safeText("div", "product-price", formatPrice(item.price_usdt)));
-    meta.appendChild(safeText("div", "product-stock", "库存 " + Number(item.stock || 0)));
+    meta.appendChild(safeText("div","product-price",formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4)));
+    meta.appendChild(safeText("div","product-stock",SHOP_I18N[currentShopLanguage()].stockLabel+" "+Number(item.stock||0)));
     card.appendChild(meta);
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.purchasable === false ? "暂不可购买" : "立即购买";
+    buyButton.textContent = item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
     buyButton.disabled = item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
@@ -288,16 +341,33 @@ function renderProducts(items) {
   else grid.appendChild(fragment);
 }
 
+function renderProducts(items) {
+  allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object") : [];
+  const select = $("categoryFilter");
+  const current = select.value;
+  const categories = [...new Set(allProducts.map(item => String(item.category || "").trim()).filter(Boolean))];
+  select.replaceChildren(new Option(SHOP_I18N[currentShopLanguage()].allCategories, ""));
+  const categoryNames = currentShopLanguage()==="en"
+    ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
+    : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
+  for (const category of categories) {
+    const label = categoryNames[category.toLowerCase()] || categoryNames[category] || category;
+    select.add(new Option(label, category));
+  }
+  if (categories.includes(current)) select.value = current;
+  drawFilteredProducts();
+}
+
 async function loadProducts() {
   const grid = $("productGrid");
-  grid.replaceChildren(safeText("div", "loading-card", "正在连接商品目录…"));
+  grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
   try {
     const data = await api("/api/products");
     renderProducts(data.items || []);
-    message($("shopMessage"), data.count ? "商品目录已更新。" : "暂无上架商品。", "success");
+    const t=SHOP_I18N[currentShopLanguage()];message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
   } catch {
     grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
-    message($("shopMessage"), "目录连接失败，请稍后重试。", "error");
+    message($("shopMessage"),SHOP_I18N[currentShopLanguage()].catalogFailed,"error");
   }
 }
 
@@ -339,8 +409,8 @@ async function pollPurchase(orderId, button) {
 async function purchase(item, button) {
   if (button.disabled) return;
   button.disabled = true;
-  button.textContent = "提交订单…";
-  message($("shopMessage"), "正在核验商品与余额…");
+  button.textContent=SHOP_I18N[currentShopLanguage()].submitting;
+  message($("shopMessage"),SHOP_I18N[currentShopLanguage()].checking);
   const idempotencyKey = crypto.randomUUID();
   try {
     const result = await api("/api/buy", {
@@ -350,7 +420,7 @@ async function purchase(item, button) {
     });
     if (result.status === "delivered" && result.content) {
       showDelivery(result.content);
-      message($("shopMessage"), "购买成功，卡密已交付。", "success");
+      message($("shopMessage"),SHOP_I18N[currentShopLanguage()].delivered,"success");
       await loadUser();
       button.disabled = false;
       button.textContent = "立即购买";
@@ -366,7 +436,7 @@ async function purchase(item, button) {
       message($("shopMessage"), "采购失败，余额已退回。", "error");
       await loadUser();
     } else if (result.error === "insufficient_balance") {
-      message($("shopMessage"), "余额不足，请先联系客户充值。", "error");
+      message($("shopMessage"),SHOP_I18N[currentShopLanguage()].insufficient,"error");
     } else {
       message($("shopMessage"), "购买未完成，请稍后重试。", "error");
     }
@@ -391,6 +461,12 @@ function initShop() {
     localStorage.removeItem(TOKEN_KEY);
     location.replace("./auth.html");
   });
+  applyShopLanguage();
+  const languageToggle=$("languageToggle");
+  if(languageToggle)languageToggle.addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",currentShopLanguage()==="zh"?"en":"zh");applyShopLanguage();if(allProducts.length)drawFilteredProducts();});
+  $("productSearch").addEventListener("input", drawFilteredProducts);
+  $("categoryFilter").addEventListener("change", drawFilteredProducts);
+  $("sortProducts").addEventListener("change", drawFilteredProducts);
   $("refreshProducts").addEventListener("click", loadProducts);
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
   $("deliveryModal").addEventListener("click", event => {
@@ -406,9 +482,19 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
-  loadUser().then(loadProducts).catch(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    location.replace("./auth.html");
+  loadUser().then(loadProducts).catch(error => {
+    // Keep the saved session on network/server failures. Only clear it when the API
+    // explicitly rejects the credential; transient outages must not force re-login.
+    const code = String(error?.message || "");
+    const invalidSession = error?.status === 401 ||
+      ["auth_required", "invalid_token", "token_expired", "token_revoked"].includes(code);
+    if (invalidSession) {
+      localStorage.removeItem(TOKEN_KEY);
+      location.replace("./auth.html");
+      return;
+    }
+    message($("shopMessage"),SHOP_I18N[currentShopLanguage()].temporaryError,"error");
+    $("productGrid").replaceChildren(safeText("div", "empty-card", "暂时无法连接商品目录，请稍后刷新重试。"));
   });
 }
 

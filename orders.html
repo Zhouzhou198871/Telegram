@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#f7f9fc"><title>历史订单｜晴天号铺</title>
+<link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=orders-20261118">
+<style>
+body[data-page="orders"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
+.orders-header{width:min(900px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
+.orders-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#3984d8;font-size:19px;font-weight:800}
+.orders-brand img{width:42px;height:42px;object-fit:cover;border-radius:12px}
+.orders-actions{display:flex;gap:9px}.orders-actions a,.orders-actions button{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#3b82f6;padding:9px 12px;text-decoration:none;font-size:13px;cursor:pointer}
+.orders-main{width:min(760px,calc(100% - 32px));margin:24px auto 60px}
+.orders-breadcrumb{font-size:13px;color:#8491a3;margin:0 0 22px}.orders-breadcrumb a{color:#3984d8;text-decoration:none}
+.orders-main h1{font-size:27px;margin:0 0 8px;color:#243247}.orders-subtitle{color:#748196;font-size:14px;line-height:1.7;margin:0 0 22px}
+.orders-list{display:grid;gap:13px}.order-card{padding:17px;border:1px solid #e0e5ec;border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.order-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.order-name{font-weight:750;font-size:16px;line-height:1.55;overflow-wrap:anywhere}.order-status{white-space:nowrap;border-radius:20px;padding:5px 9px;font-size:12px;background:#eff6ff;color:#2563eb}.order-status.done{background:#ecfdf3;color:#16834a}.order-status.failed{background:#fff1f2;color:#dc2626}
+.order-meta{font-size:12px;color:#8390a2;line-height:1.8;margin-top:9px;overflow-wrap:anywhere}.order-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px}.order-price{font-size:19px;font-weight:800;color:#16834a}.order-actions button{border:1px solid #d7e4f5;border-radius:9px;background:#f4f8ff;color:#2868c7;padding:9px 12px;font-size:13px;cursor:pointer}
+.order-delivery{display:none;margin-top:13px;padding:12px;border-radius:10px;background:#f8fafc;border:1px solid #e8edf3;white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.7}.order-delivery.show{display:block}
+.orders-state{padding:38px 18px;text-align:center;color:#8491a3;background:#fff;border:1px solid #e0e5ec;border-radius:15px}
+@media(max-width:480px){.orders-main h1{font-size:24px}.orders-brand{font-size:17px}.order-card{padding:14px}}
+</style>
+<script src="./orders.js?v=orders-20261118" defer></script>
+</head>
+<body data-page="orders">
+<header class="orders-header"><a class="orders-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><div class="orders-actions"><button id="languageToggle" type="button">English</button><a href="./shop.html" data-i18n="backShop">返回商城</a></div></header>
+<main class="orders-main">
+<nav class="orders-breadcrumb"><a href="./shop.html" data-i18n="home">首页</a>　/　<span data-i18n="title">历史订单</span></nav>
+<h1 data-i18n="title">历史订单</h1><p class="orders-subtitle" data-i18n="subtitle">查看你的购买记录、订单状态和交付信息。</p>
+<section id="ordersList" class="orders-list"><div class="orders-state" data-i18n="loading">正在读取订单…</div></section>
+</main>
+</body></html>

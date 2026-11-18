@@ -3,50 +3,155 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#070b12">
-  <meta name="description" content="晴天商城数字商品">
-  <title>商品商城 · 晴天</title>
-  <link rel="stylesheet" href="./shop.css?v=20261117-catalog">
+  <meta name="theme-color" content="#f8fafc">
+  <meta name="description" content="晴天号铺商品商城">
+  <link rel="icon" type="image/jpeg" href="/logo.jpg?v=brand-icon-20261118-v2">
+  <link rel="apple-touch-icon" href="/logo.jpg?v=brand-icon-20261118-v2">
+  <title>晴天号铺 · 商品商城</title>
+  <link rel="stylesheet" href="./shop.css?v=market-layout-cn-20261118-v2">
 </head>
 <body data-page="shop">
   <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
   <header class="topbar">
-    <a class="brand" href="./shop.html"><span class="brand-mark">Q</span><span class="brand-name">QINGTIAN<span> / STORE</span></span></a>
+    <a class="brand" href="./shop.html" aria-label="晴天号铺首页">
+      <img class="brand-logo" src="./logo.jpg" alt="晴天号铺">
+      <span class="brand-title">晴天号铺</span>
+    </a>
     <div class="top-actions">
-      <span class="account-pill" id="accountEmail">正在验证…</span>
-      <span class="balance-pill">余额 <strong id="balance">—</strong> USDT</span>
-      <button class="text-button" id="logout" type="button">退出</button>
-      <a class="nav-cta" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系客服 ↗</a>
+      <details class="account-menu-wrap" id="accountMenuWrap">
+        <summary class="avatar-button" id="accountMenuToggle" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
+          <span class="avatar-initial" id="avatarInitial">晴</span>
+          <img class="avatar-image" id="avatarImage" alt="账户头像" hidden>
+          <span class="login-state" data-i18n="loggedIn">已登录</span>
+          <span class="menu-chevron" aria-hidden="true">⌄</span>
+        </summary>
+        <section class="account-menu-card" id="accountMenu" hidden aria-label="账户菜单">
+          <div class="account-card-head">
+            <span class="avatar-large" id="avatarInitialLarge">晴</span>
+            <img class="avatar-large-image" id="avatarImageLarge" alt="账户头像" hidden>
+            <div class="account-card-identity">
+              <strong id="accountName">我的账户</strong>
+              <span id="accountEmail">正在验证…</span>
+            </div>
+          </div>
+          <div class="account-balance-row"><span data-i18n="balanceLabel">账户余额</span><strong><b id="balance">¥0.00</b></strong></div>
+          <a class="account-card-link" href="./shop.html?view=profile" data-i18n="accountInfo">账户信息 <span>›</span></a>
+          <a class="account-card-link" href="./shop.html?view=invite" data-i18n="inviteRewards">邀请奖励 <span>›</span></a>
+          <a class="account-card-link" href="./orders.html" data-i18n="orderHistory">历史订单 <span>›</span></a>
+          <a class="account-card-link" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="support">联系客服 <span>↗</span></a>
+          <button class="account-card-link language-toggle" id="languageToggle" type="button"><span data-i18n="language">语言</span><strong id="languageToggleLabel">English</strong></button>
+          <button class="account-logout" id="logout" type="button" data-i18n="logout">退出登录</button>
+        </section>
+      </details>
     </div>
   </header>
   <main class="shop-main">
+    <nav class="breadcrumb" aria-label="当前位置"><a href="./shop.html" aria-label="返回商城首页" data-i18n="home">首页</a><span aria-hidden="true">/</span><a href="./shop.html#catalog" aria-label="进入商品购买目录" data-i18n="shopping">商品购买</a><span aria-hidden="true">/</span><a href="#catalog" aria-current="page" aria-label="跳转到全部商品目录" data-i18n="allProducts">全部商品</a></nav>
     <section class="shop-hero">
-      <div class="eyebrow"><span class="pulse"></span> DIGITAL GOODS · LIVE CATALOG</div>
-      <h1>精选商品<span>，即刻交付。</span></h1>
-      <p class="hero-copy">商品库存与售价实时读取。下单前请核对商品信息。</p>
+      <div class="hero-copy-card">
+        <div class="eyebrow"><span class="pulse"></span> <span data-i18n="heroEyebrow">晴天号铺 · 商品商城</span></div>
+        <h1><span data-i18n="heroTitle">精选账号与数字商品</span><br><span data-i18n="heroSubtitle">安全选购 · 即时交付</span></h1>
+        <p class="hero-copy" data-i18n="heroCopy">商品库存与售价实时读取，支持在线下单。下单前请核对商品信息。</p>
+        <div class="hero-tags">
+          <span data-i18n="tagStock">实时库存</span><span data-i18n="tagPrice">明码标价</span><span data-i18n="tagDelivery">在线交付</span>
+        </div>
+      </div>
     </section>
-    <section class="catalog-section">
-      <div class="section-heading">
-        <div><div class="section-kicker">THE CATALOG</div><h2>商品目录<span class="heading-dot">.</span></h2></div>
-        <button class="secondary-button" id="refreshProducts" type="button">刷新目录 ↻</button>
+    <section class="catalog-section" id="accountInfo">
+      <div class="section-heading" id="catalog">
+        <div><div class="section-kicker" data-i18n="catalogEyebrow">商品选购</div><h2 data-i18n="allProducts">全部商品</h2></div>
+        <button class="secondary-button" id="refreshProducts" type="button" data-i18n="refreshProducts">刷新商品 ↻</button>
       </div>
       <p class="form-message" id="shopMessage" role="status" aria-live="polite"></p>
+      <div class="catalog-tools">
+        <label class="search-box"><span aria-hidden="true">⌕</span><input id="productSearch" type="search" placeholder="搜索商品名称…" data-i18n-placeholder="searchPlaceholder" autocomplete="off"></label>
+        <div class="catalog-selects">
+          <label><span class="sr-only" data-i18n="category">商品分类</span><select id="categoryFilter"><option value="" data-i18n="allCategories">全部分类</option></select></label>
+          <label><span class="sr-only" data-i18n="sort">商品排序</span><select id="sortProducts"><option value="default" data-i18n="defaultSort">默认排序</option><option value="price-asc" data-i18n="priceLowHigh">价格从低到高</option><option value="price-desc" data-i18n="priceHighLow">价格从高到低</option><option value="stock-desc" data-i18n="stockHighLow">库存从高到低</option></select></label>
+        </div>
+      </div>
       <div class="product-grid" id="productGrid" aria-live="polite">
-        <div class="loading-card">正在连接商品目录…</div>
+        <div class="loading-card" data-i18n="loadingCatalog">正在连接商品目录…</div>
       </div>
     </section>
   </main>
   <div class="modal-backdrop" id="deliveryModal" hidden>
     <section class="delivery-modal" role="dialog" aria-modal="true" aria-labelledby="deliveryTitle">
       <button class="modal-close" id="closeModal" type="button" aria-label="关闭">×</button>
-      <div class="eyebrow">ORDER DELIVERED</div>
+      <div class="eyebrow">订单交付</div>
       <h2 id="deliveryTitle">购买成功</h2>
       <p class="modal-copy">请及时保存以下交付内容。</p>
       <pre class="delivery-content" id="deliveryContent"></pre>
       <button class="primary-button full-button" id="copyDelivery" type="button">复制卡密</button>
     </section>
   </div>
-  <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 (lynli.me) 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
-  <script src="./script.js" defer></script>
+  <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
+  <style>
+    .account-menu-wrap{position:relative}
+    .account-menu-wrap>summary{list-style:none}
+    .account-menu-wrap>summary::-webkit-details-marker{display:none}
+    .account-menu-wrap[open] .avatar-button{border-color:#93c5fd;box-shadow:0 8px 22px rgba(37,99,235,.15)}
+    .avatar-image{width:33px;height:33px;object-fit:cover;border-radius:50%}
+    .avatar-large-image{width:52px;height:52px;flex:0 0 52px;object-fit:cover;border-radius:50%}
+    .language-toggle{width:100%;border:0;background:#fff;cursor:pointer;font-family:inherit}
+    .language-toggle strong{color:#3984d8;font-size:13px}
+  </style>
+  <script>
+  (() => {
+    const wrap = document.getElementById("accountMenuWrap");
+    const toggle = document.getElementById("accountMenuToggle");
+    const menu = document.getElementById("accountMenu");
+    if (!wrap || !toggle || !menu) return;
+    // Native <details>/<summary> owns the open state; no competing click toggles.
+    toggle.dataset.menuBound = "true";
+    const syncMenu = () => {
+      menu.hidden = !wrap.open;
+      toggle.setAttribute("aria-expanded", String(wrap.open));
+    };
+    wrap.addEventListener("toggle", syncMenu);
+    document.addEventListener("click", event => {
+      if (wrap.open && !wrap.contains(event.target)) wrap.open = false;
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && wrap.open) {
+        wrap.open = false;
+        toggle.focus();
+      }
+    });
+    syncMenu();
+  })();
+  </script>
+  <script src="./script.js?v=account-profile-rmb-invite-i18n-20261118" defer></script>
+
+<script>
+(() => {
+ const view=new URLSearchParams(location.search).get("view");
+ if(!["profile","invite"].includes(view)) return;
+ const API="https://qingtian-shop-api.chulingli1988.workers.dev",KEY="qingtian_shop_token";
+ const token=localStorage.getItem(KEY);
+ if(!token){location.replace("/auth.html");return;}
+ document.title=(view==="profile"?"账户信息":"邀请奖励")+" · 晴天号铺";
+ document.body.innerHTML=`
+ <style>
+ body{background:#f7f9fc!important;color:#263449!important}.sub-top{height:72px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 18px}.sub-brand{display:flex;align-items:center;gap:10px;color:#3984d8;font-size:20px;font-weight:800;text-decoration:none}.sub-brand img{width:44px;height:44px;border-radius:12px;object-fit:cover}.sub-wrap{max-width:720px;margin:28px auto;padding:0 16px}.sub-card{background:#fff;border:1px solid #dce3ec;border-radius:18px;padding:24px;margin-bottom:16px;box-shadow:0 8px 26px rgba(35,65,100,.05)}.sub-card h1{font-size:25px;margin:0 0 20px}.sub-muted{color:#8290a2;font-size:14px}.sub-row{display:flex;align-items:center;gap:15px;padding-bottom:18px;border-bottom:1px solid #e8edf3}.sub-avatar{width:68px;height:68px;border-radius:50%;background:#e7f0ff;color:#347be8;display:grid;place-items:center;font-size:26px;font-weight:800;overflow:hidden;flex:none}.sub-avatar img{width:100%;height:100%;object-fit:cover}.sub-field{margin-top:20px}.sub-field label{display:block;font-weight:650;margin-bottom:8px}.sub-field input{width:100%;height:46px;padding:0 12px;border:1px solid #d6dee8;border-radius:10px;font:inherit}.sub-btn{margin-top:16px;border:0;border-radius:10px;padding:12px 20px;background:#347be8;color:#fff;font-weight:700;font-size:15px}.sub-btn.alt{background:#edf4ff;color:#347be8}.sub-balance,.sub-stat{background:#f1f6ff;border-radius:12px;padding:16px;margin-top:16px;display:flex;justify-content:space-between}.sub-balance strong,.sub-stat strong{color:#19834f}.sub-code{font-size:22px;font-weight:800;color:#347be8;letter-spacing:2px}.sub-url{width:100%;margin-top:12px;padding:12px;border:1px solid #d6dee8;border-radius:9px}.sub-msg{min-height:24px;color:#19834f;margin-top:10px}.sub-record{padding:13px 0;border-bottom:1px solid #edf0f4}.sub-back{color:#4384d8;text-decoration:none}
+ </style>
+ <header class="sub-top"><a class="sub-brand" href="/shop.html"><img src="/logo.jpg" alt="">晴天号铺</a><a class="sub-back" href="/shop.html">返回商城首页</a></header>
+ <main class="sub-wrap"><p><a class="sub-back" href="/shop.html">首页</a>　/　${view==="profile"?"账户信息":"邀请奖励"}</p><div id="subContent" class="sub-card">正在加载…</div></main>`;
+ const el=id=>document.getElementById(id);
+ async function api(path,options={}){const r=await fetch(API+path,{...options,headers:{Authorization:"Bearer "+token,"Content-Type":"application/json",...(options.headers||{})}});const d=await r.json().catch(()=>({}));if(r.status===401){localStorage.removeItem(KEY);location.replace("/auth.html");throw Error("登录已过期")}if(!r.ok||d.ok===false)throw Error(d.error||"请求失败");return d}
+ if(view==="profile"){
+  el("subContent").innerHTML='<h1>账户信息</h1><div class="sub-row"><div class="sub-avatar" id="subAvatar">晴</div><div><b id="subName">正在加载…</b><div class="sub-muted" id="subEmail"></div></div></div><div class="sub-balance"><span>账户余额</span><strong id="subBalance">¥0.00</strong></div><div class="sub-field"><label for="subNickname">商城昵称</label><input id="subNickname" maxlength="24" placeholder="请输入昵称"></div><div class="sub-field"><label for="subFile">上传头像</label><input id="subFile" type="file" accept="image/jpeg,image/png,image/webp"><p class="sub-muted">支持 JPG、PNG、WebP 图片。</p></div><button class="sub-btn" id="subSave">保存资料</button><p class="sub-msg" id="subMsg"></p>';
+  let avatar="";
+  function renderAvatar(src,name){el("subAvatar").innerHTML=src?'<img alt="头像" src="'+src+'">':(name||"晴").trim().charAt(0).toUpperCase()}
+  try{const d=await api("/api/user/info"),u=d.user||{};el("subNickname").value=u.nickname||"";el("subName").textContent=u.nickname||"我的账户";el("subEmail").textContent=u.email||"";el("subBalance").textContent="¥"+(u.balance_cny||"0.00");avatar=u.avatar_url||"";renderAvatar(avatar,u.nickname||u.email)}catch(e){el("subMsg").textContent=e.message}
+  el("subFile").onchange=e=>{const file=e.target.files?.[0];if(!file)return;if(!/^image\/(jpeg|png|webp)$/.test(file.type)){el("subMsg").textContent="请选择 JPG、PNG 或 WebP 图片";return}const img=new Image(),url=URL.createObjectURL(file);img.onload=()=>{const c=document.createElement("canvas"),scale=Math.min(1,320/Math.max(img.width,img.height));c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext("2d").drawImage(img,0,0,c.width,c.height);avatar=c.toDataURL("image/jpeg",.78);renderAvatar(avatar,el("subNickname").value);URL.revokeObjectURL(url);el("subMsg").textContent="头像已选中，请保存资料"};img.src=url};
+  el("subSave").onclick=async()=>{const nickname=el("subNickname").value.trim();if(!nickname){el("subMsg").textContent="昵称不能为空";return}el("subSave").disabled=true;try{await api("/api/user/profile",{method:"POST",body:JSON.stringify({nickname,avatar_data_url:avatar})});el("subName").textContent=nickname;renderAvatar(avatar,nickname);el("subMsg").textContent="保存成功"}catch(e){el("subMsg").textContent="保存失败："+e.message}finally{el("subSave").disabled=false}};
+ }else{
+  el("subContent").innerHTML='<h1>邀请奖励</h1><div class="sub-stat"><span>成功邀请人数</span><strong id="subCount">—</strong></div><div class="sub-stat"><span>累计奖励</span><strong id="subReward">¥0.00</strong></div><p class="sub-muted">邀请好友注册，符合活动规则后奖励自动计入账户。</p><hr style="border:0;border-top:1px solid #edf0f4;margin:22px 0"><h3>我的专属邀请码</h3><div class="sub-code" id="subCode">加载中…</div><input class="sub-url" id="subUrl" readonly><button class="sub-btn" id="subCopy">复制邀请链接</button><p class="sub-msg" id="subMsg"></p><hr style="border:0;border-top:1px solid #edf0f4;margin:22px 0"><h3>奖励记录</h3><div id="subRecords" class="sub-muted">正在加载…</div>';
+  try{const d=await api("/api/user/referrals");el("subCount").textContent=d.invited_count??0;el("subReward").textContent="¥"+(d.reward_cny||"0.00");el("subCode").textContent=d.referral_code||"—";el("subUrl").value=d.referral_url||"";const rows=d.rewards||[];el("subRecords").innerHTML=rows.length?rows.map(x=>'<div class="sub-record">'+(x.email||"好友")+'　<strong style="color:#19834f">+¥'+x.amount_cny+'</strong></div>').join(""):"暂无奖励记录"}catch(e){el("subRecords").textContent="加载失败："+e.message}
+  el("subCopy").onclick=async()=>{try{await navigator.clipboard.writeText(el("subUrl").value);el("subMsg").textContent="邀请链接已复制"}catch{el("subUrl").select();document.execCommand("copy");el("subMsg").textContent="邀请链接已复制"}};
+ }
+})();
+</script>
 </body>
 </html>

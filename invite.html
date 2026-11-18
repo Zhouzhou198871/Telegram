@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7f9fc">
+<title>邀请奖励 · 晴天号铺</title><link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=account-profile-rmb-invite-i18n-20261118">
+<style>
+body[data-page="invite"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
+.invite-header{width:min(900px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
+.invite-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#3984d8;font-size:19px;font-weight:800}.invite-brand img{width:42px;height:42px;object-fit:cover;border-radius:12px}
+.invite-actions{display:flex;gap:9px}.invite-actions a,.invite-actions button{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#3b82f6;padding:9px 12px;text-decoration:none;font-size:13px;cursor:pointer}
+.invite-main{width:min(760px,calc(100% - 32px));margin:24px auto 60px}.invite-breadcrumb{font-size:13px;color:#8491a3;margin-bottom:22px}.invite-breadcrumb a{color:#3984d8;text-decoration:none}
+.invite-main h1{font-size:27px;margin:0 0 8px;color:#243247}.invite-subtitle{font-size:14px;color:#748196;line-height:1.7;margin:0 0 22px}
+.invite-hero{padding:23px;border:1px solid #dce7f6;border-radius:16px;background:linear-gradient(130deg,#eff5ff,#e1ebfb);margin-bottom:16px}
+.invite-hero h2{font-size:20px;color:#334155;margin:0 0 9px}.invite-hero p{font-size:13px;line-height:1.8;color:#64748b;margin:0}
+.invite-stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.invite-stat{padding:18px;border:1px solid #e0e5ec;border-radius:13px;background:#fff}.invite-stat span{display:block;font-size:13px;color:#7b8797}.invite-stat strong{display:block;margin-top:9px;font-size:24px;color:#16834a}
+.invite-link-card,.invite-rules,.invite-history{padding:19px;border:1px solid #e0e5ec;border-radius:14px;background:#fff;margin-top:14px}
+.invite-link-card label,.invite-section-title{display:block;font-size:15px;font-weight:800;color:#334155;margin-bottom:12px}
+.invite-link-row{display:flex;gap:8px}.invite-link-row input{min-width:0;flex:1;height:44px;border:1px solid #d7e0eb;border-radius:9px;padding:0 11px;background:#f8fafc;color:#526174;font-size:12px}
+.invite-link-row button{border:0;border-radius:9px;background:#397ee8;color:#fff;padding:0 15px;font-weight:700}
+.invite-rules p{font-size:13px;line-height:1.9;color:#64748b;margin:6px 0}
+.invite-history-list{display:flex;flex-direction:column;gap:0}.invite-reward-row{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #edf1f6;font-size:13px;color:#64748b}.invite-reward-row strong{color:#16834a;white-space:nowrap}
+.invite-empty,.invite-message{font-size:13px;color:#94a0b1;line-height:1.7;padding:12px 0}.invite-message.error{color:#dc2626}
+@media(max-width:480px){.invite-main h1{font-size:24px}.invite-hero{padding:18px}.invite-stats{gap:9px}.invite-stat{padding:15px}.invite-stat strong{font-size:21px}.invite-link-card,.invite-rules,.invite-history{padding:15px}.invite-link-row button{padding:0 11px}}
+</style></head>
+<body data-page="invite">
+<header class="invite-header"><a class="invite-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><div class="invite-actions"><button id="languageToggle" type="button">English</button><a href="./shop.html" data-i18n="backShop">返回商城</a></div></header>
+<main class="invite-main">
+<nav class="invite-breadcrumb"><a href="./shop.html" data-i18n="home">首页</a>　/　<span data-i18n="inviteTitle">邀请奖励</span></nav>
+<h1 data-i18n="inviteTitle">邀请奖励</h1><p class="invite-subtitle" data-i18n="subtitle">邀请好友加入晴天号铺，好友成功购买后，你将获得奖励。</p>
+<section class="invite-hero"><h2 data-i18n="heroTitle">邀请好友，永久享受 5% 奖励</h2><p data-i18n="heroCopy">好友通过你的专属链接注册后，邀请关系永久绑定。好友每笔成功交付的订单，按订单金额的 5% 返还奖励。</p></section>
+<div class="invite-stats"><div class="invite-stat"><span data-i18n="invitedCount">已邀请好友</span><strong id="invitedCount">0</strong></div><div class="invite-stat"><span data-i18n="totalReward">累计邀请奖励</span><strong id="totalReward">¥0.00</strong></div></div>
+<section class="invite-link-card"><label for="inviteLink" data-i18n="yourLink">你的专属邀请链接</label><div class="invite-link-row"><input id="inviteLink" readonly value=""><button id="copyInvite" type="button" data-i18n="copy">复制链接</button></div><p class="invite-message" id="inviteMessage" aria-live="polite"></p></section>
+<section class="invite-rules"><strong class="invite-section-title" data-i18n="rulesTitle">奖励规则</strong><p data-i18n="rule1">1. 好友通过专属链接注册后，邀请关系永久绑定，不可转移。</p><p data-i18n="rule2">2. 好友每笔成功支付并完成交付的订单，按订单金额的 5% 计入邀请奖励。</p><p data-i18n="rule3">3. 奖励自动计入账户余额，可用于商城购物；累计满 ¥10 可联系客服申请提现。</p></section>
+<section class="invite-history"><strong class="invite-section-title" data-i18n="historyTitle">奖励明细</strong><div class="invite-history-list" id="rewardList"><div class="invite-empty" data-i18n="loading">正在加载奖励记录…</div></div></section>
+</main><script src="./invite.js?v=20261118-invite-v1" defer></script></body></html>

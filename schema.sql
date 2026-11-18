@@ -10,12 +10,29 @@ CREATE TABLE IF NOT EXISTS users (
     code_expires INTEGER,
     code_sent_at INTEGER,
     code_attempts INTEGER NOT NULL DEFAULT 0,
+    nickname TEXT,
+    avatar_data_url TEXT,
+    referrer_user_id TEXT,
+    referral_code TEXT,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_tg_user_id ON users(tg_user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS users_referral_code_unique ON users(referral_code) WHERE referral_code IS NOT NULL;
+CREATE INDEX IF NOT EXISTS users_referrer_user_id_idx ON users(referrer_user_id);
+
+CREATE TABLE IF NOT EXISTS referral_rewards (
+    order_id TEXT PRIMARY KEY,
+    referrer_user_id TEXT NOT NULL REFERENCES users(id),
+    referred_user_id TEXT NOT NULL REFERENCES users(id),
+    amount_units INTEGER NOT NULL CHECK(amount_units > 0),
+    created_at INTEGER NOT NULL,
+    credited_at INTEGER
+);
+CREATE INDEX IF NOT EXISTS referral_rewards_referrer_created_idx
+    ON referral_rewards(referrer_user_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS web_purchases (
     order_id TEXT PRIMARY KEY,
