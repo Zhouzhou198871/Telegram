@@ -467,7 +467,7 @@ async function userInfo(request, env) {
 async function products(request, env) {
   try {
     const result = await env.DB.prepare(
-      "SELECT supplier_product_id AS product_id,supplier_product_id,title AS name,category AS category_name,sell_price_usdt AS price_usdt,CASE WHEN stock_status='in_stock' THEN 1 ELSE 0 END AS stock,active FROM products WHERE active=1 AND stock_status='in_stock' ORDER BY category,title"
+      "SELECT product_id,supplier_product_id,name,category_name,price_usdt,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
     const items = (result.results || []).map(row => ({
       product_id: row.product_id,
@@ -477,8 +477,8 @@ async function products(request, env) {
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
       currency: "USDT",
-      is_local_inventory: false,
-      purchasable: Number(row.active) === 1
+      is_local_inventory: Boolean(row.is_local_inventory),
+      purchasable: Boolean(row.purchasable)
     }));
     return reply(request, env, { ok: true, count: items.length, items, updated_at: Math.floor(Date.now()/1000) });
   } catch {
@@ -528,11 +528,12 @@ async function buy(request, env) {
   }
 
   const product = await env.DB.prepare(
-    "SELECT supplier_product_id,price_cny,sell_price_usdt AS price_usdt,stock_status,active FROM products WHERE supplier_product_id=?"
+    "SELECT product_id,supplier_product_id,price_usdt,price_cny,stock,is_on_sale,purchasable FROM shop_catalog WHERE product_id=?"
   ).bind(productId).first();
-  if (!product || Number(product.active) !== 1 || product.stock_status !== "in_stock") {
+  if (!product || !product.is_on_sale || Number(product.stock || 0) < 1) {
     return reply(request, env, { ok: false, error: "product_unavailable" }, 409);
   }
+  if (!product.purchasable) return reply(request, env, { ok: false, error: "product_not_enabled_for_purchase" }, 409);
   const amount = amountUnits(product.price_usdt);
   if (!amount) return reply(request, env, { ok: false, error: "invalid_product_price" }, 503);
 
