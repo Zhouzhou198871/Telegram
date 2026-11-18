@@ -275,3 +275,79 @@ body[data-page="shop"] .brand-title{
   body[data-page="shop"] .brand-title{font-size:17px}
   body[data-page="shop"] .account-menu-card{right:0;top:calc(100% + 12px)}
 }
+
+
+/* Mobile-first Chinese marketplace layout inspired by the supplied reference. */
+:root{--market-blue:#3b82f6;--market-border:#dce3ec;--market-ink:#243247;--market-muted:#64748b}
+body[data-page="shop"]{background:#f7f9fc!important;color:var(--market-ink)!important}
+body[data-page="shop"] .topbar{height:76px;min-height:76px;padding:0 0 12px;margin-bottom:0;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1;background:rgba(255,255,255,.96)!important}
+body[data-page="shop"] .brand{gap:10px}
+body[data-page="shop"] .brand-logo{width:46px;height:46px;border-radius:12px}
+body[data-page="shop"] .brand-title{font-size:20px;color:#3984d8!important;letter-spacing:.02em}
+body[data-page="shop"] .top-actions{display:flex;align-items:center}
+body[data-page="shop"] .avatar-button{width:auto;height:46px;display:flex;align-items:center;gap:8px;padding:4px 10px 4px 5px;border:0;border-radius:12px;background:#eff6ff;box-shadow:none;color:#3984d8}
+body[data-page="shop"] .avatar-initial{width:36px;height:36px;font-size:16px;background:#dbeafe;color:#3984d8}
+body[data-page="shop"] .login-state{font-size:14px;font-weight:700;white-space:nowrap}
+body[data-page="shop"] .menu-chevron{font-size:20px;line-height:1;color:#3984d8}
+body[data-page="shop"] .account-menu-card{top:calc(100% + 12px);width:min(300px,calc(100vw - 32px));border-radius:8px;padding:15px;background:#fff;box-shadow:0 12px 32px rgba(15,23,42,.15);border:1px solid #e1e6ed}
+body[data-page="shop"] .account-menu-card:before{content:"";position:absolute;right:28px;top:-8px;width:14px;height:14px;background:#fff;border-left:1px solid #e1e6ed;border-top:1px solid #e1e6ed;transform:rotate(45deg)}
+body[data-page="shop"] .account-card-head{position:relative}
+body[data-page="shop"] .account-card-link{padding:13px 4px;border-top:1px solid #f0f2f5;font-size:15px}
+body[data-page="shop"] .account-logout{margin-top:8px}
+body[data-page="shop"] .shop-main{width:min(1120px,calc(100% - 36px))}
+body[data-page="shop"] .breadcrumb{display:flex;align-items:center;gap:12px;padding:28px 0 22px;color:#8994a3;font-size:14px}
+body[data-page="shop"] .breadcrumb a{color:#3984d8;text-decoration:none;font-weight:700}
+body[data-page="shop"] .breadcrumb strong{color:#4b5563;font-weight:600}
+body[data-page="shop"] .hero-copy-card{padding:28px 26px;border-radius:16px;background:linear-gradient(125deg,#eff4fb 0%,#e6edf8 55%,#dce7f5 100%);border:1px solid #e2eaf5}
+body[data-page="shop"] .shop-hero{max-width:none;padding:0 0 28px}
+body[data-page="shop"] .eyebrow{color:#3984d8;font-size:12px;letter-spacing:.08em}
+body[data-page="shop"] .pulse{background:#3b82f6;box-shadow:0 0 0 5px rgba(59,130,246,.1)}
+body[data-page="shop"] .shop-hero h1{margin:18px 0 14px;font-size:clamp(28px,5vw,42px);line-height:1.35;letter-spacing:-.03em;color:#334155!important}
+body[data-page="shop"] .shop-hero h1 span{color:#3984d8}
+body[data-page="shop"] .hero-copy{font-size:15px;line-height:1.8;color:#64748b!important}
+body[data-page="shop"] .hero-tags{display:flex;flex-wrap:wrap;gap:9px;margin-top:18px}
+body[data-page="shop"] .hero-tags span{padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.75);border:1px solid #e0e9f5;color:#5c83b4;font-size:12px}
+body[data-page="shop"] .catalog-section{padding:10px 0 56px}
+body[data-page="shop"] .section-heading{align-items:center;margin-bottom:14px}
+body[data-page="shop"] .section-kicker{color:#3984d8;font-size:12px;letter-spacing:.08em}
+body[data-page="shop"] .section-heading h2{font-size:27px;margin:8px 0;color:#334155!important}
+body[data-page="shop"] .secondary-button{padding:10px 15px;border:1px solid #dce3ec;border-radius:9px;background:#fff;color:#4b5563!important;font-size:13px}
+body[data-page="shop"] .catalog-tools{padding:18px;border:1px solid #e0e5ec;border-radius:12px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04);margin-bottom:18px}
+body[data-page="shop"] .search-box{height:48px;display:flex;align-items:center;gap:10px;padding:0 14px;border:1px solid #d6dce4;border-radius:9px;background:#fff;color:#9aa4b2}
+body[data-page="shop"] .search-box>span{font-size:24px;line-height:1}
+body[data-page="shop"] .search-box input{width:100%;height:100%;border:0;outline:0;background:transparent;color:#334155;font-size:15px}
+body[data-page="shop"] .search-box input::placeholder{color:#a0a8b3}
+body[data-page="shop"] .catalog-selects{display:flex;justify-content:flex-end;gap:10px;margin-top:12px}
+body[data-page="shop"] .catalog-selects select{min-width:126px;height:42px;padding:0 30px 0 12px;border:1px solid #d6dce4;border-radius:9px;background:#fff;color:#4b5563;font-size:14px}
+body[data-page="shop"] .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+body[data-page="shop"] .product-card{min-height:0;padding:18px;border:1px solid #e0e5ec;border-radius:12px;background:#fff!important;box-shadow:0 6px 20px rgba(15,23,42,.045)!important}
+body[data-page="shop"] .product-category{font-size:11px;letter-spacing:.05em;color:#3984d8}
+body[data-page="shop"] .product-name{font-size:16px;line-height:1.6;color:#283548!important;margin:10px 0 18px}
+body[data-page="shop"] .product-price{font-size:21px;color:#16834a}
+body[data-page="shop"] .product-stock{font-size:12px;color:#7b8797!important}
+body[data-page="shop"] .buy-button{min-height:44px;border-radius:9px;font-size:15px}
+body[data-page="shop"] .loading-card,body[data-page="shop"] .empty-card{min-height:180px;background:#fff!important;border:1px solid #e0e5ec;color:#7b8797!important;box-shadow:none!important}
+body[data-page="shop"] .footer-note{color:#9aa4b2!important}
+body[data-page="shop"] .modal-backdrop{background:rgba(31,41,55,.36)!important}
+body[data-page="shop"] .delivery-modal{border-radius:14px;background:#fff!important;color:#243247!important}
+body[data-page="shop"] .delivery-modal h2{color:#243247!important}
+body[data-page="shop"] .delivery-content{background:#f8fafc!important;color:#166534!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:560px){
+ body[data-page="shop"] .topbar{width:calc(100% - 32px);height:68px;min-height:68px}
+ body[data-page="shop"] .brand-logo{width:42px;height:42px}
+ body[data-page="shop"] .brand-title{font-size:17px}
+ body[data-page="shop"] .avatar-button{height:42px;padding:3px 8px 3px 4px;gap:6px}
+ body[data-page="shop"] .avatar-initial{width:33px;height:33px;font-size:15px}
+ body[data-page="shop"] .login-state{font-size:12px}
+ body[data-page="shop"] .shop-main{width:calc(100% - 32px)}
+ body[data-page="shop"] .breadcrumb{padding:22px 0 16px;gap:8px;font-size:12px}
+ body[data-page="shop"] .hero-copy-card{padding:20px 17px;border-radius:13px}
+ body[data-page="shop"] .shop-hero h1{font-size:29px}
+ body[data-page="shop"] .hero-copy{font-size:13px}
+ body[data-page="shop"] .catalog-tools{padding:14px}
+ body[data-page="shop"] .catalog-selects select{min-width:0;width:100%;font-size:13px}
+ body[data-page="shop"] .catalog-selects label{flex:1}
+ body[data-page="shop"] .product-grid{grid-template-columns:1fr}
+ body[data-page="shop"] .section-heading h2{font-size:24px}
+}
