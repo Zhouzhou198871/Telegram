@@ -46,6 +46,10 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 .history-table-wrap{overflow-x:auto}.recharge-table{width:100%;border-collapse:collapse;min-width:520px;font-size:13px}.recharge-table th,.recharge-table td{padding:12px 9px;text-align:left;border-bottom:1px solid #edf1f6;color:#607087}.recharge-table th{font-weight:700;color:#8a96a7;background:#fafcff}.recharge-empty{padding:28px 12px;text-align:center;color:#94a0b1;font-size:13px;line-height:1.7}
 @media(max-width:480px){.profile-wallet{padding:19px}.profile-wallet-amount{font-size:29px}.profile-recharge,.profile-history{padding:15px}.recharge-presets{grid-template-columns:repeat(2,minmax(0,1fr))}.profile-balance strong{font-size:18px}}
 @media(max-width:480px){.profile-panel{padding:17px}.profile-main h1{font-size:24px}.profile-brand{font-size:17px}.profile-avatar{width:74px;height:74px}}
+
+.profile-security,.profile-api{margin-top:20px;padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.profile-security h2,.profile-api h2{font-size:17px;color:#243247;margin:0 0 7px}.profile-section-desc{font-size:12px;color:#8491a3;line-height:1.65;margin:0 0 14px}.profile-security .profile-save{margin-top:4px}.api-status{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border-radius:12px;background:#f5f8fc;color:#46566d;font-size:13px}.api-status strong{font-size:14px}.api-status.locked strong{color:#b7791f}.api-status.ready strong{color:#16834a}.api-note{font-size:12px;color:#8491a3;line-height:1.7;margin:12px 0 0}.api-threshold{font-weight:800;color:#243247}.profile-security input{width:100%;height:46px;border:1px solid #d8e0e9;border-radius:10px;padding:0 13px;color:#243247;background:#fff;font-size:15px}
+@media(max-width:480px){.profile-security,.profile-api{padding:16px}}
 </style></head>
 <body data-page="profile">
 <header class="profile-header">
@@ -89,6 +93,22 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 </div>
 <div class="recharge-empty" id="rechargeHistoryEmpty" role="status" data-i18n="historyNotSynced">充值明细暂未同步到网页账户，暂不展示未经核实的记录。</div>
 </section>
+
+<section class="profile-security" aria-labelledby="passwordTitle">
+<h2 id="passwordTitle" data-i18n="passwordTitle">修改登录密码</h2>
+<p class="profile-section-desc" data-i18n="passwordDesc">更新账户登录密码。密码需为 8–20 位，并同时包含字母和数字。</p>
+<div class="profile-field"><label for="currentPassword" data-i18n="currentPassword">当前密码</label><input id="currentPassword" type="password" autocomplete="current-password"></div>
+<div class="profile-field"><label for="newPassword" data-i18n="newPassword">新密码</label><input id="newPassword" type="password" autocomplete="new-password"></div>
+<div class="profile-field"><label for="confirmPassword" data-i18n="confirmPassword">确认新密码</label><input id="confirmPassword" type="password" autocomplete="new-password"></div>
+<button class="profile-save" id="changePassword" type="button" data-i18n="changePassword">修改密码</button>
+<p class="profile-message" id="passwordMessage" role="status" aria-live="polite"></p>
+</section>
+<section class="profile-api" aria-labelledby="apiTitle">
+<h2 id="apiTitle" data-i18n="apiTitle">API 调用</h2>
+<p class="profile-section-desc" data-i18n="apiDesc">账户余额达到 ¥200 后可启用 API 调用权限。</p>
+<div class="api-status locked" id="apiStatus"><span data-i18n="apiStatusLabel">当前 API 权限</span><strong id="apiStatusText" data-i18n="apiLocked">未达到开通条件</strong></div>
+<p class="api-note" id="apiBalanceHint" data-i18n="apiBalanceHint">开通门槛：账户可用余额不少于 <span class="api-threshold">¥200.00</span>。达到门槛后还需完成 API 密钥签发与服务端鉴权配置；当前页面不会展示或伪造未签发的密钥。</p>
+</section>
 </main>
-<script src="./profile.js?v=20261118-profile-recharge-v1" defer></script>
+<script src="./profile.js?v=20261118-profile-security-api-v1" defer></script>
 </body></html>
