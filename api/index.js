@@ -111,10 +111,10 @@ async function verifyInternal(method, url, headers, rawBody, db) {
   const ts = headers.get("X-Worker-Timestamp") || "";
   const nonce = headers.get("X-Worker-Nonce") || "";
   const signature = headers.get("X-Worker-Signature") || "";
-  if (!secret || !/^\\d+$/.test(ts) || !/^[a-f0-9-]{24,64}$/.test(nonce) ||
+  if (!secret || !/^\d+$/.test(ts) || !/^[a-f0-9-]{24,64}$/.test(nonce) ||
       Math.abs(Math.floor(Date.now()/1000) - Number(ts)) > 60) return false;
   const path = url.pathname + (url.search ? url.search : "");
-  const message = ts + "\\n" + nonce + "\\n" + method.toUpperCase() + "\\n" + path + "\\n" + rawBody.toString("utf8");
+  const message = ts + "\n" + nonce + "\n" + method.toUpperCase() + "\n" + path + "\n" + rawBody.toString("utf8");
   const expected = createHmac("sha256", secret).update(message).digest();
   let supplied;
   try { supplied = Buffer.from(signature, "hex"); } catch { return false; }
@@ -127,7 +127,7 @@ async function verifyInternal(method, url, headers, rawBody, db) {
 
 async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
-  const buyStatusMatch = path.match(/^\\/api\\/buy\\/([a-f0-9-]{36})$/i);
+  const buyStatusMatch = path.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
   if (path !== "/api/send_email" && path !== "/api/buy" && !buyStatusMatch) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
@@ -137,7 +137,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
     try { data = JSON.parse(rawBody.toString("utf8") || "{}"); } catch { return {status:400,body:{ok:false,error:"invalid_json"}}; }
     const email = String(data.email || "").trim();
     const code = String(data.code || "").trim();
-    if (!/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email) || !/^\\d{6}$/.test(code)) return {status:400,body:{ok:false,error:"invalid_email_or_code"}};
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !/^\d{6}$/.test(code)) return {status:400,body:{ok:false,error:"invalid_email_or_code"}};
     const port = Number(process.env.SMTP_PORT || 465);
     const transport = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
@@ -152,7 +152,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: email,
       subject: "晴天商城登录验证码",
-      text: "您的晴天商城验证码是：" + code + "\\n\\n验证码 5 分钟内有效，请勿向任何人透露。"
+      text: "您的晴天商城验证码是：" + code + "\n\n验证码 5 分钟内有效，请勿向任何人透露。"
     });
     return {status:200,body:{ok:true}};
   }
