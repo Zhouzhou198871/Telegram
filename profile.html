@@ -50,6 +50,25 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 .profile-security,.profile-api{margin-top:20px;padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
 .profile-security h2,.profile-api h2{font-size:17px;color:#243247;margin:0 0 7px}.profile-section-desc{font-size:12px;color:#8491a3;line-height:1.65;margin:0 0 14px}.profile-security .profile-save{margin-top:4px}.api-status{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border-radius:12px;background:#f5f8fc;color:#46566d;font-size:13px}.api-status strong{font-size:14px}.api-status.locked strong{color:#b7791f}.api-status.ready strong{color:#16834a}.api-note{font-size:12px;color:#8491a3;line-height:1.7;margin:12px 0 0}.api-threshold{font-weight:800;color:#243247}.profile-security input{width:100%;height:46px;border:1px solid #d8e0e9;border-radius:10px;padding:0 13px;color:#243247;background:#fff;font-size:15px}
 @media(max-width:480px){.profile-security,.profile-api{padding:16px}}
+</style>
+<style>
+.account-password{border-top:1px solid #edf1f6;margin-top:22px;padding-top:18px}
+.account-password h2,.service-center h2{font-size:18px;color:#243247;margin:0 0 8px}
+.secondary-save{background:#526b89}
+.service-center-open{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;margin-top:20px;padding:17px;border:1px solid #cfe0f5;border-radius:13px;background:#f5f9ff;color:#245c9e;text-align:left;cursor:pointer}
+.service-center-open span{display:flex;flex-direction:column;gap:5px}.service-center-open strong{font-size:16px}.service-center-open small{font-size:12px;color:#8093aa}.service-center-open b{font-size:13px;white-space:nowrap}
+.service-center{margin-top:20px;padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
+.service-center-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}.service-center-heading p{font-size:12px;color:#8491a3;margin:0 0 12px}.service-center-heading button{border:1px solid #dce3ec;border-radius:8px;padding:7px 10px;background:#fff;color:#607087}
+.service-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:5px;background:#f2f5f9;border-radius:12px;margin:12px 0 18px}
+.service-tab{height:42px;border:0;border-radius:9px;background:transparent;color:#64748b;font-size:14px;font-weight:700;cursor:pointer}
+.service-tab.active{background:#fff;color:#2466c5;box-shadow:0 2px 8px rgba(15,23,42,.08)}
+.service-panel h3{font-size:17px;margin:0 0 8px;color:#243247}.service-panel h4{font-size:14px;margin:20px 0 8px;color:#46566d}
+.service-panel .recharge-contact{width:100%;border:0;cursor:pointer}
+.recharge-result{margin-top:14px;padding:14px;border:1px solid #cfe0f5;border-radius:11px;background:#f5f9ff}.recharge-result p{font-size:13px;line-height:1.6;color:#53657c;word-break:break-word}.recharge-result a{color:#2466c5;font-size:13px;font-weight:700}
+.api-key-actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:12px}.api-key-actions input{height:43px;border:1px solid #d8e0e9;border-radius:9px;padding:0 12px}.api-key-actions .profile-save{margin:0}
+.api-key-once{display:grid;gap:10px;margin:12px 0;padding:13px;border:1px solid #f0d7a1;border-radius:10px;background:#fffaf0}.api-key-once strong{font-size:12px;color:#946200}.api-key-once code,.api-example{display:block;overflow-wrap:anywhere;white-space:pre-wrap;padding:10px;border-radius:8px;background:#f3f5f8;color:#334155;font-size:12px}.api-key-once button{justify-self:start;border:1px solid #dbe5f2;border-radius:8px;background:#fff;padding:8px 12px;color:#2466c5}
+.api-key-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #edf1f6}.api-key-row div{min-width:0;display:grid;gap:4px}.api-key-row strong{font-size:13px;color:#334155}.api-key-row small{font-size:11px;color:#8491a3;overflow-wrap:anywhere}.api-key-row button{border:1px solid #f1caca;background:#fff;color:#c24141;border-radius:8px;padding:7px 10px;white-space:nowrap}
+@media(max-width:480px){.service-center{padding:15px}.service-tab{font-size:13px}.service-center-open{align-items:flex-start;flex-direction:column}.api-key-row{align-items:flex-start}.api-key-row button{font-size:12px}}
 </style></head>
 <body data-page="profile">
 <header class="profile-header">
@@ -57,58 +76,67 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 <div class="profile-actions"><button id="languageToggle" type="button">English</button><a href="./shop.html" data-i18n="backShop">返回商城</a></div>
 </header>
 <main class="profile-main">
-<nav class="profile-breadcrumb" aria-label="当前位置"><strong data-i18n="currentLocation">当前位置：</strong><a href="./shop.html" data-i18n="home">首页</a><span aria-hidden="true"> / </span><span aria-current="page" data-i18n="accountInfo">账户信息</span></nav>
-<h1 data-i18n="title">账户信息</h1><p class="profile-subtitle" data-i18n="subtitle">管理你的头像、昵称和账户资料。</p>
+<nav class="profile-breadcrumb" aria-label="当前位置"><strong>当前位置：</strong><a href="./shop.html">首页</a><span aria-hidden="true"> / </span><span aria-current="page">账户信息</span></nav>
+<h1>账户信息</h1><p class="profile-subtitle">管理账户资料、安全设置与账户服务。</p>
 <section class="profile-panel">
-<div class="profile-avatar-row">
-<div class="profile-avatar"><span id="avatarFallback">晴</span><img id="avatarPreview" alt="账户头像" hidden></div>
-<div class="profile-avatar-actions"><input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><button id="chooseAvatar" type="button" data-i18n="chooseAvatar">上传头像</button><span class="profile-hint" data-i18n="avatarHint">支持 JPG、PNG、WebP，自动压缩</span></div>
-</div>
-<div class="profile-field"><label for="nickname" data-i18n="nickname">昵称</label><input id="nickname" maxlength="24" placeholder="请输入昵称" data-i18n-placeholder="nicknamePlaceholder"></div>
-<div class="profile-field"><label for="email" data-i18n="email">登录邮箱</label><input id="email" readonly></div>
-<div class="profile-balance"><span data-i18n="balance">账户余额</span><strong id="balance">¥0.00</strong></div>
-<section class="profile-recharge" aria-labelledby="rechargeTitle">
-<h2 id="rechargeTitle" data-i18n="rechargeTitle">余额充值</h2>
-<p class="profile-recharge-desc" data-i18n="rechargeDesc">选择充值金额，提交后联系客服获取当前收款方式。</p>
-<div class="recharge-presets" role="group" aria-label="充值金额">
-<button class="recharge-preset" type="button" data-recharge-amount="80" aria-pressed="true">¥80</button>
-<button class="recharge-preset" type="button" data-recharge-amount="160" aria-pressed="false">¥160</button>
-<button class="recharge-preset" type="button" data-recharge-amount="300" aria-pressed="false">¥300</button>
-<button class="recharge-preset" type="button" data-recharge-amount="500" aria-pressed="false">¥500</button>
-</div>
-<label class="profile-field" for="rechargeAmount"><span data-i18n="customAmount">自定义金额（人民币）</span>
-<span class="recharge-input-wrap"><span>¥</span><input id="rechargeAmount" type="number" inputmode="decimal" min="80" max="50000" step="0.01" value="80" placeholder="最低 ¥80"></span></label>
-<p class="recharge-hint" id="rechargeHint" data-i18n="rechargeHint">最低充值 ¥80（约 10 USDT）。目前通过 USDT（TRC20）人工确认收款；请先联系客服获取实时收款地址。</p>
-<a class="recharge-contact" id="rechargeContact" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer" data-i18n="rechargeContact">确认金额并联系客服</a>
+  <div class="profile-avatar-row">
+    <div class="profile-avatar"><span id="avatarFallback">晴</span><img id="avatarPreview" alt="账户头像" hidden></div>
+    <div class="profile-avatar-actions"><input id="avatarFile" type="file" accept="image/jpeg,image/png,image/webp" hidden><button id="chooseAvatar" type="button">上传头像</button><span class="profile-hint">支持 JPG、PNG、WebP，自动压缩</span></div>
+  </div>
+  <div class="profile-field"><label for="nickname">昵称</label><input id="nickname" maxlength="24" placeholder="请输入昵称"></div>
+  <div class="profile-field"><label for="email">登录邮箱</label><input id="email" readonly></div>
+  <div class="profile-balance"><span>账户余额</span><strong id="balance">¥0.00</strong></div>
+  <button class="profile-save" id="saveProfile" type="button">保存资料</button>
+  <div class="account-password">
+    <h2>修改登录密码</h2>
+    <p class="profile-section-desc">密码需为 8–20 位，并同时包含字母和数字。修改成功后需要重新登录。</p>
+    <div class="profile-field"><label for="currentPassword">当前密码</label><input id="currentPassword" type="password" autocomplete="current-password"></div>
+    <div class="profile-field"><label for="newPassword">新密码</label><input id="newPassword" type="password" autocomplete="new-password"></div>
+    <div class="profile-field"><label for="confirmPassword">确认新密码</label><input id="confirmPassword" type="password" autocomplete="new-password"></div>
+    <button class="profile-save secondary-save" id="changePassword" type="button">修改密码</button>
+    <p class="profile-message" id="passwordMessage" role="status" aria-live="polite"></p>
+  </div>
+  <button class="service-center-open" id="openAccountCenter" type="button"><span><strong>账户服务中心</strong><small>充值中心 · 充值明细 · API 服务</small></span><b>进入服务中心　›</b></button>
+  <p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
 </section>
-<button class="profile-save" id="saveProfile" type="button" data-i18n="save">保存资料</button>
-<p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
-</section>
-<section class="profile-history" aria-labelledby="rechargeHistoryTitle">
-<h2 id="rechargeHistoryTitle" data-i18n="rechargeHistoryTitle">充值详细记录</h2>
-<div class="history-table-wrap">
-<table class="recharge-table">
-<thead><tr><th data-i18n="historyTime">时间</th><th data-i18n="historyOrder">订单号</th><th data-i18n="historyAmount">充值金额</th><th data-i18n="historyMethod">充值方式</th><th data-i18n="historyStatus">状态</th></tr></thead>
-</table>
-</div>
-<div class="recharge-empty" id="rechargeHistoryEmpty" role="status" data-i18n="historyNotSynced">充值明细暂未同步到网页账户，暂不展示未经核实的记录。</div>
-</section>
-
-<section class="profile-security" aria-labelledby="passwordTitle">
-<h2 id="passwordTitle" data-i18n="passwordTitle">修改登录密码</h2>
-<p class="profile-section-desc" data-i18n="passwordDesc">更新账户登录密码。密码需为 8–20 位，并同时包含字母和数字。</p>
-<div class="profile-field"><label for="currentPassword" data-i18n="currentPassword">当前密码</label><input id="currentPassword" type="password" autocomplete="current-password"></div>
-<div class="profile-field"><label for="newPassword" data-i18n="newPassword">新密码</label><input id="newPassword" type="password" autocomplete="new-password"></div>
-<div class="profile-field"><label for="confirmPassword" data-i18n="confirmPassword">确认新密码</label><input id="confirmPassword" type="password" autocomplete="new-password"></div>
-<button class="profile-save" id="changePassword" type="button" data-i18n="changePassword">修改密码</button>
-<p class="profile-message" id="passwordMessage" role="status" aria-live="polite"></p>
-</section>
-<section class="profile-api" aria-labelledby="apiTitle">
-<h2 id="apiTitle" data-i18n="apiTitle">API 调用</h2>
-<p class="profile-section-desc" data-i18n="apiDesc">账户余额达到 ¥200 后可启用 API 调用权限。</p>
-<div class="api-status locked" id="apiStatus"><span data-i18n="apiStatusLabel">当前 API 权限</span><strong id="apiStatusText" data-i18n="apiLocked">未达到开通条件</strong></div>
-<p class="api-note" id="apiBalanceHint" data-i18n="apiBalanceHint">开通门槛：账户可用余额不少于 <span class="api-threshold">¥200.00</span>。达到门槛后还需完成 API 密钥签发与服务端鉴权配置；当前页面不会展示或伪造未签发的密钥。</p>
+<section class="service-center" id="accountCenter" hidden>
+  <div class="service-center-heading"><div><h2>账户服务中心</h2><p>充值、查询记录与管理 API 调用权限</p></div><button type="button" id="closeAccountCenter" aria-label="收起">收起</button></div>
+  <div class="service-tabs" role="tablist" aria-label="账户服务">
+    <button type="button" class="service-tab active" data-service-tab="recharge" role="tab" aria-selected="true">充值中心</button>
+    <button type="button" class="service-tab" data-service-tab="history" role="tab" aria-selected="false">充值明细</button>
+    <button type="button" class="service-tab" data-service-tab="api" role="tab" aria-selected="false">API 服务</button>
+  </div>
+  <section class="service-panel" data-service-panel="recharge">
+    <h3>余额充值</h3><p class="profile-section-desc">选择金额创建充值订单。当前收款由客服核验后入账，请勿向旧地址付款。</p>
+    <div class="recharge-presets" role="group" aria-label="充值金额">
+      <button class="recharge-preset" type="button" data-recharge-amount="80" aria-pressed="true">¥80</button>
+      <button class="recharge-preset" type="button" data-recharge-amount="160" aria-pressed="false">¥160</button>
+      <button class="recharge-preset" type="button" data-recharge-amount="300" aria-pressed="false">¥300</button>
+      <button class="recharge-preset" type="button" data-recharge-amount="500" aria-pressed="false">¥500</button>
+    </div>
+    <label class="profile-field" for="rechargeAmount"><span>自定义金额（人民币）</span><span class="recharge-input-wrap"><span>¥</span><input id="rechargeAmount" type="number" inputmode="decimal" min="80" max="50000" step="0.01" value="80" placeholder="最低 ¥80"></span></label>
+    <p class="recharge-hint" id="rechargeHint">最低充值 ¥80，最高 ¥50,000。创建订单后请联系客服获取实时 USDT（TRC20）收款方式。</p>
+    <button class="recharge-contact" id="createRechargeOrder" type="button">创建充值订单</button>
+    <div class="recharge-result" id="rechargeResult" hidden><strong id="rechargeResultTitle"></strong><p id="rechargeResultText"></p><a id="rechargeContact" href="https://t.me/qingtian_Boss" target="_blank" rel="noopener noreferrer">联系官方客服并提交订单号</a></div>
+    <p class="profile-message" id="rechargeMessage" role="status" aria-live="polite"></p>
+  </section>
+  <section class="service-panel" data-service-panel="history" hidden>
+    <h3>充值详细记录</h3><p class="profile-section-desc">仅显示当前账户真实创建的充值订单及核验状态。</p>
+    <div class="history-table-wrap"><table class="recharge-table"><thead><tr><th>时间</th><th>订单号</th><th>金额</th><th>方式</th><th>状态</th></tr></thead><tbody id="rechargeHistoryBody"><tr><td colspan="5" class="recharge-empty">正在加载…</td></tr></tbody></table></div>
+    <p class="profile-message" id="historyMessage" role="status" aria-live="polite"></p>
+  </section>
+  <section class="service-panel" data-service-panel="api" hidden>
+    <h3>API 调用服务</h3><p class="profile-section-desc">账户可用余额达到 ¥200 后可申请 API 密钥。密钥仅展示一次，可随时撤销。</p>
+    <div class="api-status locked" id="apiStatus"><span>当前 API 权限</span><strong id="apiStatusText">正在读取…</strong></div>
+    <p class="api-note" id="apiBalanceHint">开通门槛：账户可用余额不少于 ¥200.00。</p>
+    <div class="api-key-actions"><input id="apiKeyLabel" maxlength="40" value="默认 API 密钥" aria-label="API 密钥名称"><button class="profile-save" id="createApiKey" type="button">申请 / 创建 API 密钥</button></div>
+    <div class="api-key-once" id="apiKeyOnce" hidden><strong>请立即复制保存，离开此页后无法再次查看完整密钥</strong><code id="newApiKey"></code><button type="button" id="copyApiKey">复制密钥</button></div>
+    <h4>我的 API 密钥</h4><div id="apiKeyList" class="api-key-list"><p class="recharge-empty">正在加载…</p></div>
+    <h4>API 调用说明</h4><p class="api-note">查询账户余额：GET https://shop.lynli.me/api/v1/account</p><pre class="api-example">Authorization: Bearer YOUR_API_KEY</pre>
+    <h4>最近调用记录</h4><div class="history-table-wrap"><table class="recharge-table"><thead><tr><th>时间</th><th>接口</th><th>方法</th><th>状态码</th></tr></thead><tbody id="apiUsageBody"><tr><td colspan="4" class="recharge-empty">暂无调用记录</td></tr></tbody></table></div>
+    <p class="profile-message" id="apiMessage" role="status" aria-live="polite"></p>
+  </section>
 </section>
 </main>
-<script src="./profile.js?v=20261118-profile-security-api-v1" defer></script>
+<script src="./profile.js?v=account-center-live-20261118-v1" defer></script>
 </body></html>
