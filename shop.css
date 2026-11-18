@@ -206,3 +206,37 @@ body[data-page="shop"] .primary-button{
   background:linear-gradient(135deg,#3b82f6,#2563eb) !important;
   border-color:#3b82f6 !important;
 }
+
+
+/* Chinese-first header with a compact avatar-triggered account card. */
+.topbar{height:86px}
+.brand{gap:0;min-width:54px}
+.brand-logo{display:block;width:54px;height:54px;object-fit:cover;border-radius:16px;border:1px solid #dbe2ea;box-shadow:0 5px 16px rgba(37,99,235,.08)}
+.top-actions{gap:0}
+.account-menu-wrap{position:relative;z-index:30}
+.avatar-button{width:54px;height:54px;padding:3px;border:1px solid #dbe2ea;border-radius:50%;background:#fff;box-shadow:0 5px 16px rgba(15,23,42,.08);cursor:pointer;display:grid;place-items:center;transition:transform .18s,border-color .18s,box-shadow .18s}
+.avatar-button:hover,.avatar-button[aria-expanded="true"]{transform:translateY(-1px);border-color:#93c5fd;box-shadow:0 8px 22px rgba(37,99,235,.15)}
+.avatar-initial,.avatar-large{display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#dbeafe,#eff6ff);color:#2563eb;font-weight:800}
+.avatar-initial{width:44px;height:44px;font-size:20px}
+.account-menu-card{position:absolute;right:0;top:calc(100% + 13px);width:min(330px,calc(100vw - 32px));padding:18px;border:1px solid #dbe2ea;border-radius:20px;background:rgba(255,255,255,.98);box-shadow:0 20px 60px rgba(15,23,42,.16);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#172033}
+.account-menu-card[hidden]{display:none!important}
+.account-card-head{display:flex;align-items:center;gap:13px;padding:2px 0 16px}
+.avatar-large{width:52px;height:52px;flex:0 0 52px;font-size:22px}
+.account-card-identity{display:flex;min-width:0;flex-direction:column;gap:5px}
+.account-card-identity strong{font-size:15px;color:#172033}
+.account-card-identity span{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748b;font-size:12px}
+.account-balance-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-top:1px solid #edf1f6;border-bottom:1px solid #edf1f6;color:#64748b;font-size:13px}
+.account-balance-row strong{color:#15803d;font-size:15px}
+.account-card-link{display:flex;justify-content:space-between;align-items:center;padding:14px 2px;color:#334155;text-decoration:none;font-size:14px}
+.account-card-link span{color:#2563eb;font-size:18px}
+.account-logout{width:100%;min-height:43px;border:1px solid #fee2e2;border-radius:12px;background:#fff7f7;color:#dc2626;font-size:14px;font-weight:700;cursor:pointer}
+.account-logout:hover{background:#fef2f2}
+body[data-page="shop"] .eyebrow,body[data-page="shop"] .section-kicker,body[data-page="shop"] .product-category{letter-spacing:.08em}
+body[data-page="shop"] .footer-note{letter-spacing:0}
+@media(max-width:560px){
+ .topbar{height:72px;min-height:72px}
+ .brand-logo{width:46px;height:46px;border-radius:14px}
+ .avatar-button{width:48px;height:48px}
+ .avatar-initial{width:40px;height:40px;font-size:18px}
+ .account-menu-card{top:calc(100% + 10px)}
+}
