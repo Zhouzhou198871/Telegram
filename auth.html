@@ -139,6 +139,7 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
       const githubToken = hashParams.get("github_token");
       if (githubToken) {
         localStorage.setItem("qingtian_shop_token", githubToken);
+        localStorage.removeItem("qingtian_referral_code");
         history.replaceState(null, "", window.location.pathname + window.location.search);
         window.location.replace("./shop.html");
         return;
@@ -166,11 +167,12 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
         try {
           if (message) { message.textContent = "正在验证 Telegram 账号…"; message.className = "form-message"; }
           const response = await fetch(api + "/api/auth/telegram_login", {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user })
+            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, referral_code: localStorage.getItem("qingtian_referral_code") || "" })
           });
           const data = await response.json();
           if (!response.ok || !data.ok || !data.token) throw new Error(data.error || "telegram_login_failed");
           localStorage.setItem("qingtian_shop_token", data.token);
+          localStorage.removeItem("qingtian_referral_code");
           if (message) { message.textContent = "Telegram 登录成功，正在进入商城…"; message.className = "form-message success"; }
           window.location.replace("./shop.html");
         } catch (error) {
