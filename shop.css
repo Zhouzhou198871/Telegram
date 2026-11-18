@@ -240,3 +240,38 @@ body[data-page="shop"] .footer-note{letter-spacing:0}
  .avatar-initial{width:40px;height:40px;font-size:18px}
  .account-menu-card{top:calc(100% + 10px)}
 }
+
+
+/* Fix header stacking: account dropdown must render above the hero and catalog. */
+body[data-page="shop"] .topbar{
+  position:relative !important;
+  z-index:100 !important;
+  overflow:visible !important;
+}
+body[data-page="shop"] .top-actions,
+body[data-page="shop"] .account-menu-wrap{position:relative;z-index:101}
+body[data-page="shop"] .account-menu-card{
+  z-index:9999 !important;
+  display:block;
+}
+body[data-page="shop"] .account-menu-card[hidden]{display:none !important}
+body[data-page="shop"] .brand{
+  display:inline-flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+body[data-page="shop"] .brand-title{
+  display:inline-block;
+  color:#172033;
+  font-size:20px;
+  line-height:1;
+  font-weight:800;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+@media(max-width:560px){
+  body[data-page="shop"] .brand{gap:9px}
+  body[data-page="shop"] .brand-title{font-size:17px}
+  body[data-page="shop"] .account-menu-card{right:0;top:calc(100% + 12px)}
+}
