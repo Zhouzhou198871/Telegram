@@ -19,11 +19,11 @@ function getSql() {
 
 function normalizeSql(source, previousChanges = 0) {
   let sql = String(source)
-    .replace(/balance\\s*=\\s*printf\\('%\\.4f',\\s*\\((balance_units\\s*[+-]\\s*\\?)\\s*\\/\\s*10000\\.0\\)\\)/gi,
+    .replace(/balance\s*=\s*printf\('%\.4f',\s*\((balance_units\s*[+-]\s*\?)\s*\/\s*10000\.0\)\)/gi,
       "balance=ROUND(($1)/10000.0,4)")
-    .replace(/\\bchanges\\s*\\(\\s*\\)/gi, String(Number(previousChanges) || 0));
+    .replace(/\bchanges\s*\(\s*\)/gi, String(Number(previousChanges) || 0));
   let index = 0;
-  return sql.replace(/\\?/g, () => "$" + (++index));
+  return sql.replace(/\?/g, () => "$" + (++index));
 }
 
 class NeonStatement {
@@ -55,7 +55,7 @@ class NeonD1Compat {
     let statement = normalizeSql(source, previousChanges);
     const command = statement.trim().match(/^([a-z]+)/i)?.[1]?.toUpperCase();
     const isMutation = ["INSERT", "UPDATE", "DELETE"].includes(command);
-    if (isMutation && !/\\bRETURNING\\b/i.test(statement)) {
+    if (isMutation && !/\bRETURNING\b/i.test(statement)) {
       statement += " RETURNING 1 AS __d1_changed";
     }
     const result = await tx.unsafe(statement, params);
