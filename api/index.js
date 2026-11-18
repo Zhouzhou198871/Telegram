@@ -169,12 +169,12 @@ async function handleInternal(method, url, headers, rawBody, db) {
       const row = prior[0];
       return {status:200,body:{ok:true,status:row.status,order_id:orderId,content:row.delivery_ciphertext ? decryptDelivery(row.delivery_ciphertext) : null,error_code:row.error_code,supplier_order_id:row.supplier_order_id}};
     }
-    const productRows = await db.unsafe("SELECT * FROM products WHERE supplier_product_id=$1", [productId]);
+    const productRows = await db.unsafe("SELECT * FROM shop_catalog WHERE product_id=$1", [String(data.product_id || productId)]);
     const product = productRows[0];
-    if (!product || Number(product.active) !== 1 || product.stock_status !== "in_stock") {
+    if (!product || !product.is_on_sale || Number(product.stock || 0) < 1 || !product.purchasable) {
       return {status:200,body:{ok:true,status:"failed",error_code:"product_not_enabled_for_purchase"}};
     }
-    if (Math.round(Number(product.sell_price_usdt)*10000) !== Math.round(Number(data.expected_price_usdt)*10000)) {
+    if (Math.round(Number(product.price_usdt)*10000) !== Math.round(Number(data.expected_price_usdt)*10000)) {
       return {status:200,body:{ok:true,status:"failed",error_code:"price_changed"}};
     }
     const now = Math.floor(Date.now()/1000);
