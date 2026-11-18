@@ -55,6 +55,7 @@
     }
 
     if (typeof token === "function" && token()) {
+      localStorage.removeItem("qingtian_referral_code");
       window.location.replace("./shop.html");
       return;
     }
