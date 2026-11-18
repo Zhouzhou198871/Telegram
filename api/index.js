@@ -140,7 +140,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
     if (!serverOrigin || !process.env.INTERNAL_API_SECRET) return {status:503,body:{ok:false,error:"node_origin_not_configured"}};
     const originPath = nodeProvision ? "/api/nodes/provision" : "/api/nodes/revoke";
     const ts = String(Math.floor(Date.now()/1000));
-    const nonce = cryptoRandom(16).toString("hex");
+    const nonce = Array.from(cryptoRandom(16),b=>b.toString(16).padStart(2,"0")).join("");
     const bodyText = rawBody.toString("utf8");
     const signed = ts + "\n" + nonce + "\nPOST\n" + originPath + "\n" + bodyText;
     const signature = createHmac("sha256",process.env.INTERNAL_API_SECRET).update(signed).digest("hex");
