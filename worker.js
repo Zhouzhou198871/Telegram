@@ -557,21 +557,35 @@ async function products(request, env) {
   try {
     await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
     const result = await env.DB.prepare(
-      "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
+      "SELECT product_id,supplier_product_id,name,category_name,source,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
-    const items = (result.results || []).map(row => ({
-      product_id: row.product_id,
-      supplier_product_id: row.supplier_product_id,
-      name: row.name,
-      category: row.category_name || "数字商品",
-      icon: String(row.icon || ""),
-      price_usdt: String(row.price_usdt),
-      stock: Number(row.stock || 0),
-      price_cny: String(row.price_cny),
-      currency: "CNY",
-      is_local_inventory: Boolean(row.is_local_inventory),
-      purchasable: Boolean(row.purchasable)
-    }));
+    const items = (result.results || []).map(row => {
+      const source = row.source && typeof row.source === "object" ? row.source : {};
+      const pickSourceText = (...keys) => {
+        for (const key of keys) {
+          const value = source[key];
+          if (typeof value === "string" && value.trim()) return value.trim();
+        }
+        return "";
+      };
+      const imageUrl = pickSourceText("ImageUrl","image_url","ProductImageUrl","product_image_url","CoverUrl","cover_url","BannerUrl","banner_url","Image","image","Cover","cover");
+      const description = pickSourceText("Description","description","DescriptionZh","description_zh","Summary","summary","Detail","detail");
+      return {
+        product_id: row.product_id,
+        supplier_product_id: row.supplier_product_id,
+        name: row.name,
+        category: row.category_name || "数字商品",
+        icon: String(row.icon || ""),
+        image_url: /^https?:\\/\\//i.test(imageUrl) ? imageUrl : "",
+        description,
+        price_usdt: String(row.price_usdt),
+        stock: Number(row.stock || 0),
+        price_cny: String(row.price_cny),
+        currency: "CNY",
+        is_local_inventory: Boolean(row.is_local_inventory),
+        purchasable: Boolean(row.purchasable)
+      };
+    });
     return reply(request, env, { ok: true, count: items.length, items, updated_at: Math.floor(Date.now()/1000) });
   } catch {
     return reply(request, env, { ok: false, error: "catalog_unavailable" }, 503);

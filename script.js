@@ -89,14 +89,21 @@ function updateShopHeading(){
  const dict=SHOP_I18N[currentShopLanguage()];
  heading.textContent=document.body.dataset.shopView==="products"?dict.allProducts:dict.catalogHeading;
 }
+function shopViewFromHash(){
+ const hash=String(location.hash||"").toLowerCase();
+ return hash==="#catalog"?"products":hash==="#nodecatalog"?"nodes":"home";
+}
 function setShopView(view, options={}){
  const next=view==="products"?"products":view==="nodes"?"nodes":"home";
+ const target=next==="products"?"#catalog":next==="nodes"?"#nodeCatalog":"#home";
  document.body.dataset.shopView=next;
  document.querySelectorAll("[data-shop-view]").forEach(link=>{
   const active=link.dataset.shopView===next;
   link.classList.toggle("is-active",active);
   if(active)link.setAttribute("aria-current","page");else link.removeAttribute("aria-current");
  });
+ if(options.pushHistory&&location.hash!==target)history.pushState({shopView:next},"",target);
+ else if(options.replaceHistory&&location.hash!==target)history.replaceState({shopView:next},"",target);
  updateShopHeading();
  if(options.scroll&&next==="products")$("catalog")?.scrollIntoView({behavior:"smooth",block:"start"});
  else if(options.scroll&&next==="nodes")$("nodeCatalog")?.scrollIntoView({behavior:"smooth",block:"start"});
@@ -693,8 +700,9 @@ function initShop() {
   applyShopLanguage();
   document.querySelectorAll("[data-shop-view]").forEach(link=>link.addEventListener("click",event=>{
     event.preventDefault();
-    setShopView(link.dataset.shopView,{scroll:true});
+    setShopView(link.dataset.shopView,{scroll:true,pushHistory:true});
   }));
+  window.addEventListener("popstate",()=>setShopView(shopViewFromHash(),{scroll:true}));
   const accountToggle=$("accountMenuToggle"),accountMenu=$("accountMenu");
   accountToggle?.addEventListener("click",()=>{
     const opening=accountMenu.hidden;
@@ -709,7 +717,7 @@ function initShop() {
   document.addEventListener("keydown",event=>{
     if(event.key==="Escape"&&accountMenu&&!accountMenu.hidden){accountMenu.hidden=true;accountToggle?.setAttribute("aria-expanded","false");accountToggle?.focus();}
   });
-  setShopView("home");
+  setShopView(shopViewFromHash(),{scroll:location.hash!=="",replaceHistory:!location.hash});
   const languageToggle=$("languageToggle");
   if(languageToggle)languageToggle.addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",currentShopLanguage()==="zh"?"en":"zh");applyShopLanguage();if(allProducts.length)drawFilteredProducts();});
   $("productSearch").addEventListener("input", () => {drawFilteredProducts();updateShopHeading();});
