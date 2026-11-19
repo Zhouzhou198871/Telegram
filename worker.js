@@ -1015,7 +1015,7 @@ async function adminBotProxy(request, env, method, path, payload) {
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
-  const signed = ts + "\\n" + nonce + "\\n" + method.toUpperCase() + "\\n" + path + "\\n" + body;
+  const signed = ts + "\n" + nonce + "\n" + method.toUpperCase() + "\n" + path + "\n" + body;
   const signature = Array.from(await hmac(env.BOT_BRIDGE_SECRET, signed)).map(b => b.toString(16).padStart(2, "0")).join("");
   let response;
   try {
