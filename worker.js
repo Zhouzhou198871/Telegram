@@ -1003,6 +1003,56 @@ async function adminSession(request, env) {
   return reply(request, env, { ok: true, admin: { id: user.id, email: user.email, nickname: user.nickname || "" } });
 }
 
+async function adminBotProxy(request, env, method, path, payload) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const email = String(claims.email || "").trim().toLowerCase();
+  if (email !== "chulingli1988@outlook.com") return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
+  const user = await env.DB.prepare("SELECT id,email FROM users WHERE id=?").bind(claims.sub).first();
+  if (!user || String(user.email || "").toLowerCase() !== email) return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
+  if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "bot_bridge_not_configured" }, 503);
+  const body = payload === undefined ? "" : JSON.stringify(payload);
+  const ts = String(Math.floor(Date.now() / 1000));
+  const nonce = crypto.randomUUID();
+  const signed = ts + "\\n" + nonce + "\\n" + method.toUpperCase() + "\\n" + path + "\\n" + body;
+  const signature = Array.from(await hmac(env.BOT_BRIDGE_SECRET, signed)).map(b => b.toString(16).padStart(2, "0")).join("");
+  let response;
+  try {
+    response = await fetch(new URL(path, "https://api.lynli.me"), {
+      method,
+      headers: { "Content-Type": "application/json", "X-Worker-Timestamp": ts, "X-Worker-Nonce": nonce, "X-Worker-Signature": signature },
+      body: method === "GET" ? undefined : body
+    });
+  } catch {
+    return reply(request, env, { ok: false, error: "bot_bridge_unreachable" }, 502);
+  }
+  let data = {};
+  try { data = await response.json(); } catch {}
+  return reply(request, env, data, response.status);
+}
+
+async function adminBots(request, env) {
+  const url = new URL(request.url);
+  if (request.method === "GET" && url.pathname === "/api/admin/bots") {
+    return await adminBotProxy(request, env, "GET", "/_internal/bots/status");
+  }
+  if (request.method === "GET" && url.pathname === "/api/admin/bots/logs") {
+    const bot = String(url.searchParams.get("bot") || "");
+    if (!["fakabot", "tg", "mivra"].includes(bot)) return reply(request, env, { ok: false, error: "invalid_bot" }, 400);
+    return await adminBotProxy(request, env, "GET", "/_internal/bots/logs?bot=" + encodeURIComponent(bot) + "&lines=100");
+  }
+  if (request.method === "POST" && url.pathname === "/api/admin/bots/action") {
+    let body;
+    try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
+    if (!["fakabot", "tg", "mivra"].includes(body.bot) || !["start", "stop", "restart"].includes(body.action)) {
+      return reply(request, env, { ok: false, error: "invalid_action" }, 400);
+    }
+    return await adminBotProxy(request, env, "POST", "/_internal/bots/action", { bot: body.bot, action: body.action });
+  }
+  return reply(request, env, { ok: false, error: "not_found" }, 404);
+}
+
 async function adminCredit(request, env) {
   let authorized = false;
   const bearer = request.headers.get("Authorization") || "";
@@ -1073,6 +1123,7 @@ export default {
       const match = url.pathname.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
       if (match && request.method === "GET") return await buyStatus(request, env, match[1]);
       if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
+      if (url.pathname.startsWith("/api/admin/bots")) return await adminBots(request, env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
     } catch {
