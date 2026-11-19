@@ -576,7 +576,7 @@ async function products(request, env) {
         name: row.name,
         category: row.category_name || "数字商品",
         icon: String(row.icon || ""),
-        image_url: /^https?:\\/\\//i.test(imageUrl) ? imageUrl : "",
+        image_url: imageUrl.startsWith("https://") || imageUrl.startsWith("http://") ? imageUrl : "",
         description,
         price_usdt: String(row.price_usdt),
         stock: Number(row.stock || 0),
