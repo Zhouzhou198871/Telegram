@@ -992,10 +992,32 @@ async function confirmRecharge(request, env) {
   return reply(request, env, { ok: true, order_id: orderId, credited: true });
 }
 
+async function adminSession(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  const email = String(claims.email || "").trim().toLowerCase();
+  if (email !== "chulingli1988@outlook.com") return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
+  const user = await env.DB.prepare("SELECT id,email,nickname FROM users WHERE id=?").bind(claims.sub).first();
+  if (!user || String(user.email || "").toLowerCase() !== email) return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
+  return reply(request, env, { ok: true, admin: { id: user.id, email: user.email, nickname: user.nickname || "" } });
+}
+
 async function adminCredit(request, env) {
-  if (!env.ADMIN_API_KEY || request.headers.get("X-Admin-Key") !== env.ADMIN_API_KEY) {
-    return reply(request, env, { ok: false, error: "unauthorized" }, 401);
+  let authorized = false;
+  const bearer = request.headers.get("Authorization") || "";
+  if (bearer.startsWith("Bearer ")) {
+    try {
+      const claims = await verifyToken(request, env);
+      const email = String(claims.email || "").trim().toLowerCase();
+      if (email === "chulingli1988@outlook.com") {
+        const row = await env.DB.prepare("SELECT email FROM users WHERE id=?").bind(claims.sub).first();
+        authorized = Boolean(row && String(row.email || "").toLowerCase() === email);
+      }
+    } catch {}
   }
+  if (!authorized && env.ADMIN_API_KEY && request.headers.get("X-Admin-Key") === env.ADMIN_API_KEY) authorized = true;
+  if (!authorized) return reply(request, env, { ok: false, error: "unauthorized" }, 401);
   let body;
   try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
   const email = String(body.email || "").trim().toLowerCase();
@@ -1050,6 +1072,7 @@ export default {
       if (url.pathname === "/api/buy" && request.method === "POST") return await buy(request, env);
       const match = url.pathname.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
       if (match && request.method === "GET") return await buyStatus(request, env, match[1]);
+      if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
     } catch {
