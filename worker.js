@@ -2,15 +2,21 @@ const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache
 
 function corsHeaders(request, env) {
   const origin = request.headers.get("Origin") || "";
-  const allowedOrigins = new Set([env.FRONTEND_ORIGIN || "https://zhouzhou198871.github.io", "https://shop.lynli.me", "https://zhouzhou198871.github.io"]);
-  const allowedOrigin = allowedOrigins.has(origin) ? origin : (env.FRONTEND_ORIGIN || "https://zhouzhou198871.github.io");
-  return {
-    "Access-Control-Allow-Origin": allowedOrigin,
+  const allowedOrigins = new Set([
+    env.FRONTEND_ORIGIN || "https://shop.lynli.me",
+    "https://shop.lynli.me",
+    "https://admin-xiaochu.vercel.app",
+    "https://zhouzhou198871.github.io"
+  ]);
+  const headers = {
     "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type,Authorization,Idempotency-Key,X-Admin-Key",
     "Access-Control-Max-Age": "86400",
     "Vary": "Origin"
   };
+  if (allowedOrigins.has(origin)) headers["Access-Control-Allow-Origin"] = origin;
+  else if (!origin) headers["Access-Control-Allow-Origin"] = env.FRONTEND_ORIGIN || "https://shop.lynli.me";
+  return headers;
 }
 
 function reply(request, env, data, status = 200) {
