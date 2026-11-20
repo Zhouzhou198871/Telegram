@@ -192,6 +192,8 @@ async function sendCode(request, env) {
   await env.DB.prepare(
     "INSERT INTO users (id,email,balance,balance_units,verify_code,code_expires,code_sent_at,code_attempts,created_at,updated_at,referrer_user_id) VALUES (?,?, '0.0000',0,?,?,?,0,?,?,?) ON CONFLICT(email) DO UPDATE SET verify_code=excluded.verify_code,code_expires=excluded.code_expires,code_sent_at=excluded.code_sent_at,code_attempts=0,updated_at=excluded.updated_at"
   ).bind(userId, email, digest, now + 300, now, now, now, referrer?.id || null).run();
+  const registerIp = String(request.headers.get("CF-Connecting-IP") || String(request.headers.get("X-Forwarded-For") || "").split(",")[0] || "").trim().slice(0,80);
+  if(registerIp) await env.DB.prepare("UPDATE users SET registered_ip=COALESCE(registered_ip,?) WHERE email=?").bind(registerIp,email).run().catch(()=>null);
   try {
     await originRequest(env, "POST", "/api/internal/send_email", { email, code });
   } catch {
@@ -201,6 +203,17 @@ async function sendCode(request, env) {
   return reply(request, env, { ok: true, message: "验证码已发送，请检查邮箱。" });
 }
 
+async function recordUserLogin(env,userId,request,now){
+  try{
+    const forwarded=String(request.headers.get("X-Forwarded-For")||"").split(",")[0].trim();
+    const ip=String(request.headers.get("CF-Connecting-IP")||forwarded||"").trim().slice(0,80);
+    const ua=String(request.headers.get("User-Agent")||"").slice(0,512);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO user_login_events(event_id,user_id,ip,user_agent,created_at) VALUES(?,?,?,?,?)").bind(crypto.randomUUID(),userId,ip||null,ua,now),
+      env.DB.prepare("UPDATE users SET last_login_ip=?,last_login_at=?,login_count=COALESCE(login_count,0)+1 WHERE id=?").bind(ip||null,now,userId)
+    ]);
+  }catch{}
+}
 async function login(request, env) {
  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
  const email=String(body.email||"").trim().toLowerCase(),code=String(body.code||"").trim(),password=typeof body.password==="string"?body.password:"";
@@ -214,6 +227,7 @@ async function login(request, env) {
   const now=Math.floor(Date.now()/1000);let ph=user.password_hash||null;
   if(!ph&&password){if(!validPassword(password))return reply(request,env,{ok:false,error:"weak_password"},400);ph=await hashPassword(password)}
   await env.DB.prepare("UPDATE users SET verify_code=NULL,code_expires=NULL,code_attempts=0,password_hash=COALESCE(password_hash,?),updated_at=? WHERE id=?").bind(ph,now,user.id).run();
+  await recordUserLogin(env,user.id,request,now);
   const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
   return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
  }
@@ -226,7 +240,8 @@ async function login(request, env) {
   const upgraded=await hashPassword(password);
   await env.DB.prepare("UPDATE users SET password_hash=?,password_hash_legacy=NULL,updated_at=? WHERE id=?").bind(upgraded,now,user.id).run();
  }
- const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+ await recordUserLogin(env,user.id,request,now);
+  const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
  return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
 }
 async function forgotPassword(request,env){
