@@ -143,7 +143,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
     const categoriesIn = Array.isArray(data.categories) ? data.categories : [];
     const productsIn = Array.isArray(data.products) ? data.products : [];
     const version = String(data.fetched_at || data.updated_at || new Date().toISOString());
-    if (!/^\\d{4}-\\d{2}-\\d{2}T/.test(version) || categoriesIn.length < 1 || categoriesIn.length > 200 || productsIn.length < 1000 || productsIn.length > 10000) {
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(version) || categoriesIn.length < 1 || categoriesIn.length > 200 || productsIn.length < 1000 || productsIn.length > 10000) {
       return {status:400,body:{ok:false,error:"catalog_payload_validation_failed"}};
     }
     const categories = categoriesIn.map(c => ({
