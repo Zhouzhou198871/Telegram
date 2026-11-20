@@ -211,11 +211,14 @@ async function login(request, env) {
   const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
   return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
  }
- if(!password||!user||!user.password_hash||!await verifyPassword(password,user.password_hash))return reply(request,env,{ok:false,error:"invalid_credentials"},401);
+ if(!password||!user)return reply(request,env,{ok:false,error:"invalid_credentials"},401);
+ const currentOk=!!user.password_hash&&await verifyPassword(password,user.password_hash);
+ const legacyOk=!currentOk&&!!user.password_hash_legacy&&await verifyPassword(password,user.password_hash_legacy);
+ if(!currentOk&&!legacyOk)return reply(request,env,{ok:false,error:"invalid_credentials"},401);
  const now=Math.floor(Date.now()/1000);
- if(user.password_hash.startsWith("pbkdf2$")){
+ if(legacyOk||(user.password_hash||"").startsWith("pbkdf2$")){
   const upgraded=await hashPassword(password);
-  await env.DB.prepare("UPDATE users SET password_hash=?,updated_at=? WHERE id=? AND password_hash=?").bind(upgraded,now,user.id,user.password_hash).run();
+  await env.DB.prepare("UPDATE users SET password_hash=?,password_hash_legacy=NULL,updated_at=? WHERE id=?").bind(upgraded,now,user.id).run();
  }
  const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
  return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
