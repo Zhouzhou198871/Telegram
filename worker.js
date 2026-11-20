@@ -1168,6 +1168,107 @@ async function adminBots(request, env) {
   return reply(request, env, { ok: false, error: "not_found" }, 404);
 }
 
+const LEGACY_ADMIN_EXACT = new Set([
+  "/api/v1/admin/account_pool",
+  "/api/v1/admin/account_pool/stats",
+  "/api/v1/admin/bots/matrix/stats",
+  "/api/v1/admin/bots/matrix/users",
+  "/api/v1/admin/chat/users",
+  "/api/v1/admin/config/ai",
+  "/api/v1/admin/config/mail",
+  "/api/v1/admin/mail/send",
+  "/api/v1/admin/mail/templates",
+  "/api/v1/admin/nodes",
+  "/api/v1/admin/notices",
+  "/api/v1/admin/orders",
+  "/api/v1/admin/payment_configs",
+  "/api/v1/admin/plans",
+  "/api/v1/admin/products",
+  "/api/v1/admin/servers",
+  "/api/v1/admin/shop/orders",
+  "/api/v1/admin/shop/overview",
+  "/api/v1/admin/shop/products",
+  "/api/v1/admin/stats/overview",
+  "/api/v1/admin/tickets",
+  "/api/v1/admin/upstream/overview",
+  "/api/v1/admin/users"
+]);
+const LEGACY_ADMIN_PREFIXES = [
+  "/api/v1/admin/account_pool/",
+  "/api/v1/admin/bots/matrix/",
+  "/api/v1/admin/chat/",
+  "/api/v1/admin/mail/",
+  "/api/v1/admin/nodes/",
+  "/api/v1/admin/notices/",
+  "/api/v1/admin/plans/",
+  "/api/v1/admin/servers/",
+  "/api/v1/admin/shop/order/",
+  "/api/v1/admin/shop/product/",
+  "/api/v1/admin/ticket/",
+  "/api/v1/admin/users/"
+];
+function legacyAdminPathAllowed(path) {
+  return LEGACY_ADMIN_EXACT.has(path) || LEGACY_ADMIN_PREFIXES.some(prefix => path.startsWith(prefix));
+}
+async function adminLegacyProxy(request, env) {
+  const auth = await adminAuthorize(request, env);
+  if (auth.error) return auth.error;
+  if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "admin_bridge_not_configured" }, 503);
+  if (!["GET", "POST"].includes(request.method)) return reply(request, env, { ok: false, error: "method_not_allowed" }, 405);
+
+  const url = new URL(request.url);
+  const prefix = "/api/admin/legacy";
+  if (!url.pathname.startsWith(prefix + "/")) return reply(request, env, { ok: false, error: "not_found" }, 404);
+  const suffix = url.pathname.slice(prefix.length);
+  if (!suffix.startsWith("/") || suffix.startsWith("//") || suffix.includes("..") || suffix.includes("\\") || /%2f|%5c/i.test(suffix)) {
+    return reply(request, env, { ok: false, error: "invalid_legacy_path" }, 400);
+  }
+  const apiPath = "/api/v1/admin" + suffix;
+  if (!legacyAdminPathAllowed(apiPath)) return reply(request, env, { ok: false, error: "legacy_route_not_allowed" }, 404);
+  if (apiPath === "/api/v1/admin/payment_configs" && url.searchParams.get("view") !== "status") {
+    return reply(request, env, { ok: false, error: "payment_status_view_required" }, 400);
+  }
+
+  let body = "";
+  if (request.method !== "GET") {
+    body = await request.text();
+    if (body.length > 2000000) return reply(request, env, { ok: false, error: "request_too_large" }, 413);
+  }
+  const targetPath = apiPath + url.search;
+  const ts = String(Math.floor(Date.now() / 1000));
+  const nonce = crypto.randomUUID();
+  const signed = ts + "\n" + nonce + "\n" + request.method.toUpperCase() + "\n" + targetPath + "\n" + body;
+  const signature = Array.from(await hmac(env.BOT_BRIDGE_SECRET, signed))
+    .map(b => b.toString(16).padStart(2, "0")).join("");
+
+  let response;
+  try {
+    response = await fetch(new URL(targetPath, "https://api.lynli.me"), {
+      method: request.method,
+      headers: {
+        "Content-Type": request.headers.get("Content-Type") || "application/json",
+        "Accept": "application/json",
+        "X-Admin-Email": String(auth.user.email || "").toLowerCase(),
+        "X-Admin-Timestamp": ts,
+        "X-Admin-Nonce": nonce,
+        "X-Admin-Signature": signature
+      },
+      body: request.method === "GET" ? undefined : body
+    });
+  } catch {
+    return reply(request, env, { ok: false, error: "legacy_api_unreachable" }, 502);
+  }
+
+  let data = {};
+  try { data = await response.json(); } catch {}
+  const ok = response.ok && (Number(data.code) === 1 || data.ok === true || data.status === "success");
+  if (!ok) {
+    const message = data.msg || data.message || data.error || "legacy_api_error";
+    return reply(request, env, { ok: false, error: String(message), legacy_code: data.code ?? null }, response.status >= 400 ? response.status : 400);
+  }
+  return reply(request, env, { ok: true, data }, response.status);
+}
+
 async function adminCredit(request, env) {
   let authorized = false;
   const bearer = request.headers.get("Authorization") || "";
@@ -1237,6 +1338,7 @@ export default {
       if (url.pathname === "/api/buy" && request.method === "POST") return await buy(request, env);
       const match = url.pathname.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
       if (match && request.method === "GET") return await buyStatus(request, env, match[1]);
+      if (url.pathname.startsWith("/api/admin/legacy/")) return await adminLegacyProxy(request, env);
       if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
       if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
