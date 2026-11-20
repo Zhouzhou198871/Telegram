@@ -322,16 +322,13 @@ async function telegramApi(env, method, payload) {
 async function telegramLoginStart(request, env) {
   if (!env.TELEGRAM_BOT_TOKEN || !env.JWT_SECRET) return reply(request, env, { ok: false, error: "telegram_login_not_configured" }, 503);
   await telegramLoginTable(env);
-  const webhookSecret = await telegramWebhookSecret(env);
+  // The main bot runs long-polling for its store commands. Do not switch it to
+  // Telegram webhook mode for website login; the polling service forwards only
+  // /start web_<nonce> and tglogin:<nonce> updates to the signed Vercel endpoint.
   try {
-    await telegramApi(env, "setWebhook", {
-      url: (env.PUBLIC_APP_URL || "https://shop.lynli.me") + "/api/auth/telegram/webhook/" + webhookSecret,
-      secret_token: webhookSecret,
-      allowed_updates: ["message", "callback_query"],
-      drop_pending_updates: false
-    });
+    await telegramApi(env, "deleteWebhook", { drop_pending_updates: false });
   } catch (error) {
-    return reply(request, env, { ok: false, error: "telegram_webhook_setup_failed", detail: String(error.message || "telegram_api_error") }, 502);
+    return reply(request, env, { ok: false, error: "telegram_polling_restore_failed", detail: String(error.message || "telegram_api_error") }, 502);
   }
   const now = Math.floor(Date.now() / 1000), nonce = b64url(crypto.getRandomValues(new Uint8Array(24)));
   await env.DB.prepare("INSERT INTO telegram_login_sessions(nonce,status,expires_at,created_at) VALUES(?, 'pending', ?, ?)").bind(nonce, now + 300, now).run();
