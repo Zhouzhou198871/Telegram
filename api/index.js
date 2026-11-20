@@ -106,8 +106,8 @@ function decryptDelivery(value) {
   return Buffer.concat([decipher.update(packed.subarray(28)), decipher.final()]).toString("utf8");
 }
 
-async function verifyInternal(method, url, headers, rawBody, db) {
-  const secret = process.env.INTERNAL_API_SECRET || "";
+async function verifyInternal(method, url, headers, rawBody, db, secretOverride) {
+  const secret = secretOverride !== undefined ? String(secretOverride || "") : (process.env.INTERNAL_API_SECRET || "");
   const ts = headers.get("X-Worker-Timestamp") || "";
   const nonce = headers.get("X-Worker-Nonce") || "";
   const signature = headers.get("X-Worker-Signature") || "";
@@ -129,11 +129,90 @@ async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
   const buyStatusMatch = path.match(/^\/api\/internal\/buy\/([a-f0-9-]{36})$/i);
   const catalogSync = path === "/api/internal/catalog_sync" && method === "POST";
+  const catalogSnapshotSync = path === "/api/internal/catalog_snapshot_sync" && method === "POST";
   const nodeProvision = path === "/api/internal/nodes/provision" && method === "POST";
   const nodeRevoke = path === "/api/internal/nodes/revoke" && method === "POST";
-  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync && !nodeProvision && !nodeRevoke) return null;
-  const authorized = await verifyInternal(method, url, headers, rawBody, db).catch(() => false);
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync && !catalogSnapshotSync && !nodeProvision && !nodeRevoke) return null;
+  const authorized = await verifyInternal(method, url, headers, rawBody, db, catalogSnapshotSync ? process.env.CATALOG_SYNC_SECRET : undefined).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
+
+  if (catalogSnapshotSync) {
+    let data = {};
+    try { data = JSON.parse(rawBody.toString("utf8") || "{}"); }
+    catch { return {status:400,body:{ok:false,error:"invalid_json"}}; }
+    const categoriesIn = Array.isArray(data.categories) ? data.categories : [];
+    const productsIn = Array.isArray(data.products) ? data.products : [];
+    const version = String(data.fetched_at || data.updated_at || new Date().toISOString());
+    if (!/^\\d{4}-\\d{2}-\\d{2}T/.test(version) || categoriesIn.length < 1 || categoriesIn.length > 200 || productsIn.length < 1000 || productsIn.length > 10000) {
+      return {status:400,body:{ok:false,error:"catalog_payload_validation_failed"}};
+    }
+    const categories = categoriesIn.map(c => ({
+      category_id:String(c.id || ""), name:String(c.name || "未命名分类"),
+      alias:String(c.alias || ""), icon:String(c.icon || ""),
+      product_count:Math.max(0,Math.trunc(Number(c.count || 0))),
+      enabled:c.enabled === true ? 1 : 0, synced_at:version
+    }));
+    if (categories.some(c => !c.category_id || !Number.isFinite(c.product_count))) {
+      return {status:400,body:{ok:false,error:"catalog_category_invalid"}};
+    }
+    const seen = new Set();
+    const products = [];
+    for (const p of productsIn) {
+      const id = String(p.supplier_product_id || p.id || "").trim();
+      const cost = Number(p.price_cny);
+      const stock = Number(p.stock || 0);
+      if (!id || seen.has(id) || !Number.isFinite(cost) || cost < 0 || !Number.isFinite(stock) || stock < 0) {
+        return {status:400,body:{ok:false,error:"catalog_product_invalid"}};
+      }
+      seen.add(id);
+      const onSale = p.is_on_sale === true;
+      const active = onSale && stock > 0 && cost > 0;
+      const sell = Math.round((cost / 4) * 10000) / 10000;
+      const status = !onSale ? "off_sale" : stock > 0 ? "in_stock" : "out_of_stock";
+      const productUrl = "https://dahaoshang.com/#/product/" + encodeURIComponent(id);
+      const variants = JSON.stringify(Array.isArray(p.variants) ? p.variants : []);
+      const raw = JSON.stringify(p.raw || p);
+      products.push({
+        version, supplier_product_id:id, title:String(p.name || "未命名商品"),
+        category_id:String(p.category_id || ""), category:String(p.category_name || "其他商品"),
+        price_cny:cost, sell_price_usdt:sell, description:p.description == null ? null : String(p.description),
+        variants_json:variants, stock_status:status, product_url:productUrl,
+        raw_json:raw, active:active ? 1 : 0, synced_at:version
+      });
+    }
+    if (products.length !== productsIn.length) return {status:400,body:{ok:false,error:"catalog_product_count_mismatch"}};
+    const activeCount = products.filter(p => p.active === 1).length;
+    await db.begin(async tx => {
+      for (let i=0;i<categories.length;i+=200) {
+        const batch = categories.slice(i,i+200);
+        await tx.unsafe(
+          "INSERT INTO supplier_categories(category_id,name,alias,icon,product_count,enabled,synced_at) SELECT x.category_id,x.name,x.alias,x.icon,x.product_count,x.enabled,x.synced_at FROM jsonb_to_recordset($1::jsonb) AS x(category_id text,name text,alias text,icon text,product_count integer,enabled integer,synced_at text) ON CONFLICT(category_id) DO UPDATE SET name=EXCLUDED.name,alias=EXCLUDED.alias,icon=EXCLUDED.icon,product_count=EXCLUDED.product_count,enabled=EXCLUDED.enabled,synced_at=EXCLUDED.synced_at",
+          [JSON.stringify(batch)]
+        );
+        await tx.unsafe(
+          "INSERT INTO catalog_snapshot_categories(version,category_id,name,alias,icon,product_count,enabled) SELECT $1,x.category_id,x.name,x.alias,x.icon,x.product_count,x.enabled FROM jsonb_to_recordset($2::jsonb) AS x(category_id text,name text,alias text,icon text,product_count integer,enabled integer) ON CONFLICT(version,category_id) DO UPDATE SET name=EXCLUDED.name,alias=EXCLUDED.alias,icon=EXCLUDED.icon,product_count=EXCLUDED.product_count,enabled=EXCLUDED.enabled",
+          [version,JSON.stringify(batch)]
+        );
+      }
+      for (let i=0;i<products.length;i+=250) {
+        const batch = products.slice(i,i+250);
+        const json = JSON.stringify(batch);
+        await tx.unsafe(
+          "INSERT INTO products(supplier_product_id,title,category,price_cny,sell_price_usdt,description,variants_json,stock_status,product_url,raw_json,active,synced_at) SELECT x.supplier_product_id,x.title,x.category,x.price_cny,x.sell_price_usdt,x.description,x.variants_json,x.stock_status,x.product_url,x.raw_json,x.active,x.synced_at FROM jsonb_to_recordset($1::jsonb) AS x(supplier_product_id text,title text,category text,price_cny double precision,sell_price_usdt double precision,description text,variants_json text,stock_status text,product_url text,raw_json text,active integer,synced_at text) ON CONFLICT(supplier_product_id) DO UPDATE SET title=EXCLUDED.title,category=EXCLUDED.category,price_cny=EXCLUDED.price_cny,sell_price_usdt=EXCLUDED.sell_price_usdt,description=EXCLUDED.description,variants_json=EXCLUDED.variants_json,stock_status=EXCLUDED.stock_status,product_url=EXCLUDED.product_url,raw_json=EXCLUDED.raw_json,active=EXCLUDED.active,synced_at=EXCLUDED.synced_at",
+          [json]
+        );
+        await tx.unsafe(
+          "INSERT INTO catalog_snapshot_products(version,supplier_product_id,title,category_id,category,price_cny,sell_price_usdt,description,variants_json,stock_status,product_url,raw_json,active) SELECT x.version,x.supplier_product_id,x.title,x.category_id,x.category,x.price_cny,x.sell_price_usdt,x.description,x.variants_json,x.stock_status,x.product_url,x.raw_json,x.active FROM jsonb_to_recordset($1::jsonb) AS x(version text,supplier_product_id text,title text,category_id text,category text,price_cny double precision,sell_price_usdt double precision,description text,variants_json text,stock_status text,product_url text,raw_json text,active integer) ON CONFLICT(version,supplier_product_id) DO UPDATE SET title=EXCLUDED.title,category_id=EXCLUDED.category_id,category=EXCLUDED.category,price_cny=EXCLUDED.price_cny,sell_price_usdt=EXCLUDED.sell_price_usdt,description=EXCLUDED.description,variants_json=EXCLUDED.variants_json,stock_status=EXCLUDED.stock_status,product_url=EXCLUDED.product_url,raw_json=EXCLUDED.raw_json,active=EXCLUDED.active",
+          [json]
+        );
+      }
+      await tx.unsafe("INSERT INTO catalog_sync_state(id,synced_at,product_count,category_count) VALUES(1,$1,$2,$3) ON CONFLICT(id) DO UPDATE SET synced_at=EXCLUDED.synced_at,product_count=EXCLUDED.product_count,category_count=EXCLUDED.category_count",[version,products.length,categories.length]);
+      await tx.unsafe("INSERT INTO catalog_sync_runs(attempted_at,status,product_count,category_count,active_count,error) VALUES($1,'success',$2,$3,$4,NULL)",[version,products.length,categories.length,activeCount]);
+      await tx.unsafe("DELETE FROM catalog_snapshot_products WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_products ORDER BY version DESC LIMIT 2)");
+      await tx.unsafe("DELETE FROM catalog_snapshot_categories WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_categories ORDER BY version DESC LIMIT 2)");
+    });
+    return {status:200,body:{ok:true,version,products:products.length,categories:categories.length,active_products:activeCount}};
+  }
 
   if (nodeProvision || nodeRevoke) {
     const serverApiOrigin = String(process.env.NODE_SERVER_API_ORIGIN || "http://167.253.96.220:8001").trim();
