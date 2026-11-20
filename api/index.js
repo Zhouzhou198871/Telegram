@@ -133,7 +133,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
   const nodeProvision = path === "/api/internal/nodes/provision" && method === "POST";
   const nodeRevoke = path === "/api/internal/nodes/revoke" && method === "POST";
   if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync && !catalogSnapshotSync && !nodeProvision && !nodeRevoke) return null;
-  const authorized = await verifyInternal(method, url, headers, rawBody, db, catalogSnapshotSync ? process.env.CATALOG_SYNC_SECRET : undefined).catch(() => false);
+  const authorized = await verifyInternal(method, url, headers, rawBody, db, catalogSnapshotSync ? (process.env.CATALOG_SYNC_SECRET || "") : undefined).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
 
   if (catalogSnapshotSync) {
