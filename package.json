@@ -8,6 +8,5 @@
   "dependencies": {
     "postgres": "^3.4.7",
     "nodemailer": "^7.0.5"
-  },
-  "main": "api/[...path].js"
+  }
 }
