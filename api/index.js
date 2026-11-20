@@ -421,9 +421,14 @@ export default async function handler(req, res) {
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
     if (url.pathname === "/api/internal/catalog_snapshot_sync" && method === "POST") {
-      const result = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
-      if (!result) return jsonResponse(res, 404, { ok: false, error: "not_found" });
-      return jsonResponse(res, result.status, result.body);
+      try {
+        const result = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
+        if (!result) return jsonResponse(res, 404, { ok: false, error: "not_found" });
+        return jsonResponse(res, result.status, result.body);
+      } catch (error) {
+        console.error("[catalog_snapshot_sync_failed]", String(error?.message || error), String(error?.code || ""));
+        return jsonResponse(res, 500, { ok: false, error: "catalog_snapshot_sync_failed", code: String(error?.code || "") });
+      }
     }
     const env = {
       ...process.env,
