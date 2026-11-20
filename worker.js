@@ -1018,6 +1018,95 @@ async function confirmRecharge(request, env) {
   return reply(request, env, { ok: true, order_id: orderId, credited: true });
 }
 
+
+async function adminAuthorize(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return { error: reply(request, env, { ok: false, error: e.message }, 401) }; }
+  const email = String(claims.email || "").trim().toLowerCase();
+  if (email !== "chulingli1988@outlook.com") {
+    return { error: reply(request, env, { ok: false, error: "admin_forbidden" }, 403) };
+  }
+  const user = await env.DB.prepare("SELECT id,email FROM users WHERE id=?").bind(claims.sub).first();
+  if (!user || String(user.email || "").toLowerCase() !== email) {
+    return { error: reply(request, env, { ok: false, error: "admin_forbidden" }, 403) };
+  }
+  return { claims, user };
+}
+
+async function adminOverview(request, env) {
+  const auth = await adminAuthorize(request, env);
+  if (auth.error) return auth.error;
+  const [users, webOrders, nodeOrders, catalog, activeCatalog, products] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM users").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM web_purchases").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM node_orders").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog WHERE is_on_sale=true AND purchasable=true").first(),
+    env.DB.prepare("SELECT COUNT(*) AS total FROM products WHERE active=1").first()
+  ]);
+  return reply(request, env, {
+    ok: true,
+    overview: {
+      users: Number(users?.total || 0),
+      orders: Number(webOrders?.total || 0) + Number(nodeOrders?.total || 0),
+      web_orders: Number(webOrders?.total || 0),
+      node_orders: Number(nodeOrders?.total || 0),
+      catalog_products: Number(catalog?.total || 0),
+      purchasable_products: Number(activeCatalog?.total || 0),
+      synced_products: Number(products?.total || 0)
+    }
+  });
+}
+
+async function adminListUsers(request, env) {
+  const auth = await adminAuthorize(request, env);
+  if (auth.error) return auth.error;
+  const url = new URL(request.url);
+  const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
+  const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
+  const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "25", 10) || 25));
+  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const [count, rows] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE (?='' OR email ILIKE ? OR COALESCE(nickname,'') ILIKE ?)").bind(q, pattern, pattern).first(),
+    env.DB.prepare("SELECT id,email,nickname,tg_user_id,balance,created_at,updated_at FROM users WHERE (?='' OR email ILIKE ? OR COALESCE(nickname,'') ILIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, limit, (page - 1) * limit).all()
+  ]);
+  return reply(request, env, { ok: true, users: rows.results || [], total: Number(count?.total || 0), page, limit });
+}
+
+async function adminListOrders(request, env) {
+  const auth = await adminAuthorize(request, env);
+  if (auth.error) return auth.error;
+  const url = new URL(request.url);
+  const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
+  const status = String(url.searchParams.get("status") || "").trim().slice(0, 40);
+  const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50));
+  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const [web, nodes] = await Promise.all([
+    env.DB.prepare("SELECT w.order_id,w.user_id,u.email,w.product_id,w.amount::text AS amount,w.status,w.created_at,w.updated_at,'商城订单' AS order_type FROM web_purchases w LEFT JOIN users u ON u.id=w.user_id WHERE (?='' OR w.status=?) AND (?='' OR w.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR w.product_id ILIKE ?) ORDER BY w.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all(),
+    env.DB.prepare("SELECT n.order_id,n.user_id,u.email,n.product_id,(n.amount_units::numeric/10000)::text AS amount,n.status,n.created_at,n.updated_at,'节点订单' AS order_type FROM node_orders n LEFT JOIN users u ON u.id=n.user_id WHERE (?='' OR n.status=?) AND (?='' OR n.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR n.product_id ILIKE ?) ORDER BY n.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all()
+  ]);
+  const orders = [...(web.results || []), ...(nodes.results || [])]
+    .sort((a,b) => Number(b.created_at || 0) - Number(a.created_at || 0))
+    .slice(0, limit);
+  return reply(request, env, { ok: true, orders, total_returned: orders.length, limit });
+}
+
+async function adminListProducts(request, env) {
+  const auth = await adminAuthorize(request, env);
+  if (auth.error) return auth.error;
+  const url = new URL(request.url);
+  const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
+  const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
+  const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "25", 10) || 25));
+  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const [count, rows] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?)").bind(q, pattern, pattern, pattern).first(),
+    env.DB.prepare("SELECT product_id,supplier_product_id,name,category_name,price_cny::text AS price_cny,price_usdt::text AS price_usdt,stock,is_on_sale,is_local_inventory,purchasable,updated_at FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?) ORDER BY updated_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, pattern, limit, (page - 1) * limit).all()
+  ]);
+  return reply(request, env, { ok: true, products: rows.results || [], total: Number(count?.total || 0), page, limit, read_only: true });
+}
+
 async function adminSession(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
@@ -1149,6 +1238,10 @@ export default {
       const match = url.pathname.match(/^\/api\/buy\/([a-f0-9-]{36})$/i);
       if (match && request.method === "GET") return await buyStatus(request, env, match[1]);
       if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
+      if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
+      if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
+      if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
+      if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
       if (url.pathname.startsWith("/api/admin/bots")) return await adminBots(request, env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
