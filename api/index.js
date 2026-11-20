@@ -420,6 +420,11 @@ export default async function handler(req, res) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
+    if (url.pathname === "/api/internal/catalog_snapshot_sync" && method === "POST") {
+      const result = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
+      if (!result) return jsonResponse(res, 404, { ok: false, error: "not_found" });
+      return jsonResponse(res, result.status, result.body);
+    }
     const env = {
       ...process.env,
       DB: new NeonD1Compat(getSql()),
