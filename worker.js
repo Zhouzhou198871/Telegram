@@ -1066,7 +1066,7 @@ async function adminListUsers(request, env) {
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
   const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
   const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "25", 10) || 25));
-  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const pattern = "%" + q + "%";
   const [count, rows] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS total FROM users WHERE (?='' OR email ILIKE ? OR COALESCE(nickname,'') ILIKE ?)").bind(q, pattern, pattern).first(),
     env.DB.prepare("SELECT id,email,nickname,tg_user_id,balance,created_at,updated_at FROM users WHERE (?='' OR email ILIKE ? OR COALESCE(nickname,'') ILIKE ?) ORDER BY created_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, limit, (page - 1) * limit).all()
@@ -1081,7 +1081,7 @@ async function adminListOrders(request, env) {
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
   const status = String(url.searchParams.get("status") || "").trim().slice(0, 40);
   const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50));
-  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const pattern = "%" + q + "%";
   const [web, nodes] = await Promise.all([
     env.DB.prepare("SELECT w.order_id,w.user_id,u.email,w.product_id,w.amount::text AS amount,w.status,w.created_at,w.updated_at,'商城订单' AS order_type FROM web_purchases w LEFT JOIN users u ON u.id=w.user_id WHERE (?='' OR w.status=?) AND (?='' OR w.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR w.product_id ILIKE ?) ORDER BY w.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all(),
     env.DB.prepare("SELECT n.order_id,n.user_id,u.email,n.product_id,(n.amount_units::numeric/10000)::text AS amount,n.status,n.created_at,n.updated_at,'节点订单' AS order_type FROM node_orders n LEFT JOIN users u ON u.id=n.user_id WHERE (?='' OR n.status=?) AND (?='' OR n.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR n.product_id ILIKE ?) ORDER BY n.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all()
@@ -1099,7 +1099,7 @@ async function adminListProducts(request, env) {
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
   const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
   const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "25", 10) || 25));
-  const pattern = "%" + q.replace(/[\\%_]/g, "\\async function adminSession(request, env) {") + "%";
+  const pattern = "%" + q + "%";
   const [count, rows] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?)").bind(q, pattern, pattern, pattern).first(),
     env.DB.prepare("SELECT product_id,supplier_product_id,name,category_name,price_cny::text AS price_cny,price_usdt::text AS price_usdt,stock,is_on_sale,is_local_inventory,purchasable,updated_at FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?) ORDER BY updated_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, pattern, limit, (page - 1) * limit).all()
