@@ -341,6 +341,37 @@ export default async function handler(req, res) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
+    if (url.pathname === "/api/internal/auth-users-sync" && method === "POST") {
+      const body = rawBody || Buffer.alloc(0);
+      const db = getSql();
+      const authorized = await verifyInternal(method, url, headers, body, db).catch(() => false);
+      if (!authorized) return jsonResponse(res, 401, { ok: false, error: "unauthorized" });
+      let payload;
+      try { payload = JSON.parse(body.toString("utf8")); }
+      catch { return jsonResponse(res, 400, { ok: false, error: "invalid_json" }); }
+      if (!Array.isArray(payload.users) || payload.users.length !== 2) {
+        return jsonResponse(res, 400, { ok: false, error: "invalid_auth_user_batch" });
+      }
+      const updated = await db.begin(async tx => {
+        let count = 0;
+        for (const user of payload.users) {
+          const id = String(user.id || "");
+          const email = String(user.email || "").trim().toLowerCase();
+          const passwordHash = String(user.password_hash || "");
+          if (!/^[a-f0-9-]{36}$/i.test(id) || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) ||
+              user.status !== "active" || !/^pbkdf2-sha256\\$210000\\$[A-Za-z0-9_-]+\\$[A-Za-z0-9_-]+$/.test(passwordHash)) {
+            throw new Error("invalid_auth_user_record");
+          }
+          const existing = await tx.unsafe("SELECT id FROM users WHERE id=$1 AND lower(email)=lower($2)", [id, email]);
+          if (existing.length !== 1) throw new Error("auth_user_identity_mismatch");
+          const rows = await tx.unsafe("UPDATE users SET password_hash=$1 WHERE id=$2 AND lower(email)=lower($3) RETURNING id", [passwordHash, id, email]);
+          if (rows.length !== 1) throw new Error("auth_user_update_failed");
+          count++;
+        }
+        return count;
+      });
+      return jsonResponse(res, 200, { ok: true, updated });
+    }
     const env = {
       ...process.env,
       DB: new NeonD1Compat(getSql()),
