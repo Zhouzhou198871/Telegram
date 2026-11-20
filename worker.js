@@ -52,9 +52,24 @@ async function hashPassword(password) {
  return "pbkdf2-sha256$210000$"+b64url(salt)+"$"+b64url(bits);
 }
 async function verifyPassword(password,stored) {
- if(typeof stored!=="string")return false;const p=stored.split("$");
- if(p.length!==4||p[0]!=="pbkdf2-sha256"||p[1]!=="210000")return false;
- try{const salt=unb64url(p[2]),expected=unb64url(p[3]);const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);const actual=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations:210000},key,256));if(actual.length!==expected.length)return false;let diff=0;for(let i=0;i<actual.length;i++)diff|=actual[i]^expected[i];return diff===0}catch{return false}
+ if(typeof stored!=="string")return false;
+ const p=stored.split("$");
+ try {
+  let salt,expected,iterations;
+  if(p.length===4&&p[0]==="pbkdf2"&&p[1]==="100000"&&/^[a-f0-9]{32}$/i.test(p[2])&&/^[a-f0-9]{64}$/i.test(p[3])){
+   // Legacy Cloudflare AUTH_DB format: the 32-character hex salt was used as UTF-8 bytes.
+   salt=new TextEncoder().encode(p[2]);
+   expected=Uint8Array.from(p[3].match(/.{2}/g),x=>parseInt(x,16));
+   iterations=100000;
+  } else if(p.length===4&&p[0]==="pbkdf2-sha256"&&p[1]==="210000"){
+   salt=unb64url(p[2]);expected=unb64url(p[3]);iterations=210000;
+  } else return false;
+  const key=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveBits"]);
+  const actual=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-256",salt,iterations},key,256));
+  if(actual.length!==expected.length)return false;
+  let diff=0;for(let i=0;i<actual.length;i++)diff|=actual[i]^expected[i];
+  return diff===0;
+ }catch{return false}
 }
 function validPassword(password){return typeof password==="string"&&password.length>=8&&password.length<=20&&/[A-Za-z]/.test(password)&&/\d/.test(password)}
 
@@ -197,7 +212,12 @@ async function login(request, env) {
   return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
  }
  if(!password||!user||!user.password_hash||!await verifyPassword(password,user.password_hash))return reply(request,env,{ok:false,error:"invalid_credentials"},401);
- const now=Math.floor(Date.now()/1000),token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
+ const now=Math.floor(Date.now()/1000);
+ if(user.password_hash.startsWith("pbkdf2$")){
+  const upgraded=await hashPassword(password);
+  await env.DB.prepare("UPDATE users SET password_hash=?,updated_at=? WHERE id=? AND password_hash=?").bind(upgraded,now,user.id,user.password_hash).run();
+ }
+ const token=await signToken({sub:user.id,email,iat:now,exp:now+2592000,ver:Number(user.token_version||0)},env.JWT_SECRET||"");
  return reply(request,env,{ok:true,token,user:{id:user.id,email,balance:user.balance||"0.0000",balance_units:user.balance_units||0}});
 }
 async function forgotPassword(request,env){
