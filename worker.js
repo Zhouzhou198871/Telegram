@@ -1070,6 +1070,7 @@ async function adminAuthorize(request,env,permission="overview.read"){
  return auth;
 }
 function legacyAdminPermission(path,method){
+ if(path.includes("/nodes/export"))return "nodes.manage";
  const suffix=method==="GET"?"read":"manage";
  if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
  if(path.includes("/bots/matrix/"))return "bots."+suffix;
