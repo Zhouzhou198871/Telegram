@@ -1198,14 +1198,17 @@ async function adminNodeAccessCatalog(request,env){
 async function adminNodeAccess(request,env){
  const permission=request.method==="GET"?"nodes.read":"nodes.manage",auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
  if(request.method==="GET"){
-  const userId=String(new URL(request.url).searchParams.get("user_id")||"").trim();if(!userId)return reply(request,env,{ok:false,error:"missing_user_id"},400);
-  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,a.product_id,a.order_id,a.protocol,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.status,a.created_at,a.updated_at,p.name AS product_name,g.name AS package_name,o.delivery_ciphertext FROM node_accounts a LEFT JOIN node_products p ON p.product_id=a.product_id LEFT JOIN node_orders o ON o.order_id=a.order_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 100").bind(userId).all();
+  const lookup=new URL(request.url),userId=String(lookup.searchParams.get("user_id")||"").trim(),email=String(lookup.searchParams.get("email")||"").trim().toLowerCase();
+  if(!userId&&!email)return reply(request,env,{ok:false,error:"missing_user_id"},400);
+  const target=await env.DB.prepare("SELECT id FROM users WHERE (?<>'' AND id=?) OR (?<>'' AND lower(email)=?) LIMIT 1").bind(userId,userId,email,email).first();
+  if(!target)return reply(request,env,{ok:true,accounts:[]});
+  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,a.product_id,a.order_id,a.protocol,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.status,a.created_at,a.updated_at,p.name AS product_name,g.name AS package_name,o.delivery_ciphertext FROM node_accounts a LEFT JOIN node_products p ON p.product_id=a.product_id LEFT JOIN node_orders o ON o.order_id=a.order_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 100").bind(target.id).all();
   const accounts=[];for(const row of rows.results||[]){let delivery=null;if(row.delivery_ciphertext){try{delivery=await decryptNodePayload(row.delivery_ciphertext,env)}catch{}}const {delivery_ciphertext,...safe}=row;accounts.push({...safe,delivery})}
   return reply(request,env,{ok:true,accounts});
  }
  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const userId=String(body.user_id||"").trim(),packageId=String(body.package_id||"").trim();if(!userId||!packageId)return reply(request,env,{ok:false,error:"missing_user_or_package"},400);
- const target=await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(userId).first();if(!target)return reply(request,env,{ok:false,error:"user_not_found"},404);
+ const userId=String(body.user_id||"").trim(),email=String(body.email||"").trim().toLowerCase(),packageId=String(body.package_id||"").trim();if((!userId&&!email)||!packageId)return reply(request,env,{ok:false,error:"missing_user_or_package"},400);
+ const target=await env.DB.prepare("SELECT id FROM users WHERE (?<>'' AND id=?) OR (?<>'' AND lower(email)=?) LIMIT 1").bind(userId,userId,email,email).first();if(!target)return reply(request,env,{ok:false,error:"user_not_found"},404);
  const pkg=await env.DB.prepare("SELECT p.product_id,p.name,p.protocol,p.server_present,p.provisioning_ready,g.package_id,g.name AS package_name,g.duration_days,g.traffic_limit_bytes FROM node_products p JOIN node_packages g ON g.product_id=p.product_id WHERE g.package_id=? AND p.active=TRUE AND g.active=TRUE").bind(packageId).first();
  if(!pkg)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
  if(!pkg.server_present||!pkg.provisioning_ready)return reply(request,env,{ok:false,error:"node_not_ready"},409);
