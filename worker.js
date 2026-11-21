@@ -1497,10 +1497,10 @@ export default {
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
       if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
-      const nodeProductMatch=url.pathname.match(/^\\/api\\/admin\\/node-products\\/([a-z0-9][a-z0-9-]{1,63})$/i);
+      const nodeProductMatch=url.pathname.match(/^\/api\/admin\/node-products\/([a-z0-9][a-z0-9-]{1,63})$/i);
       if (nodeProductMatch && request.method === "POST") return await adminNodeProductUpdate(request,env,nodeProductMatch[1]);
       if (url.pathname === "/api/admin/node-packages" && request.method === "POST") return await adminNodePackageSave(request,env);
-      const nodePackageMatch=url.pathname.match(/^\\/api\\/admin\\/node-packages\\/([a-z0-9][a-z0-9-]{1,63})$/i);
+      const nodePackageMatch=url.pathname.match(/^\/api\/admin\/node-packages\/([a-z0-9][a-z0-9-]{1,63})$/i);
       if (nodePackageMatch && request.method === "POST") return await adminNodePackageSave(request,env,nodePackageMatch[1]);
       if (url.pathname === "/api/admin/api-keys" && ["GET","POST"].includes(request.method)) return await adminApiKeys(request,env);
       const apiKeyRevokeMatch=url.pathname.match(/^\/api\/admin\/api-keys\/([a-f0-9-]{36})\/revoke$/i);
