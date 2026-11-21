@@ -1225,6 +1225,8 @@ async function adminNodePackageSave(request,env,packageId=null){
  if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
  const active=body.active===true||body.active===1||body.active==="1";
  if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
+ if(traffic!==null&&traffic>0)return reply(request,env,{ok:false,error:"traffic_plans_not_ready",message:"当前节点系统仅支持不限流量套餐，计量流量套餐尚未接入"},409);
+
  const existing=await env.DB.prepare("SELECT package_id,product_id FROM node_packages WHERE package_id=?").bind(id).first();
  if(packageId&&!existing)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
  if(existing&&existing.product_id!==productId)return reply(request,env,{ok:false,error:"node_package_product_immutable"},409);
