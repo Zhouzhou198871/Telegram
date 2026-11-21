@@ -1219,7 +1219,7 @@ async function adminNodeAccess(request,env){
   const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
   await env.DB.batch([
    env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=?").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
-   env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),userId,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
+   env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),userId,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
   ]);
   return reply(request,env,{ok:true,order_id:orderId,delivery,expires_at:Number(account.expires_at)},201);
  }catch(e){

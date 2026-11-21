@@ -27,5 +27,6 @@ jobs:
           node --check orders.js
           node --check invite.js
           node --check api/index.js
+          node --check worker.js
       - name: Verify Vercel configuration
         run: node -e "const c=require('./vercel.json'); if(c.version!==2 || !Array.isArray(c.rewrites)) process.exit(1); console.log('Vercel config OK')"
