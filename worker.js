@@ -833,7 +833,7 @@ function nodeClashYaml(proxy){
 }
 async function nodeProducts(request,env){
   let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_present,provisioning_ready FROM node_products WHERE active=TRUE ORDER BY display_order").all();
+  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE AND server_present=TRUE AND provisioning_ready=TRUE ORDER BY display_order").all();
   const products=[];
   for(const p of result.results||[]){
     const pkgs=await env.DB.prepare("SELECT package_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices FROM node_packages WHERE product_id=? AND active=TRUE ORDER BY display_order").bind(p.product_id).all();
@@ -868,7 +868,7 @@ async function userNodeOrders(request,env){
     let delivery=null;if(existing.delivery_ciphertext&&existing.status==="fulfilled"){try{delivery=await decryptNodePayload(existing.delivery_ciphertext,env)}catch{}}
     return reply(request,env,{ok:true,order_id:existing.order_id,status:existing.status,delivery,error_code:existing.error_code||null});
   }
-  const pkg=await env.DB.prepare("SELECT g.package_id,g.product_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices,p.name AS product_name,p.protocol,p.provisioning_ready,p.server_present,p.active AS product_active FROM node_packages g JOIN node_products p ON p.product_id=g.product_id WHERE g.package_id=? AND g.active=TRUE").bind(packageId).first();
+  const pkg=await env.DB.prepare("SELECT g.package_id,g.product_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices,p.name AS product_name,p.protocol,p.server_ref,p.provisioning_ready,p.server_present,p.active AS product_active FROM node_packages g JOIN node_products p ON p.product_id=g.product_id WHERE g.package_id=? AND g.active=TRUE").bind(packageId).first();
   if(!pkg||!pkg.product_active||!pkg.provisioning_ready||!pkg.server_present)return reply(request,env,{ok:false,error:"node_package_unavailable"},404);
   if(pkg.traffic_limit_bytes!==null&&Number(pkg.traffic_limit_bytes)>0)return reply(request,env,{ok:false,error:"traffic_plans_not_ready"},409);
   const cents=Math.round(Number(pkg.price_cny)*100),units=cents*25;
@@ -885,19 +885,20 @@ async function userNodeOrders(request,env){
   }
   if(!inserted)return reply(request,env,{ok:false,error:"insufficient_balance",required_cny:(units/10000*INTERNAL_CNY_PER_USDT).toFixed(2)},402);
   let account;
+  const serverRef=String(pkg.server_ref||"us").toLowerCase();
   try{
-    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days)});
+    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days),server_ref:serverRef});
     account=provisioned.account;
     if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
-    const delivery={protocol:pkg.protocol,uri:account.uri,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将 Clash YAML 保存为 .yaml 文件后导入 Mihomo / Clash Meta。"};
+    const delivery={protocol:pkg.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将 Clash YAML 保存为 .yaml 文件后导入 Mihomo / Clash Meta。"};
     const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
     await env.DB.batch([
       env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
-      env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),claims.sub,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
+      env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),claims.sub,pkg.product_id,orderId,pkg.protocol,serverRef,account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
     ]);
     return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery},201);
   }catch(e){
-    if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref})}catch{}}
+    if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref,server_ref:serverRef})}catch{}}
     await refundNodeOrder(env,orderId,String(e.message||"node_provision_failed"));
     return reply(request,env,{ok:false,order_id:orderId,status:"refunded",error:"node_provision_failed"},502);
   }
@@ -1204,7 +1205,7 @@ async function adminSession(request, env) {
 async function adminNodeCatalog(request,env){
  const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
  const [products,packages]=await Promise.all([
-  env.DB.prepare("SELECT product_id,name,protocol,description,server_present,provisioning_ready,active,display_order,provisioning_mode FROM node_products ORDER BY display_order,product_id").all(),
+  env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready,active,display_order,provisioning_mode FROM node_products ORDER BY display_order,product_id").all(),
   env.DB.prepare("SELECT package_id,product_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices,active,display_order FROM node_packages ORDER BY product_id,display_order,package_id").all()
  ]);
  return reply(request,env,{ok:true,products:(products.results||[]).map(x=>({...x,server_present:!!x.server_present,provisioning_ready:!!x.provisioning_ready,active:!!x.active,display_order:Number(x.display_order||0)})),packages:(packages.results||[]).map(x=>({...x,price_cny:Number(x.price_cny),duration_days:Number(x.duration_days),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes),max_devices:Number(x.max_devices||1),active:!!x.active,display_order:Number(x.display_order||0)}))});
@@ -1212,12 +1213,14 @@ async function adminNodeCatalog(request,env){
 async function adminNodeProductUpdate(request,env,productId){
  const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const product=await env.DB.prepare("SELECT product_id,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
+ const product=await env.DB.prepare("SELECT product_id,server_ref,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
  if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
  const active=body.active===true||body.active===1||body.active==="1";
  if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
- await env.DB.prepare("UPDATE node_products SET active=?,updated_at=? WHERE product_id=?").bind(active,Math.floor(Date.now()/1000),productId).run();
- return reply(request,env,{ok:true,product_id:productId,active});
+ const serverRef=String(body.server_ref===undefined?product.server_ref:body.server_ref).toLowerCase();
+ if(!["us","sg"].includes(serverRef))return reply(request,env,{ok:false,error:"invalid_server_ref"},400);
+ await env.DB.prepare("UPDATE node_products SET active=?,server_ref=?,updated_at=? WHERE product_id=?").bind(active,serverRef,Math.floor(Date.now()/1000),productId).run();
+ return reply(request,env,{ok:true,product_id:productId,active,server_ref:serverRef});
 }
 async function adminNodePackageSave(request,env,packageId=null){
  const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
