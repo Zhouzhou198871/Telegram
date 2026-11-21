@@ -1073,6 +1073,10 @@ async function adminAuthorize(request,env,permission="overview.read"){
 function legacyAdminPermission(path,method){
  if(path.includes("/nodes/export"))return "nodes.manage";
  const suffix=method==="GET"?"read":"manage";
+ if(path.includes("/stats/overview"))return "overview.read";
+ if(path.includes("/stats/online"))return "users.read";
+ if(path.includes("/upstream/overview"))return "products."+suffix;
+ if(path.includes("/config/dnshe"))return "nodes."+suffix;
  if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
  if(path.includes("/bots/matrix/")||path.includes("/bots/credentials"))return "bots."+suffix;
  if(path.includes("/nodes")||path.includes("/servers")||path.includes("/plans"))return "nodes."+suffix;
