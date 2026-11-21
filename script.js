@@ -594,10 +594,10 @@ function showNodeDelivery(delivery){
   let content=delivery.clash_yaml||delivery.uri||"";
   if(delivery.http_uri){
     const sections=[];
-    if(delivery.uri)sections.push("HTTPS 连接\\n"+delivery.uri);
-    sections.push("HTTP 连接\\n"+delivery.http_uri);
-    if(delivery.clash_yaml)sections.push("Clash 配置\\n"+delivery.clash_yaml);
-    content=sections.join("\\n\\n");
+    if(delivery.uri)sections.push("HTTPS 连接\n"+delivery.uri);
+    sections.push("HTTP 连接\n"+delivery.http_uri);
+    if(delivery.clash_yaml)sections.push("Clash 配置\n"+delivery.clash_yaml);
+    content=sections.join("\n\n");
   }
   $("deliveryTitle").textContent=delivery.protocol==="mtproto"?"Telegram 代理已开通":"节点已开通";
   $("deliveryContent").textContent=content;
