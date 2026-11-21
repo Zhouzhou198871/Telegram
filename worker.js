@@ -1034,23 +1034,59 @@ async function confirmRecharge(request, env) {
 }
 
 
-async function adminAuthorize(request, env) {
-  let claims;
-  try { claims = await verifyToken(request, env); }
-  catch (e) { return { error: reply(request, env, { ok: false, error: e.message }, 401) }; }
-  const email = String(claims.email || "").trim().toLowerCase();
-  if (email !== "chulingli1988@outlook.com") {
-    return { error: reply(request, env, { ok: false, error: "admin_forbidden" }, 403) };
-  }
-  const user = await env.DB.prepare("SELECT id,email FROM users WHERE id=?").bind(claims.sub).first();
-  if (!user || String(user.email || "").toLowerCase() !== email) {
-    return { error: reply(request, env, { ok: false, error: "admin_forbidden" }, 403) };
-  }
-  return { claims, user };
+const ADMIN_ROOT_EMAIL = "chulingli1988@outlook.com";
+const ADMIN_ROLE_LABELS = { super_admin:"超级管理员", operations_admin:"运营管理员", support_admin:"客服管理员", node_admin:"节点管理员", viewer:"只读管理员" };
+const ADMIN_ROLE_PERMISSIONS = {
+ super_admin:["*"],
+ operations_admin:["overview.read","orders.read","orders.manage","users.read","products.read","products.manage","inventory.read","inventory.manage","email.read","email.manage","notices.read","notices.manage","payments.read","bots.read"],
+ support_admin:["overview.read","users.read","support.read","support.manage"],
+ node_admin:["overview.read","users.read","nodes.read","nodes.manage"],
+ viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","nodes.read","support.read","bots.read"]
+};
+let adminAccountsSchemaReady=false;
+async function ensureAdminAccounts(env){
+ if(adminAccountsSchemaReady)return;
+ await env.DB.prepare("CREATE TABLE IF NOT EXISTS admin_accounts (user_id TEXT PRIMARY KEY, role TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'active', created_by TEXT, created_at BIGINT NOT NULL, updated_at BIGINT NOT NULL)").run();
+ adminAccountsSchemaReady=true;
+}
+async function resolveAdmin(request,env){
+ let claims;try{claims=await verifyToken(request,env)}catch(e){return {error:reply(request,env,{ok:false,error:e.message},401)}}
+ const email=String(claims.email||"").trim().toLowerCase();
+ const user=await env.DB.prepare("SELECT id,email,nickname,created_at,updated_at FROM users WHERE id=?").bind(claims.sub).first();
+ if(!user||String(user.email||"").toLowerCase()!==email)return {error:reply(request,env,{ok:false,error:"admin_forbidden"},403)};
+ if(email===ADMIN_ROOT_EMAIL)return {claims,user,admin:{id:user.id,email:user.email,nickname:user.nickname||"",role:"super_admin",role_label:"超级管理员",permissions:["*"],root:true,created_at:user.created_at,updated_at:user.updated_at}};
+ await ensureAdminAccounts(env);
+ const record=await env.DB.prepare("SELECT role,status,created_at,updated_at FROM admin_accounts WHERE user_id=?").bind(user.id).first();
+ if(!record||record.status!=="active"||!ADMIN_ROLE_PERMISSIONS[record.role])return {error:reply(request,env,{ok:false,error:"admin_forbidden"},403)};
+ return {claims,user,admin:{id:user.id,email:user.email,nickname:user.nickname||"",role:record.role,role_label:ADMIN_ROLE_LABELS[record.role],permissions:ADMIN_ROLE_PERMISSIONS[record.role],root:false,created_at:record.created_at,updated_at:record.updated_at}};
+}
+function hasAdminPermission(admin,permission){
+ const p=admin?.permissions||[];
+ return p.includes("*")||p.includes(permission)||p.includes(permission.replace(/\.read$/,".manage"));
+}
+async function adminAuthorize(request,env,permission="overview.read"){
+ const auth=await resolveAdmin(request,env);if(auth.error)return auth;
+ if(!hasAdminPermission(auth.admin,permission))return {error:reply(request,env,{ok:false,error:"admin_permission_denied",required:permission},403)};
+ return auth;
+}
+function legacyAdminPermission(path,method){
+ const suffix=method==="GET"?"read":"manage";
+ if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
+ if(path.includes("/bots/matrix/"))return "bots."+suffix;
+ if(path.includes("/nodes")||path.includes("/servers")||path.includes("/plans"))return "nodes."+suffix;
+ if(path.includes("/users"))return "users."+suffix;
+ if(path.includes("/orders")||path.includes("/shop/order/"))return "orders."+suffix;
+ if(path.includes("/shop/products")||path.includes("/shop/product/")||path.endsWith("/products"))return "products."+suffix;
+ if(path.includes("/account_pool"))return "inventory."+suffix;
+ if(path.includes("/mail/")||path.includes("/config/mail"))return "email."+suffix;
+ if(path.includes("/notices"))return "notices."+suffix;
+ if(path.includes("/payment_configs"))return "payments."+suffix;
+ if(path.includes("/config/ai"))return "support."+suffix;
+ return "settings."+suffix;
 }
 
 async function adminOverview(request, env) {
-  const auth = await adminAuthorize(request, env);
+  const auth = await adminAuthorize(request, env, "overview.read");
   if (auth.error) return auth.error;
   const [users, webOrders, nodeOrders, catalog, activeCatalog, products] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS total FROM users").first(),
@@ -1075,7 +1111,7 @@ async function adminOverview(request, env) {
 }
 
 async function adminListUsers(request, env) {
-  const auth = await adminAuthorize(request, env);
+  const auth = await adminAuthorize(request, env, "users.read");
   if (auth.error) return auth.error;
   const url = new URL(request.url);
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -1090,7 +1126,7 @@ async function adminListUsers(request, env) {
 }
 
 async function adminListOrders(request, env) {
-  const auth = await adminAuthorize(request, env);
+  const auth = await adminAuthorize(request, env, "orders.read");
   if (auth.error) return auth.error;
   const url = new URL(request.url);
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -1108,7 +1144,7 @@ async function adminListOrders(request, env) {
 }
 
 async function adminListProducts(request, env) {
-  const auth = await adminAuthorize(request, env);
+  const auth = await adminAuthorize(request, env, "products.read");
   if (auth.error) return auth.error;
   const url = new URL(request.url);
   const q = String(url.searchParams.get("q") || "").trim().slice(0, 120);
@@ -1122,25 +1158,94 @@ async function adminListProducts(request, env) {
   return reply(request, env, { ok: true, products: rows.results || [], total: Number(count?.total || 0), page, limit, read_only: true });
 }
 
-async function adminSession(request, env) {
-  let claims;
-  try { claims = await verifyToken(request, env); }
-  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
-  const email = String(claims.email || "").trim().toLowerCase();
-  if (email !== "chulingli1988@outlook.com") return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
-  const user = await env.DB.prepare("SELECT id,email,nickname FROM users WHERE id=?").bind(claims.sub).first();
-  if (!user || String(user.email || "").toLowerCase() !== email) return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
-  return reply(request, env, { ok: true, admin: { id: user.id, email: user.email, nickname: user.nickname || "" } });
+async function adminStaff(request,env){
+ const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
+ await ensureAdminAccounts(env);
+ if(request.method==="GET"){
+  const rows=await env.DB.prepare("SELECT a.user_id,a.role,a.status,a.created_at,a.updated_at,u.email,u.nickname FROM admin_accounts a JOIN users u ON u.id=a.user_id ORDER BY a.created_at DESC").all();
+  return reply(request,env,{ok:true,admins:rows.results||[],roles:ADMIN_ROLE_LABELS,current_admin:auth.admin});
+ }
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const now=Math.floor(Date.now()/1000),role=String(body.role||"").trim();
+ if(!Object.prototype.hasOwnProperty.call(ADMIN_ROLE_PERMISSIONS,role))return reply(request,env,{ok:false,error:"invalid_admin_role"},400);
+ if(body.email){
+  const email=String(body.email).trim().toLowerCase();
+  if(!validEmail(email)||email===ADMIN_ROOT_EMAIL)return reply(request,env,{ok:false,error:"invalid_admin_email"},400);
+  const target=await env.DB.prepare("SELECT id,email FROM users WHERE lower(email)=?").bind(email).first();
+  if(!target)return reply(request,env,{ok:false,error:"user_account_not_found_register_first"},404);
+  await env.DB.prepare("INSERT INTO admin_accounts(user_id,role,status,created_by,created_at,updated_at) VALUES(?,?,'active',?,?,?) ON CONFLICT(user_id) DO UPDATE SET role=excluded.role,status='active',updated_at=excluded.updated_at").bind(target.id,role,auth.user.id,now,now).run();
+  return reply(request,env,{ok:true,admin:{user_id:target.id,email:target.email,role,role_label:ADMIN_ROLE_LABELS[role],status:"active"}},201);
+ }
+ const userId=String(body.user_id||"").trim();if(!userId)return reply(request,env,{ok:false,error:"missing_user_id"},400);
+ const existing=await env.DB.prepare("SELECT user_id FROM admin_accounts WHERE user_id=?").bind(userId).first();
+ if(!existing)return reply(request,env,{ok:false,error:"admin_not_found"},404);
+ if(body.status!==undefined)await env.DB.prepare("UPDATE admin_accounts SET status=?,updated_at=? WHERE user_id=?").bind(body.status==="active"?"active":"disabled",now,userId).run();
+ else await env.DB.prepare("UPDATE admin_accounts SET role=?,updated_at=? WHERE user_id=?").bind(role,now,userId).run();
+ return reply(request,env,{ok:true,updated:true});
+}
+async function adminRemoveStaff(request,env,userId){
+ const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
+ if(!userId||userId===auth.user.id)return reply(request,env,{ok:false,error:"invalid_admin_target"},400);
+ const result=await env.DB.prepare("DELETE FROM admin_accounts WHERE user_id=?").bind(userId).run();
+ if(!Number(result.meta?.changes||0))return reply(request,env,{ok:false,error:"admin_not_found"},404);
+ return reply(request,env,{ok:true,removed:true});
+}
+async function adminNodeAccessCatalog(request,env){
+ const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
+ const result=await env.DB.prepare("SELECT p.product_id,p.name,p.protocol,p.description,p.server_present,p.provisioning_ready,g.package_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices FROM node_products p JOIN node_packages g ON g.product_id=p.product_id WHERE p.active=TRUE AND g.active=TRUE ORDER BY p.display_order,g.display_order").all();
+ return reply(request,env,{ok:true,packages:(result.results||[]).map(x=>({...x,price_cny:Number(x.price_cny||0),duration_days:Number(x.duration_days||0),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes)}))});
+}
+async function adminNodeAccess(request,env){
+ const permission=request.method==="GET"?"nodes.read":"nodes.manage",auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
+ if(request.method==="GET"){
+  const userId=String(new URL(request.url).searchParams.get("user_id")||"").trim();if(!userId)return reply(request,env,{ok:false,error:"missing_user_id"},400);
+  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,a.product_id,a.order_id,a.protocol,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.status,a.created_at,a.updated_at,p.name AS product_name,g.name AS package_name,o.delivery_ciphertext FROM node_accounts a LEFT JOIN node_products p ON p.product_id=a.product_id LEFT JOIN node_orders o ON o.order_id=a.order_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 100").bind(userId).all();
+  const accounts=[];for(const row of rows.results||[]){let delivery=null;if(row.delivery_ciphertext){try{delivery=await decryptNodePayload(row.delivery_ciphertext,env)}catch{}}const {delivery_ciphertext,...safe}=row;accounts.push({...safe,delivery})}
+  return reply(request,env,{ok:true,accounts});
+ }
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const userId=String(body.user_id||"").trim(),packageId=String(body.package_id||"").trim();if(!userId||!packageId)return reply(request,env,{ok:false,error:"missing_user_or_package"},400);
+ const target=await env.DB.prepare("SELECT id FROM users WHERE id=?").bind(userId).first();if(!target)return reply(request,env,{ok:false,error:"user_not_found"},404);
+ const pkg=await env.DB.prepare("SELECT p.product_id,p.name,p.protocol,p.server_present,p.provisioning_ready,g.package_id,g.name AS package_name,g.duration_days,g.traffic_limit_bytes FROM node_products p JOIN node_packages g ON g.product_id=p.product_id WHERE g.package_id=? AND p.active=TRUE AND g.active=TRUE").bind(packageId).first();
+ if(!pkg)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
+ if(!pkg.server_present||!pkg.provisioning_ready)return reply(request,env,{ok:false,error:"node_not_ready"},409);
+ const now=Math.floor(Date.now()/1000),orderId=crypto.randomUUID(),idem="admin-"+orderId;
+ await env.DB.prepare("INSERT INTO node_orders(order_id,user_id,product_id,package_id,amount_units,status,idempotency_key,created_at,updated_at,expires_at) VALUES(?,?,?,?,0,'provisioning',?,?,?,?)").bind(orderId,userId,pkg.product_id,packageId,idem,now,now,now+900).run();
+ let account=null;
+ try{
+  const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days)});
+  account=provisioned.account;if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
+  const delivery={protocol:pkg.protocol,uri:account.uri,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将节点链接或 Clash YAML 导入对应客户端。"};
+  const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
+  await env.DB.batch([
+   env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=?").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
+   env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),userId,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
+  ]);
+  return reply(request,env,{ok:true,order_id:orderId,delivery,expires_at:Number(account.expires_at)},201);
+ }catch(e){
+  if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref})}catch{}}
+  await env.DB.prepare("UPDATE node_orders SET status='failed',error_code=?,updated_at=? WHERE order_id=?").bind(String(e.message||"admin_provision_failed").slice(0,100),Math.floor(Date.now()/1000),orderId).run();
+  return reply(request,env,{ok:false,error:"node_provision_failed",detail:String(e.message||"").slice(0,100)},502);
+ }
+}
+async function adminRevokeNodeAccess(request,env){
+ const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const accountId=String(body.account_id||"").trim(),row=await env.DB.prepare("SELECT account_id,protocol,client_ref,status FROM node_accounts WHERE account_id=?").bind(accountId).first();
+ if(!row)return reply(request,env,{ok:false,error:"node_account_not_found"},404);
+ if(row.status==="revoked")return reply(request,env,{ok:true,revoked:true});
+ try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:row.protocol,client_ref:row.client_ref})}catch(e){return reply(request,env,{ok:false,error:"node_revoke_failed",detail:String(e.message||"").slice(0,100)},502)}
+ await env.DB.prepare("UPDATE node_accounts SET status='revoked',updated_at=? WHERE account_id=?").bind(Math.floor(Date.now()/1000),accountId).run();
+ return reply(request,env,{ok:true,revoked:true});
 }
 
-async function adminBotProxy(request, env, method, path, payload) {
-  let claims;
-  try { claims = await verifyToken(request, env); }
-  catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
-  const email = String(claims.email || "").trim().toLowerCase();
-  if (email !== "chulingli1988@outlook.com") return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
-  const user = await env.DB.prepare("SELECT id,email FROM users WHERE id=?").bind(claims.sub).first();
-  if (!user || String(user.email || "").toLowerCase() !== email) return reply(request, env, { ok: false, error: "admin_forbidden" }, 403);
+async function adminSession(request, env) {
+ const auth=await resolveAdmin(request,env);if(auth.error)return auth.error;
+ return reply(request,env,{ok:true,admin:auth.admin});
+}
+
+async function adminBotProxy(request, env, method, path, payload, permission="bots.read") {
+  const auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
   if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "bot_bridge_not_configured" }, 503);
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = String(Math.floor(Date.now() / 1000));
@@ -1165,12 +1270,12 @@ async function adminBotProxy(request, env, method, path, payload) {
 async function adminBots(request, env) {
   const url = new URL(request.url);
   if (request.method === "GET" && url.pathname === "/api/admin/bots") {
-    return await adminBotProxy(request, env, "GET", "/_internal/bots/status");
+    return await adminBotProxy(request, env, "GET", "/_internal/bots/status", undefined, "bots.read");
   }
   if (request.method === "GET" && url.pathname === "/api/admin/bots/logs") {
     const bot = String(url.searchParams.get("bot") || "");
     if (!["fakabot", "tg", "mivra"].includes(bot)) return reply(request, env, { ok: false, error: "invalid_bot" }, 400);
-    return await adminBotProxy(request, env, "GET", "/_internal/bots/logs?bot=" + encodeURIComponent(bot) + "&lines=100");
+    return await adminBotProxy(request, env, "GET", "/_internal/bots/logs?bot=" + encodeURIComponent(bot) + "&lines=100", undefined, "bots.read");
   }
   if (request.method === "POST" && url.pathname === "/api/admin/bots/action") {
     let body;
@@ -1178,7 +1283,7 @@ async function adminBots(request, env) {
     if (!["fakabot", "tg", "mivra"].includes(body.bot) || !["start", "stop", "restart"].includes(body.action)) {
       return reply(request, env, { ok: false, error: "invalid_action" }, 400);
     }
-    return await adminBotProxy(request, env, "POST", "/_internal/bots/action", { bot: body.bot, action: body.action });
+    return await adminBotProxy(request, env, "POST", "/_internal/bots/action", { bot: body.bot, action: body.action }, "bots.manage");
   }
   return reply(request, env, { ok: false, error: "not_found" }, 404);
 }
@@ -1226,7 +1331,7 @@ function legacyAdminPathAllowed(path) {
   return LEGACY_ADMIN_EXACT.has(path) || LEGACY_ADMIN_PREFIXES.some(prefix => path.startsWith(prefix));
 }
 async function adminLegacyProxy(request, env) {
-  const auth = await adminAuthorize(request, env);
+  const auth = await adminAuthorize(request, env, legacyAdminPermission('/api/v1/admin' + new URL(request.url).pathname.slice('/api/admin/legacy'.length), request.method));
   if (auth.error) return auth.error;
   if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "admin_bridge_not_configured" }, 503);
   if (!["GET", "POST"].includes(request.method)) return reply(request, env, { ok: false, error: "method_not_allowed" }, 405);
@@ -1285,20 +1390,9 @@ async function adminLegacyProxy(request, env) {
 }
 
 async function adminCredit(request, env) {
-  let authorized = false;
-  const bearer = request.headers.get("Authorization") || "";
-  if (bearer.startsWith("Bearer ")) {
-    try {
-      const claims = await verifyToken(request, env);
-      const email = String(claims.email || "").trim().toLowerCase();
-      if (email === "chulingli1988@outlook.com") {
-        const row = await env.DB.prepare("SELECT email FROM users WHERE id=?").bind(claims.sub).first();
-        authorized = Boolean(row && String(row.email || "").toLowerCase() === email);
-      }
-    } catch {}
-  }
-  if (!authorized && env.ADMIN_API_KEY && request.headers.get("X-Admin-Key") === env.ADMIN_API_KEY) authorized = true;
-  if (!authorized) return reply(request, env, { ok: false, error: "unauthorized" }, 401);
+  const auth=await adminAuthorize(request,env,"finance.manage");
+  const keyAuthorized=!!env.ADMIN_API_KEY&&request.headers.get("X-Admin-Key")===env.ADMIN_API_KEY;
+  if(auth.error&&!keyAuthorized)return auth.error;
   let body;
   try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
   const email = String(body.email || "").trim().toLowerCase();
@@ -1355,6 +1449,12 @@ export default {
       if (match && request.method === "GET") return await buyStatus(request, env, match[1]);
       if (url.pathname.startsWith("/api/admin/legacy/")) return await adminLegacyProxy(request, env);
       if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
+      if (url.pathname === "/api/admin/staff" && ["GET","POST"].includes(request.method)) return await adminStaff(request, env);
+      const staffRemoveMatch=url.pathname.match(/^\/api\/admin\/staff\/([a-f0-9-]{36})$/i);
+      if (staffRemoveMatch && request.method === "DELETE") return await adminRemoveStaff(request, env, staffRemoveMatch[1]);
+      if (url.pathname === "/api/admin/node-access/catalog" && request.method === "GET") return await adminNodeAccessCatalog(request, env);
+      if (url.pathname === "/api/admin/node-access" && ["GET","POST"].includes(request.method)) return await adminNodeAccess(request, env);
+      if (url.pathname === "/api/admin/node-access/revoke" && request.method === "POST") return await adminRevokeNodeAccess(request, env);
       if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
