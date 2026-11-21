@@ -1041,7 +1041,7 @@ const ADMIN_ROLE_PERMISSIONS = {
  super_admin:["*"],
  operations_admin:["overview.read","orders.read","orders.manage","users.read","products.read","products.manage","inventory.read","inventory.manage","email.read","email.manage","notices.read","notices.manage","payments.read","bots.read"],
  support_admin:["overview.read","users.read","support.read","support.manage"],
- node_admin:["overview.read","users.read","nodes.read","nodes.manage"],
+ node_admin:["overview.read","users.read","nodes.read","nodes.manage","bots.read","bots.manage"],
  viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","nodes.read","support.read","bots.read"]
 };
 let adminAccountsSchemaReady=false;
@@ -1074,7 +1074,7 @@ function legacyAdminPermission(path,method){
  if(path.includes("/nodes/export"))return "nodes.manage";
  const suffix=method==="GET"?"read":"manage";
  if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
- if(path.includes("/bots/matrix/"))return "bots."+suffix;
+ if(path.includes("/bots/matrix/")||path.includes("/bots/credentials"))return "bots."+suffix;
  if(path.includes("/nodes")||path.includes("/servers")||path.includes("/plans"))return "nodes."+suffix;
  if(path.includes("/users"))return "users."+suffix;
  if(path.includes("/orders")||path.includes("/shop/order/"))return "orders."+suffix;
