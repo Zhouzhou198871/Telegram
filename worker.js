@@ -1449,7 +1449,7 @@ export default {
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
       if (url.pathname === "/api/admin/api-keys" && ["GET","POST"].includes(request.method)) return await adminApiKeys(request,env);
-      const apiKeyRevokeMatch=url.pathname.match(/^\\/api\\/admin\\/api-keys\\/([a-f0-9-]{36})\\/revoke$/i);
+      const apiKeyRevokeMatch=url.pathname.match(/^\/api\/admin\/api-keys\/([a-f0-9-]{36})\/revoke$/i);
       if (apiKeyRevokeMatch && request.method === "POST") return await adminRevokeApiKey(request,env,apiKeyRevokeMatch[1]);
       if (url.pathname === "/api/admin/api-logs" && request.method === "GET") return await adminApiLogs(request,env);
       if (url.pathname.startsWith("/api/admin/bots")) return await adminBots(request, env);
