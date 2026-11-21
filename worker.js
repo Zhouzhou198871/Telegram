@@ -1190,58 +1190,6 @@ async function adminRemoveStaff(request,env,userId){
  if(!Number(result.meta?.changes||0))return reply(request,env,{ok:false,error:"admin_not_found"},404);
  return reply(request,env,{ok:true,removed:true});
 }
-async function adminNodeAccessCatalog(request,env){
- const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
- const result=await env.DB.prepare("SELECT p.product_id,p.name,p.protocol,p.description,p.server_present,p.provisioning_ready,g.package_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices FROM node_products p JOIN node_packages g ON g.product_id=p.product_id WHERE p.active=TRUE AND g.active=TRUE ORDER BY p.display_order,g.display_order").all();
- return reply(request,env,{ok:true,packages:(result.results||[]).map(x=>({...x,price_cny:Number(x.price_cny||0),duration_days:Number(x.duration_days||0),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes)}))});
-}
-async function adminNodeAccess(request,env){
- const permission=request.method==="GET"?"nodes.read":"nodes.manage",auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
- if(request.method==="GET"){
-  const lookup=new URL(request.url),userId=String(lookup.searchParams.get("user_id")||"").trim(),email=String(lookup.searchParams.get("email")||"").trim().toLowerCase();
-  if(!userId&&!email)return reply(request,env,{ok:false,error:"missing_user_id"},400);
-  const target=await env.DB.prepare("SELECT id FROM users WHERE (?<>'' AND id=?) OR (?<>'' AND lower(email)=?) LIMIT 1").bind(userId,userId,email,email).first();
-  if(!target)return reply(request,env,{ok:true,accounts:[]});
-  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,a.product_id,a.order_id,a.protocol,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.status,a.created_at,a.updated_at,p.name AS product_name,g.name AS package_name,o.delivery_ciphertext FROM node_accounts a LEFT JOIN node_products p ON p.product_id=a.product_id LEFT JOIN node_orders o ON o.order_id=a.order_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE a.user_id=? ORDER BY a.created_at DESC LIMIT 100").bind(target.id).all();
-  const accounts=[];for(const row of rows.results||[]){let delivery=null;if(row.delivery_ciphertext){try{delivery=await decryptNodePayload(row.delivery_ciphertext,env)}catch{}}const {delivery_ciphertext,...safe}=row;accounts.push({...safe,delivery})}
-  return reply(request,env,{ok:true,accounts});
- }
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const userId=String(body.user_id||"").trim(),email=String(body.email||"").trim().toLowerCase(),packageId=String(body.package_id||"").trim();if((!userId&&!email)||!packageId)return reply(request,env,{ok:false,error:"missing_user_or_package"},400);
- const target=await env.DB.prepare("SELECT id FROM users WHERE (?<>'' AND id=?) OR (?<>'' AND lower(email)=?) LIMIT 1").bind(userId,userId,email,email).first();if(!target)return reply(request,env,{ok:false,error:"user_not_found"},404);
- const pkg=await env.DB.prepare("SELECT p.product_id,p.name,p.protocol,p.server_present,p.provisioning_ready,g.package_id,g.name AS package_name,g.duration_days,g.traffic_limit_bytes FROM node_products p JOIN node_packages g ON g.product_id=p.product_id WHERE g.package_id=? AND p.active=TRUE AND g.active=TRUE").bind(packageId).first();
- if(!pkg)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
- if(!pkg.server_present||!pkg.provisioning_ready)return reply(request,env,{ok:false,error:"node_not_ready"},409);
- const now=Math.floor(Date.now()/1000),orderId=crypto.randomUUID(),idem="admin-"+orderId;
- await env.DB.prepare("INSERT INTO node_orders(order_id,user_id,product_id,package_id,amount_units,status,idempotency_key,created_at,updated_at,expires_at) VALUES(?,?,?,?,0,'provisioning',?,?,?,?)").bind(orderId,userId,pkg.product_id,packageId,idem,now,now,now+900).run();
- let account=null;
- try{
-  const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days)});
-  account=provisioned.account;if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
-  const delivery={protocol:pkg.protocol,uri:account.uri,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将节点链接或 Clash YAML 导入对应客户端。"};
-  const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
-  await env.DB.batch([
-   env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=?").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
-   env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),userId,pkg.product_id,orderId,pkg.protocol,"primary",account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
-  ]);
-  return reply(request,env,{ok:true,order_id:orderId,delivery,expires_at:Number(account.expires_at)},201);
- }catch(e){
-  if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref})}catch{}}
-  await env.DB.prepare("UPDATE node_orders SET status='failed',error_code=?,updated_at=? WHERE order_id=?").bind(String(e.message||"admin_provision_failed").slice(0,100),Math.floor(Date.now()/1000),orderId).run();
-  return reply(request,env,{ok:false,error:"node_provision_failed",detail:String(e.message||"").slice(0,100)},502);
- }
-}
-async function adminRevokeNodeAccess(request,env){
- const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const accountId=String(body.account_id||"").trim(),row=await env.DB.prepare("SELECT account_id,protocol,client_ref,status FROM node_accounts WHERE account_id=?").bind(accountId).first();
- if(!row)return reply(request,env,{ok:false,error:"node_account_not_found"},404);
- if(row.status==="revoked")return reply(request,env,{ok:true,revoked:true});
- try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:row.protocol,client_ref:row.client_ref})}catch(e){return reply(request,env,{ok:false,error:"node_revoke_failed",detail:String(e.message||"").slice(0,100)},502)}
- await env.DB.prepare("UPDATE node_accounts SET status='revoked',updated_at=? WHERE account_id=?").bind(Math.floor(Date.now()/1000),accountId).run();
- return reply(request,env,{ok:true,revoked:true});
-}
-
 async function adminSession(request, env) {
  const auth=await resolveAdmin(request,env);if(auth.error)return auth.error;
  return reply(request,env,{ok:true,admin:auth.admin});
@@ -1460,9 +1408,6 @@ export default {
       if (url.pathname === "/api/admin/staff" && ["GET","POST"].includes(request.method)) return await adminStaff(request, env);
       const staffRemoveMatch=url.pathname.match(/^\/api\/admin\/staff\/([a-f0-9-]{36})$/i);
       if (staffRemoveMatch && request.method === "DELETE") return await adminRemoveStaff(request, env, staffRemoveMatch[1]);
-      if (url.pathname === "/api/admin/node-access/catalog" && request.method === "GET") return await adminNodeAccessCatalog(request, env);
-      if (url.pathname === "/api/admin/node-access" && ["GET","POST"].includes(request.method)) return await adminNodeAccess(request, env);
-      if (url.pathname === "/api/admin/node-access/revoke" && request.method === "POST") return await adminRevokeNodeAccess(request, env);
       if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
