@@ -1373,11 +1373,7 @@ function legacyAdminPathAllowed(path) {
   return LEGACY_ADMIN_EXACT.has(path) || LEGACY_ADMIN_PREFIXES.some(prefix => path.startsWith(prefix));
 }
 async function adminLegacyProxy(request, env) {
-  const auth = await adminAuthorize(request, env, legacyAdminPermission('/api/v1/admin' + new URL(request.url).pathname.slice('/api/admin/legacy'.length), request.method));
-  if (auth.error) return auth.error;
-  if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "admin_bridge_not_configured" }, 503);
   if (!["GET", "POST"].includes(request.method)) return reply(request, env, { ok: false, error: "method_not_allowed" }, 405);
-
   const url = new URL(request.url);
   const prefix = "/api/admin/legacy";
   if (!url.pathname.startsWith(prefix + "/")) return reply(request, env, { ok: false, error: "not_found" }, 404);
@@ -1390,6 +1386,14 @@ async function adminLegacyProxy(request, env) {
   if (apiPath === "/api/v1/admin/payment_configs" && url.searchParams.get("view") !== "status") {
     return reply(request, env, { ok: false, error: "payment_status_view_required" }, 400);
   }
+  const auth = await resolveAdmin(request, env);
+  if (auth.error) return auth.error;
+  const requiredPermission = legacyAdminPermission(apiPath, request.method);
+  const permitted = apiPath === "/api/v1/admin/upload"
+    ? (hasAdminPermission(auth.admin, "support.manage") || hasAdminPermission(auth.admin, "bots.manage"))
+    : hasAdminPermission(auth.admin, requiredPermission);
+  if (!permitted) return reply(request, env, { ok: false, error: "admin_permission_denied", required: requiredPermission }, 403);
+  if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "admin_bridge_not_configured" }, 503);
 
   let body = "";
   if (request.method !== "GET") {
