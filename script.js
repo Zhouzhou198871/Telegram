@@ -591,12 +591,19 @@ async function buyNodePackage(pkg,button,protocol){
   }
 }
 function showNodeDelivery(delivery){
-  const content=delivery.clash_yaml||delivery.uri||"";
+  let content=delivery.clash_yaml||delivery.uri||"";
+  if(delivery.http_uri){
+    const sections=[];
+    if(delivery.uri)sections.push("HTTPS 连接\\n"+delivery.uri);
+    sections.push("HTTP 连接\\n"+delivery.http_uri);
+    if(delivery.clash_yaml)sections.push("Clash 配置\\n"+delivery.clash_yaml);
+    content=sections.join("\\n\\n");
+  }
   $("deliveryTitle").textContent=delivery.protocol==="mtproto"?"Telegram 代理已开通":"节点已开通";
   $("deliveryContent").textContent=content;
-  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":"复制 Clash 配置";
+  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":delivery.http_uri?"复制 HTTP/HTTPS 配置":"复制 Clash 配置";
   const modalCopy=document.querySelector(".modal-copy");
-  if(modalCopy)modalCopy.textContent=delivery.instructions||"请立即复制并保存节点配置。";
+  if(modalCopy)modalCopy.textContent=delivery.http_uri?"HTTP、HTTPS 与 Clash 配置已生成，请分别选择适合的客户端使用。":delivery.instructions||"请立即复制并保存节点配置。";
   $("deliveryModal").hidden=false;
 }
 
