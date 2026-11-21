@@ -1196,6 +1196,47 @@ async function adminSession(request, env) {
  return reply(request,env,{ok:true,admin:auth.admin});
 }
 
+async function adminNodeCatalog(request,env){
+ const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
+ const [products,packages]=await Promise.all([
+  env.DB.prepare("SELECT product_id,name,protocol,description,server_present,provisioning_ready,active,display_order,provisioning_mode FROM node_products ORDER BY display_order,product_id").all(),
+  env.DB.prepare("SELECT package_id,product_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices,active,display_order FROM node_packages ORDER BY product_id,display_order,package_id").all()
+ ]);
+ return reply(request,env,{ok:true,products:(products.results||[]).map(x=>({...x,server_present:!!x.server_present,provisioning_ready:!!x.provisioning_ready,active:!!x.active,display_order:Number(x.display_order||0)})),packages:(packages.results||[]).map(x=>({...x,price_cny:Number(x.price_cny),duration_days:Number(x.duration_days),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes),max_devices:Number(x.max_devices||1),active:!!x.active,display_order:Number(x.display_order||0)}))});
+}
+async function adminNodeProductUpdate(request,env,productId){
+ const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const product=await env.DB.prepare("SELECT product_id,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
+ if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
+ const active=body.active===true||body.active===1||body.active==="1";
+ if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
+ await env.DB.prepare("UPDATE node_products SET active=?,updated_at=? WHERE product_id=?").bind(active,Math.floor(Date.now()/1000),productId).run();
+ return reply(request,env,{ok:true,product_id:productId,active});
+}
+async function adminNodePackageSave(request,env,packageId=null){
+ const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const id=String(packageId||body.package_id||"").trim(),productId=String(body.product_id||"").trim(),name=String(body.name||"").trim().slice(0,80);
+ const price=Number(body.price_cny),days=Number(body.duration_days),devices=Number(body.max_devices||1),sort=Math.trunc(Number(body.display_order||0));
+ const traffic=body.traffic_limit_bytes===null||body.traffic_limit_bytes===""||body.traffic_limit_bytes===undefined?null:Number(body.traffic_limit_bytes);
+ if(!/^[a-z0-9][a-z0-9-]{1,63}$/i.test(id)||!productId||!name||!Number.isFinite(price)||price<=0||price>100000||!Number.isInteger(days)||days<1||days>3650||!Number.isInteger(devices)||devices<1||devices>20||!Number.isInteger(sort)||!Number.isFinite(traffic===null?0:traffic)||(traffic!==null&&(!Number.isSafeInteger(traffic)||traffic<0)))return reply(request,env,{ok:false,error:"invalid_node_package"},400);
+ const product=await env.DB.prepare("SELECT product_id,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
+ if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
+ const active=body.active===true||body.active===1||body.active==="1";
+ if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
+ const existing=await env.DB.prepare("SELECT package_id,product_id FROM node_packages WHERE package_id=?").bind(id).first();
+ if(packageId&&!existing)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
+ if(existing&&existing.product_id!==productId)return reply(request,env,{ok:false,error:"node_package_product_immutable"},409);
+ const now=Math.floor(Date.now()/1000);
+ if(existing){
+  await env.DB.prepare("UPDATE node_packages SET name=?,price_cny=?,duration_days=?,traffic_limit_bytes=?,max_devices=?,active=?,display_order=?,updated_at=? WHERE package_id=?").bind(name,price,days,traffic,devices,active,sort,now,id).run();
+ }else{
+  await env.DB.prepare("INSERT INTO node_packages(package_id,product_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices,active,display_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(id,productId,name,price,days,traffic,devices,active,sort,now,now).run();
+ }
+ return reply(request,env,{ok:true,package_id:id,product_id:productId,active});
+}
+
 async function adminApiKeys(request, env) {
  const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
  if(request.method==="GET"){
@@ -1455,6 +1496,12 @@ export default {
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
+      if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
+      const nodeProductMatch=url.pathname.match(/^\\/api\\/admin\\/node-products\\/([a-z0-9][a-z0-9-]{1,63})$/i);
+      if (nodeProductMatch && request.method === "POST") return await adminNodeProductUpdate(request,env,nodeProductMatch[1]);
+      if (url.pathname === "/api/admin/node-packages" && request.method === "POST") return await adminNodePackageSave(request,env);
+      const nodePackageMatch=url.pathname.match(/^\\/api\\/admin\\/node-packages\\/([a-z0-9][a-z0-9-]{1,63})$/i);
+      if (nodePackageMatch && request.method === "POST") return await adminNodePackageSave(request,env,nodePackageMatch[1]);
       if (url.pathname === "/api/admin/api-keys" && ["GET","POST"].includes(request.method)) return await adminApiKeys(request,env);
       const apiKeyRevokeMatch=url.pathname.match(/^\/api\/admin\/api-keys\/([a-f0-9-]{36})\/revoke$/i);
       if (apiKeyRevokeMatch && request.method === "POST") return await adminRevokeApiKey(request,env,apiKeyRevokeMatch[1]);
