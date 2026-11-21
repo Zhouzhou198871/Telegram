@@ -5,6 +5,7 @@ function corsHeaders(request, env) {
   const allowedOrigins = new Set([
     env.FRONTEND_ORIGIN || "https://shop.lynli.me",
     "https://shop.lynli.me",
+    "https://admin.lynli.me",
     "https://admin-xiaochu.vercel.app",
     "https://zhouzhou198871.github.io"
   ]);
