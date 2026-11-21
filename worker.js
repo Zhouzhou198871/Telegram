@@ -1406,7 +1406,7 @@ export default {
       if (url.pathname.startsWith("/api/admin/legacy/")) return await adminLegacyProxy(request, env);
       if (url.pathname === "/api/admin/session" && request.method === "GET") return await adminSession(request, env);
       if (url.pathname === "/api/admin/staff" && ["GET","POST"].includes(request.method)) return await adminStaff(request, env);
-      const staffRemoveMatch=url.pathname.match(/^\/api\/admin\/staff\/([a-f0-9-]{36})$/i);
+      const staffRemoveMatch=url.pathname.match(/^\/api\/admin\/staff\/([^/]+)$/);
       if (staffRemoveMatch && request.method === "DELETE") return await adminRemoveStaff(request, env, staffRemoveMatch[1]);
       if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
