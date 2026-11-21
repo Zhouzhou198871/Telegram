@@ -1062,7 +1062,7 @@ async function resolveAdmin(request,env){
 }
 function hasAdminPermission(admin,permission){
  const p=admin?.permissions||[];
- return p.includes("*")||p.includes(permission)||p.includes(permission.replace(/\.read$/,".manage"));
+ return p.includes("*")||p.includes(permission)||(permission.endsWith(".read")&&p.includes("overview.read"))||p.includes(permission.replace(/\.read$/,".manage"));
 }
 async function adminAuthorize(request,env,permission="overview.read"){
  const auth=await resolveAdmin(request,env);if(auth.error)return auth;
@@ -1360,7 +1360,10 @@ async function adminLegacyProxy(request, env) {
   const targetPath = apiPath + url.search;
   const ts = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
-  const signed = ts + "\n" + nonce + "\n" + request.method.toUpperCase() + "\n" + targetPath + "\n" + body;
+  const adminEmail=String(auth.user.email||"").trim().toLowerCase();
+  const adminRole=String(auth.admin.role||"viewer").trim().toLowerCase();
+  const adminUserId=String(auth.user.id||"").trim();
+  const signed = ts + "\n" + nonce + "\n" + request.method.toUpperCase() + "\n" + targetPath + "\n" + body + "\n" + adminEmail + "\n" + adminRole + "\n" + adminUserId;
   const signature = Array.from(await hmac(env.BOT_BRIDGE_SECRET, signed))
     .map(b => b.toString(16).padStart(2, "0")).join("");
 
@@ -1371,7 +1374,9 @@ async function adminLegacyProxy(request, env) {
       headers: {
         "Content-Type": request.headers.get("Content-Type") || "application/json",
         "Accept": "application/json",
-        "X-Admin-Email": String(auth.user.email || "").toLowerCase(),
+        "X-Admin-Email": adminEmail,
+        "X-Admin-Role": adminRole,
+        "X-Admin-User-Id": adminUserId,
         "X-Admin-Timestamp": ts,
         "X-Admin-Nonce": nonce,
         "X-Admin-Signature": signature
