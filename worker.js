@@ -1196,6 +1196,41 @@ async function adminSession(request, env) {
  return reply(request,env,{ok:true,admin:auth.admin});
 }
 
+async function adminApiKeys(request, env) {
+ const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
+ if(request.method==="GET"){
+  const rows=await env.DB.prepare("SELECT k.id,k.user_id,u.email,k.key_prefix,k.label,k.created_at,k.last_used_at,k.revoked_at,(SELECT COUNT(*) FROM user_api_usage x WHERE x.key_id=k.id) AS used FROM user_api_keys k LEFT JOIN users u ON u.id=k.user_id ORDER BY k.created_at DESC LIMIT 500").all();
+  return reply(request,env,{ok:true,keys:(rows.results||[]).map(x=>({...x,created_at:Number(x.created_at||0),last_used_at:x.last_used_at?Number(x.last_used_at):null,revoked_at:x.revoked_at?Number(x.revoked_at):null,used:Number(x.used||0)}))});
+ }
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const email=String(body.email||"").trim().toLowerCase(),label=String(body.label||"").trim().slice(0,40);
+ if(!validEmail(email)||!label)return reply(request,env,{ok:false,error:"invalid_api_key_request"},400);
+ const user=await env.DB.prepare("SELECT id,email,balance_units FROM users WHERE lower(email)=?").bind(email).first();
+ if(!user)return reply(request,env,{ok:false,error:"user_not_found"},404);
+ if(Number(user.balance_units||0)<500000)return reply(request,env,{ok:false,error:"api_balance_requirement",required_cny:200},403);
+ const active=await env.DB.prepare("SELECT COUNT(*) AS total FROM user_api_keys WHERE user_id=? AND revoked_at IS NULL").bind(user.id).first();
+ if(Number(active?.total||0)>=5)return reply(request,env,{ok:false,error:"api_key_limit"},409);
+ const key="qt_live_"+hexBytes(crypto.getRandomValues(new Uint8Array(32)));
+ const hash=hexBytes(await sha256(key)),id=crypto.randomUUID(),now=Math.floor(Date.now()/1000);
+ await env.DB.prepare("INSERT INTO user_api_keys(id,user_id,key_prefix,key_hash,label,created_at) VALUES(?,?,?,?,?,?)").bind(id,user.id,key.slice(0,16),hash,label,now).run();
+ return reply(request,env,{ok:true,key,id,email:user.email,label,key_prefix:key.slice(0,16),created_at:now,warning:"完整密钥仅显示这一次，请立即复制保存。"},201);
+}
+async function adminRevokeApiKey(request,env,keyId){
+ const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
+ const existing=await env.DB.prepare("SELECT id,revoked_at FROM user_api_keys WHERE id=?").bind(keyId).first();
+ if(!existing)return reply(request,env,{ok:false,error:"api_key_not_found"},404);
+ if(existing.revoked_at)return reply(request,env,{ok:false,error:"api_key_already_revoked"},409);
+ const now=Math.floor(Date.now()/1000);
+ await env.DB.prepare("UPDATE user_api_keys SET revoked_at=? WHERE id=? AND revoked_at IS NULL").bind(now,keyId).run();
+ return reply(request,env,{ok:true,revoked:true,id:keyId,revoked_at:now});
+}
+async function adminApiLogs(request,env){
+ const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
+ const url=new URL(request.url),raw=Number(url.searchParams.get("limit")||100),limit=Math.min(200,Math.max(1,Number.isFinite(raw)?Math.trunc(raw):100));
+ const rows=await env.DB.prepare("SELECT x.id,x.endpoint AS path,x.method,x.status_code,x.created_at,u.email,k.key_prefix FROM user_api_usage x LEFT JOIN users u ON u.id=x.user_id LEFT JOIN user_api_keys k ON k.id=x.key_id ORDER BY x.created_at DESC LIMIT ?").bind(limit).all();
+ return reply(request,env,{ok:true,logs:(rows.results||[]).map(x=>({...x,status_code:Number(x.status_code||0),created_at:Number(x.created_at||0)}))});
+}
+
 async function adminBotProxy(request, env, method, path, payload, permission="bots.read") {
   const auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
   if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "bot_bridge_not_configured" }, 503);
@@ -1226,13 +1261,13 @@ async function adminBots(request, env) {
   }
   if (request.method === "GET" && url.pathname === "/api/admin/bots/logs") {
     const bot = String(url.searchParams.get("bot") || "");
-    if (!["fakabot", "tg", "mivra"].includes(bot)) return reply(request, env, { ok: false, error: "invalid_bot" }, 400);
+    if (!["tg", "mivra"].includes(bot)) return reply(request, env, { ok: false, error: "invalid_bot" }, 400);
     return await adminBotProxy(request, env, "GET", "/_internal/bots/logs?bot=" + encodeURIComponent(bot) + "&lines=100", undefined, "bots.read");
   }
   if (request.method === "POST" && url.pathname === "/api/admin/bots/action") {
     let body;
     try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
-    if (!["fakabot", "tg", "mivra"].includes(body.bot) || !["start", "stop", "restart"].includes(body.action)) {
+    if (!["tg", "mivra"].includes(body.bot) || !["start", "stop", "restart"].includes(body.action)) {
       return reply(request, env, { ok: false, error: "invalid_action" }, 400);
     }
     return await adminBotProxy(request, env, "POST", "/_internal/bots/action", { bot: body.bot, action: body.action }, "bots.manage");
@@ -1413,6 +1448,10 @@ export default {
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
+      if (url.pathname === "/api/admin/api-keys" && ["GET","POST"].includes(request.method)) return await adminApiKeys(request,env);
+      const apiKeyRevokeMatch=url.pathname.match(/^\\/api\\/admin\\/api-keys\\/([a-f0-9-]{36})\\/revoke$/i);
+      if (apiKeyRevokeMatch && request.method === "POST") return await adminRevokeApiKey(request,env,apiKeyRevokeMatch[1]);
+      if (url.pathname === "/api/admin/api-logs" && request.method === "GET") return await adminApiLogs(request,env);
       if (url.pathname.startsWith("/api/admin/bots")) return await adminBots(request, env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
