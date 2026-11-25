@@ -190,8 +190,12 @@
       finally{button.disabled=false;}
     });
     $("changePassword").addEventListener("click",revokePasswordFlow);
-    $("openAccountCenter").addEventListener("click",()=>{$("accountCenter").hidden=false;setServiceTab("recharge");$("accountCenter").scrollIntoView({behavior:"smooth",block:"start"});});
+    const openAccountCenter=(tab="recharge")=>{$("accountCenter").hidden=false;setServiceTab(tab);$("accountCenter").scrollIntoView({behavior:"smooth",block:"start"});};
+    $("openAccountCenter").addEventListener("click",()=>openAccountCenter("recharge"));
     $("closeAccountCenter").addEventListener("click",()=>$("accountCenter").hidden=true);
+    const deepLink=String(location.hash||"").toLowerCase();
+    if(deepLink==="#accountcenter")openAccountCenter("api");
+    else if(deepLink==="#recharge")openAccountCenter("recharge");
     document.querySelectorAll("[data-service-tab]").forEach(button=>button.addEventListener("click",()=>setServiceTab(button.dataset.serviceTab)));
     document.querySelectorAll("[data-recharge-amount]").forEach(button=>button.addEventListener("click",()=>{$("rechargeAmount").value=button.dataset.rechargeAmount;document.querySelectorAll("[data-recharge-amount]").forEach(x=>x.setAttribute("aria-pressed",String(x===button)));}));
     $("createRechargeOrder").addEventListener("click",createRecharge);
