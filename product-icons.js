@@ -5,7 +5,7 @@ export function storefrontIconUrl(icon,name) {
   // A few supplier records have missing or non-standard icon identifiers.
   // Match only clear product identities; generic SMS products get a neutral phone glyph.
   if(!key && /tk账号|tiktok/.test(title)) return "https://play-lh.googleusercontent.com/2o7iuqPe-0msP3DvNhzoOgNo4eZ6GkL_RtGVeKyBn5UBQAW5cw-GW5V3wDOHB1yTQuqWzrFLFOv2u4_5ea1uhg=w240-h480";
-  if(key==="shop-google-voice-logo") return "https://ssl.gstatic.com/images/branding/productlogos/voice_2026/v2/ico/voice_2026_256dp.ico";
+  if(key==="shop-google-voice-logo") return "https://play-lh.googleusercontent.com/k2dlxKuS46VOCluBwZDz6iGnmslA-ImxlZPjgaAMJvpvmP6aQlrLuQY0hSWhZL49IB9WnqzfAZCE_yCjO7un1g=w240-h480";
   if(key==="shop-textnow") return "https://play-lh.googleusercontent.com/dhPBaff_7shT1IF0fV0P1R0psaYknV9ppvu1IyNrj3f1uXET9F56C_7w5OvfT16nKdKIGJG8Q86QI0YsjU6tIA=w240-h480";
   if(key==="shop-sms") return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/mobile-screen-button.svg";
   // Supplier has one Gmail product filed under YouTube; the product identity wins over its category label.
@@ -29,7 +29,7 @@ export function storefrontIconUrl(icon,name) {
     "shop-google":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/google.svg",
     "shop-microsoft":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/microsoft.svg",
     "shop-apple":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/apple.svg",
-    "shop-discord":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/discord.svg",
+    "shop-discord":"https://play-lh.googleusercontent.com/w2DdjDHGSj3DQElQQM0_J3PsNsALS-WD3CBeH0aXOYceR-F3aT02gFonhoFzz-Tc9ec8Dx9cLqh48-tzIFcP=w240-h480",
     "shop-telegram":"https://play-lh.googleusercontent.com/PyZ3akMGXPV0tKKirKNwfO--PSQW3FHR6rD_H9mAaukZ8LiHyYFuBLeU8UZ2ok6r5SP79-3prkfybWKh98AZAD0=w240-h480",
     "shop-whatsapp":"https://play-lh.googleusercontent.com/Gqxk4T0uZsDwFp07DE-508hkyvcNmgFuRwPiwTEfF7D7OzGv1FdHDzEyMxNsSBZLOJlGpe3ULvVM2RgrRAlBqA=w240-h480",
     "shop-instagram":"https://play-lh.googleusercontent.com/yHi59jmO_lVamcyJ1i3rM1_E8bAiAspShnGjjURq05ipQQSUksO3QVEsXTegRSqul038-4YNA7O644XAcx251Q=w240-h480",
@@ -38,7 +38,7 @@ export function storefrontIconUrl(icon,name) {
     "shop-twitter-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/twitter.svg",
     "shop-steam":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/steam.svg",
     "shop-yahoo":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/yahoo.svg",
-    "shop-youtube":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/youtube.svg",
+    "shop-youtube":"https://play-lh.googleusercontent.com/QNmuZQc9I6Zbe3mWnSr0hycnENqGFCI5p3yE29Hkxtf22T0IWS6zTrpxULLyyjWpB7ONAXDsDQXnXcVWokl3eg=w240-h480",
     "shop-linkedin":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/linkedin.svg",
     "shop-amazon-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/amazon.svg",
     "shop-skype":"https://teams.public.onecdn.static.microsoft/hashed/favicon/prod/favicon-f1722d9.ico"
