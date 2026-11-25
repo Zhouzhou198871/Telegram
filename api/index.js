@@ -435,23 +435,24 @@ function storefrontPopularityScore(name,icon) {
   return ranks[i]||0;
 }
 function storefrontIconUrl(icon,name) {
-  // The upstream catalog's Icon field is the source of truth. Do not infer a brand from product text.
+  // The upstream catalog's Icon field is authoritative; never guess a logo from product text.
+  // Brand-colored SVGs are served by Simple Icons; generic categories use neutral utility icons.
   const upstreamIcons={
-    "shop-google":"https://cdn.simpleicons.org/google",
-    "shop-microsoft":"https://cdn.simpleicons.org/microsoft",
-    "shop-apple":"https://cdn.simpleicons.org/apple",
-    "shop-discord":"https://cdn.simpleicons.org/discord",
-    "shop-telegram":"https://cdn.simpleicons.org/telegram",
-    "shop-whatsapp":"https://cdn.simpleicons.org/whatsapp",
-    "shop-instagram":"https://cdn.simpleicons.org/instagram",
-    "shop-tiktok":"https://cdn.simpleicons.org/tiktok",
-    "shop-facebook":"https://cdn.simpleicons.org/facebook",
-    "shop-twitter-circle-fill":"https://cdn.simpleicons.org/x",
-    "shop-steam":"https://cdn.simpleicons.org/steam",
-    "shop-yahoo":"https://cdn.simpleicons.org/yahoo",
-    "shop-youtube":"https://cdn.simpleicons.org/youtube",
-    "shop-linkedin":"https://cdn.simpleicons.org/linkedin",
-    "shop-skype":"https://cdn.simpleicons.org/skype",
+    "shop-google":"https://cdn.simpleicons.org/google/4285F4",
+    "shop-microsoft":"https://cdn.simpleicons.org/microsoft/5E5E5E",
+    "shop-apple":"https://cdn.simpleicons.org/apple/000000",
+    "shop-discord":"https://cdn.simpleicons.org/discord/5865F2",
+    "shop-telegram":"https://cdn.simpleicons.org/telegram/26A5E4",
+    "shop-whatsapp":"https://cdn.simpleicons.org/whatsapp/25D366",
+    "shop-instagram":"https://cdn.simpleicons.org/instagram/E4405F",
+    "shop-tiktok":"https://cdn.simpleicons.org/tiktok/000000",
+    "shop-facebook":"https://cdn.simpleicons.org/facebook/0866FF",
+    "shop-twitter-circle-fill":"https://cdn.simpleicons.org/x/000000",
+    "shop-steam":"https://cdn.simpleicons.org/steam/000000",
+    "shop-yahoo":"https://cdn.simpleicons.org/yahoo/6001D2",
+    "shop-youtube":"https://cdn.simpleicons.org/youtube/FF0000",
+    "shop-linkedin":"https://cdn.simpleicons.org/linkedin/0A66C2",
+    "shop-skype":"https://cdn.simpleicons.org/skype/00AFF0",
     "shop-mail":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/regular/envelope.svg",
     "shop-other":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/solid/box-open.svg"
   };
