@@ -1057,6 +1057,23 @@ async function adminSession(request, env) {
  return reply(request,env,{ok:true,admin:auth.admin});
 }
 
+async function adminNodeAccounts(request,env){
+ const auth=await adminAuthorize(request,env,request.method==="GET"?"nodes.read":"nodes.manage");if(auth.error)return auth.error;
+ if(request.method==="GET"){
+  const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
+  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,u.email,a.product_id,p.name AS product_name,a.order_id,a.protocol,a.server_ref,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.traffic_used_bytes,a.status,a.created_at,a.updated_at FROM node_accounts a LEFT JOIN users u ON u.id=a.user_id LEFT JOIN node_products p ON p.product_id=a.product_id ORDER BY a.created_at DESC LIMIT ?").bind(limit).all();
+  return reply(request,env,{ok:true,accounts:(rows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}))});
+ }
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const id=String(body.account_id||"").trim(),action=String(body.action||"");
+ if(!id||action!=="revoke")return reply(request,env,{ok:false,error:"invalid_node_account_action"},400);
+ const account=await env.DB.prepare("SELECT client_ref,server_ref,status FROM node_accounts WHERE account_id=?").bind(id).first();
+ if(!account)return reply(request,env,{ok:false,error:"node_account_not_found"},404);
+ try{await originRequest(env,"POST","/api/internal/nodes/revoke",{client_ref:account.client_ref,server_ref:account.server_ref});}
+ catch{return reply(request,env,{ok:false,error:"node_server_revoke_failed"},502)}
+ await env.DB.prepare("UPDATE node_accounts SET status='revoked',updated_at=? WHERE account_id=?").bind(Math.floor(Date.now()/1000),id).run();
+ return reply(request,env,{ok:true,account_id:id,status:"revoked"});
+}
 async function adminNodeCatalog(request,env){
  const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
  const [products,packages]=await Promise.all([
@@ -1361,7 +1378,7 @@ export default {
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
-      if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
+      if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);\n      if (url.pathname === "/api/admin/node-accounts" && ["GET","POST"].includes(request.method)) return await adminNodeAccounts(request,env);
       const nodeProductMatch=url.pathname.match(/^\/api\/admin\/node-products\/([a-z0-9][a-z0-9-]{1,63})$/i);
       if (nodeProductMatch && request.method === "POST") return await adminNodeProductUpdate(request,env,nodeProductMatch[1]);
       if (url.pathname === "/api/admin/node-packages" && request.method === "POST") return await adminNodePackageSave(request,env);
