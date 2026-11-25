@@ -612,18 +612,29 @@ async function loadNodeProducts() {
     const data=await api("/api/node-products"),items=Array.isArray(data.products)?data.products:[];
     grid.replaceChildren();
     if(!items.length){grid.appendChild(safeText("div","empty-card","节点套餐暂未开放，请稍后刷新。"));return;}
-    const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto"};
+    const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto","http-connect":"HTTP / HTTPS",shadowsocks:"Shadowsocks","shadowsocks-2022":"Shadowsocks 2022",trojan:"Trojan"};
+    const descriptions={
+      mtproto:"专为 Telegram 客户端提供的 MTProto 代理连接。",
+      socks5:"适用于支持 SOCKS5 代理设置的应用与设备。",
+      "http-connect":"兼容 HTTP CONNECT / HTTPS 代理设置。",
+      shadowsocks:"使用 Shadowsocks 协议连接，支持常见代理客户端。",
+      "shadowsocks-2022":"采用 Shadowsocks 2022 加密方式，适用于支持该协议的客户端。",
+      vmess:"VMess 代理协议，支持兼容客户端导入连接。",
+      vless:"VLESS Reality 连接方式，支持兼容客户端导入。",
+      trojan:"Trojan TLS 代理连接，支持兼容客户端导入。",
+      hysteria2:"基于 QUIC 的 Hysteria2 连接，支持兼容客户端导入。"
+    };
     for(const item of items){
       const card=document.createElement("article");card.className="product-card node-product-card";
       const head=document.createElement("div");head.className="product-card-head";
       const icon=document.createElement("div");icon.className="product-icon-wrap";icon.appendChild(safeText("span","product-icon-fallback",item.protocol==="mtproto"?"T":String(item.name||"节").slice(0,1)));
       const title=document.createElement("div");title.className="product-title-wrap";
-      title.appendChild(safeText("div","product-category","自营节点"));
+      title.appendChild(safeText("div","product-category","协议服务"));
       title.appendChild(safeText("h3","product-name",item.name||labels[item.protocol]||"节点线路"));
       head.append(icon,title);card.append(head);
       card.appendChild(safeText("span","node-protocol-tag",labels[item.protocol]||item.protocol));
-      card.appendChild(safeText("span","node-protocol-tag",item.provisioning_ready?"已接入":"接入准备中"));
-      card.appendChild(safeText("p","product-description",item.description||"自有服务器线路，购买后自动开通。"));
+      
+      card.appendChild(safeText("p","product-description",descriptions[item.protocol]||labels[item.protocol]||"选择套餐，购买后按订单信息开通使用。"));
       const plans=document.createElement("div");plans.className="node-plan-list";
       for(const pkg of item.packages||[]){
         const button=document.createElement("button");button.type="button";button.className="node-plan-button";
