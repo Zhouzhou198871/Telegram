@@ -175,13 +175,23 @@ async function handleInternal(method, url, headers, rawBody, db) {
       products.push({
         version, supplier_product_id:id, title:String(p.name || "未命名商品"),
         category_id:String(p.category_id || ""), category:String(p.category_name || "其他商品"),
-        price_cny:cost, sell_price_usdt:sell, description:p.description == null ? null : String(p.description),
+        price_cny:cost, sell_price_usdt:sell, stock, is_on_sale:onSale, purchasable:active,
+        description:p.description == null ? null : String(p.description),
         variants_json:variants, stock_status:status, product_url:productUrl,
         raw_json:raw, active:active ? 1 : 0, synced_at:version
       });
     }
     if (products.length !== productsIn.length) return {status:400,body:{ok:false,error:"catalog_product_count_mismatch"}};
     const activeCount = products.filter(p => p.active === 1).length;
+    const syncEpoch = Math.floor(Date.parse(version) / 1000);
+    if (!Number.isFinite(syncEpoch) || syncEpoch <= 0) return {status:400,body:{ok:false,error:"catalog_version_invalid"}};
+    const shopCatalogItems = products.map(p => ({
+      product_id:p.supplier_product_id, supplier_product_id:p.supplier_product_id,
+      name:p.title, category_id:p.category_id, category_name:p.category,
+      price_cny:p.price_cny, price_usdt:p.sell_price_usdt, stock:p.stock,
+      is_on_sale:p.is_on_sale, is_local_inventory:false, purchasable:p.purchasable,
+      source:JSON.parse(p.raw_json), updated_at:syncEpoch
+    }));
     await db.begin(async tx => {
       for (let i=0;i<categories.length;i+=200) {
         const batch = categories.slice(i,i+200);
@@ -200,7 +210,15 @@ async function handleInternal(method, url, headers, rawBody, db) {
         const snapshotSql = "INSERT INTO catalog_snapshot_products(version,supplier_product_id,title,category_id,category,price_cny,sell_price_usdt,description,variants_json,stock_status,product_url,raw_json,active) SELECT x.version,x.supplier_product_id,x.title,x.category_id,x.category,x.price_cny,x.sell_price_usdt,x.description,x.variants_json,x.stock_status,x.product_url,x.raw_json,x.active FROM jsonb_to_recordset('" + json + "'::jsonb) AS x(version text,supplier_product_id text,title text,category_id text,category text,price_cny double precision,sell_price_usdt double precision,description text,variants_json text,stock_status text,product_url text,raw_json text,active integer) ON CONFLICT(version,supplier_product_id) DO UPDATE SET title=EXCLUDED.title,category_id=EXCLUDED.category_id,category=EXCLUDED.category,price_cny=EXCLUDED.price_cny,sell_price_usdt=EXCLUDED.sell_price_usdt,description=EXCLUDED.description,variants_json=EXCLUDED.variants_json,stock_status=EXCLUDED.stock_status,product_url=EXCLUDED.product_url,raw_json=EXCLUDED.raw_json,active=EXCLUDED.active";
         await tx.unsafe(snapshotSql);
       }
+      for (let i=0;i<shopCatalogItems.length;i+=250) {
+        const batch = shopCatalogItems.slice(i,i+250);
+        const shopJson = JSON.stringify(batch).replace(/'/g, "''");
+        const shopSql = "INSERT INTO shop_catalog(product_id,supplier_product_id,name,category_id,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source,updated_at) SELECT x.product_id,x.supplier_product_id,x.name,x.category_id,x.category_name,x.price_cny,x.price_usdt,x.stock,x.is_on_sale,x.is_local_inventory,x.purchasable,x.source,x.updated_at FROM jsonb_to_recordset('" + shopJson + "'::jsonb) AS x(product_id text,supplier_product_id text,name text,category_id text,category_name text,price_cny numeric,price_usdt numeric,stock integer,is_on_sale boolean,is_local_inventory boolean,purchasable boolean,source jsonb,updated_at bigint) ON CONFLICT(product_id) DO UPDATE SET supplier_product_id=EXCLUDED.supplier_product_id,name=EXCLUDED.name,category_id=EXCLUDED.category_id,category_name=EXCLUDED.category_name,price_cny=EXCLUDED.price_cny,price_usdt=EXCLUDED.price_usdt,stock=EXCLUDED.stock,is_on_sale=EXCLUDED.is_on_sale,is_local_inventory=false,purchasable=EXCLUDED.purchasable,source=EXCLUDED.source,updated_at=EXCLUDED.updated_at WHERE shop_catalog.is_local_inventory=false";
+        await tx.unsafe(shopSql);
+      }
+      await tx.unsafe("UPDATE shop_catalog SET stock=0,is_on_sale=false,purchasable=false,updated_at=$1 WHERE is_local_inventory=false AND updated_at < $1",[syncEpoch]);
       await tx.unsafe("INSERT INTO catalog_sync_state(id,synced_at,product_count,category_count) VALUES(1,$1,$2,$3) ON CONFLICT(id) DO UPDATE SET synced_at=EXCLUDED.synced_at,product_count=EXCLUDED.product_count,category_count=EXCLUDED.category_count",[version,products.length,categories.length]);
+      await tx.unsafe("INSERT INTO catalog_sync_runs(attempted_at,status,product_count,category_count,active_count,error) VALUES($1,'success',$2,$3,$4,NULL)",[version,products.length,categories.length,activeCount]);
       await tx.unsafe("INSERT INTO catalog_sync_runs(attempted_at,status,product_count,category_count,active_count,error) VALUES($1,'success',$2,$3,$4,NULL)",[version,products.length,categories.length,activeCount]);
       await tx.unsafe("DELETE FROM catalog_snapshot_products WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_products ORDER BY version DESC LIMIT 2)");
       await tx.unsafe("DELETE FROM catalog_snapshot_categories WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_categories ORDER BY version DESC LIMIT 2)");
