@@ -374,7 +374,7 @@ function productBrandIcon(item) {
     typeof value === "string" && /^https:\/\//i.test(value)
   );
   if (custom) return custom;
-  if (/microsoft\\s?teams/i.test(name)) return "https://cdn.simpleicons.org/microsoftteams";
+  if (/microsoft\s?teams/i.test(name)) return "https://cdn.simpleicons.org/microsoftteams";
   if (/ixbrowser/i.test(name)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
   if (/aol\.com/i.test(name)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
   if (/gmx\.(us|com)/i.test(name)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
