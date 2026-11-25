@@ -752,3 +752,51 @@ h2{color:#292f38}
  .hero-copy-card{padding:26px 20px;border-radius:20px}
  .catalog-section{padding-top:20px}
 }
+
+
+/* Qingtian Store — warm milk-white storefront palette */
+body[data-page="shop"] {
+  --bg: #faf8f2;
+  --line: #e9e3d8;
+  --text: #292d35;
+  --muted: #858174;
+  --card-surface: #fffefa;
+  background: #faf8f2 !important;
+  color: #292d35 !important;
+}
+body[data-page="shop"] .topbar {
+  background: rgba(255,254,250,.96) !important;
+  border-bottom-color: #eee8de;
+}
+body[data-page="shop"] .shop-main { color: #292d35; }
+body[data-page="shop"] .hero-copy-card {
+  border-color: #eee5d6;
+  background: linear-gradient(118deg,#fffdf7 0%,#f7f1e5 54%,#f4eee2 100%);
+  box-shadow: 0 16px 42px rgba(88,72,42,.055);
+}
+body[data-page="shop"] .hero-copy-card:after {
+  background: radial-gradient(circle at 35% 35%,rgba(214,190,145,.20),rgba(214,190,145,0) 68%);
+  border-color: rgba(190,164,119,.12);
+}
+body[data-page="shop"] .catalog-tools,
+body[data-page="shop"] .product-card,
+body[data-page="shop"] .account-menu-card {
+  background: #fffefa !important;
+  border-color: #ebe5da;
+}
+body[data-page="shop"] .search-box,
+body[data-page="shop"] .catalog-selects select {
+  background: #fffefa;
+  border-color: #e7e0d4;
+}
+body[data-page="shop"] .product-category {
+  background: #f4efe5;
+  color: #6683a8;
+}
+body[data-page="shop"] .product-meta { border-top-color: #f0ece4; }
+body[data-page="shop"] .node-catalog-section {
+  background: #fffefa;
+  border-color: #ebe5da;
+  box-shadow: 0 8px 24px rgba(88,72,42,.035);
+}
+body[data-page="shop"] .footer-note { color: #a39c8f !important; }
