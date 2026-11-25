@@ -632,3 +632,69 @@ body[data-page="shop"] .product-cover-kicker{font-size:9px;font-weight:800;lette
 body[data-page="shop"] .product-cover-art strong{max-width:82%;font-size:18px;line-height:1.35;font-weight:850;color:#244b7a}
 body[data-page="shop"] .product-cover-art small{font-size:8px;letter-spacing:.18em;color:#7390b5}
 @media(max-width:760px){body[data-page="shop"] .product-cover{height:126px;margin-bottom:11px}}
+
+
+/* Qingtian cream storefront refresh — preserves the existing catalogue and checkout scripts. */
+:root{
+  --bg:#f7f5ef;--line:#e9e4da;--text:#263246;--muted:#7a8492;
+  --accent:#3474d4;--green:#18845a;--card-surface:#fffefa;
+}
+html,body,body[data-page="shop"]{
+  background:#f7f5ef!important;color:#263246!important;color-scheme:light!important;
+}
+body[data-page="shop"] .topbar{
+  width:min(1240px,calc(100% - 48px));height:78px;min-height:78px;
+  border:0;border-bottom:1px solid #e9e4da;background:#fffefa!important;
+}
+body[data-page="shop"] .shop-main{width:min(1240px,calc(100% - 48px));max-width:1240px}
+body[data-page="shop"] .shop-hero{max-width:none;padding:28px 0 22px}
+body[data-page="shop"] .hero-copy-card{
+  padding:clamp(30px,5vw,58px);border:1px solid #e9e5dc;border-radius:24px;
+  background:linear-gradient(115deg,#f0f5fc 0%,#fffefa 58%,#f5f0e7 100%);
+  box-shadow:0 16px 42px rgba(45,55,72,.055);
+}
+body[data-page="shop"] .hero-copy-card:after{
+  border-color:rgba(64,116,190,.12);background:radial-gradient(circle at 35% 35%,rgba(77,145,255,.18),transparent 68%);
+}
+body[data-page="shop"] .shop-hero h1{font-size:clamp(32px,4.3vw,50px);line-height:1.25}
+body[data-page="shop"] .catalog-section{width:100%;padding:26px 0 64px}
+body[data-page="shop"] .catalog-tools{
+  border:1px solid #e9e4da;background:#fffefa;border-radius:16px;
+  box-shadow:0 8px 24px rgba(45,55,72,.035);
+}
+body[data-page="shop"] .search-box,
+body[data-page="shop"] .catalog-selects select{
+  background:#fffefa;border-color:#e7e2d8;color:#344054;
+}
+body[data-page="shop"] .product-card{
+  border:1px solid #ebe6dd!important;border-radius:18px!important;
+  background:#fffefa!important;box-shadow:0 8px 24px rgba(45,55,72,.045)!important;
+}
+body[data-page="shop"] .product-card:before{background:linear-gradient(90deg,#7da8e6,#b7cdec)}
+body[data-page="shop"] .product-card:after{background:rgba(90,130,190,.055)}
+body[data-page="shop"] .product-category{background:#f0f4fa;color:#4774ae}
+body[data-page="shop"] .product-name{color:#263246!important}
+body[data-page="shop"] .product-description{color:#818a96!important}
+body[data-page="shop"] .product-price{color:#d87551}
+body[data-page="shop"] .product-stock{color:#87909b!important}
+body[data-page="shop"] .product-cover{border-color:#eee9df;background:#f3f0e9}
+body[data-page="shop"] .buy-button{
+  background:linear-gradient(105deg,#3474d4,#568bdc)!important;
+  border:0;border-radius:11px;color:#fff!important;
+  box-shadow:0 6px 16px rgba(52,116,212,.16);
+}
+body[data-page="shop"] .buy-button:hover:not(:disabled){box-shadow:0 9px 20px rgba(52,116,212,.22)}
+body[data-page="shop"] .account-menu-card{background:#fffefa;border-color:#e9e4da}
+body[data-page="shop"] .node-catalog-section{
+  border-color:#e9e4da;background:#fffefa;box-shadow:0 8px 24px rgba(45,55,72,.035)
+}
+body[data-page="shop"] .delivery-modal{background:#fffefa;border-color:#e9e4da}
+body[data-page="shop"] .delivery-content{background:#f7f5ef;border-color:#e9e4da}
+body[data-page="shop"] .footer-note{color:#9299a3!important;border-color:#e9e4da}
+body[data-page="shop"] .shop-nav-link{color:#697487}
+body[data-page="shop"] .shop-nav-link.is-active{background:#edf3fc;color:#286bd4}
+@media(max-width:560px){
+ body[data-page="shop"] .topbar,body[data-page="shop"] .shop-main{width:calc(100% - 28px)}
+ body[data-page="shop"] .hero-copy-card{background:linear-gradient(145deg,#f0f5fc,#fffefa);padding:24px 18px}
+ body[data-page="shop"] .shop-hero{padding-top:18px}
+}
