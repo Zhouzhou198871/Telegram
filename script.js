@@ -345,7 +345,7 @@ function createProductIcon(item) {
   const fallback=document.createElement("span");fallback.className="product-icon-fallback";
   fallback.textContent=(String(item.name||"软").trim().charAt(0)||"软").toUpperCase();
   fallback.setAttribute("aria-hidden","true");
-  const iconUrl=productBrandIcon(item);
+  const iconUrl=String(item.icon_url||"").trim();
   if(!iconUrl){wrap.appendChild(fallback);return wrap;}
   const image=document.createElement("img");image.className="product-icon-image";image.alt="";
   image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=iconUrl;
@@ -379,7 +379,7 @@ function createProductIcon(item) {
   fallback.className = "product-icon-fallback";
   fallback.textContent = (String(item.name || "软").trim().charAt(0) || "软").toUpperCase();
   fallback.setAttribute("aria-hidden", "true");
-  const iconUrl = productBrandIcon(item);
+  const iconUrl = String(item.icon_url || "").trim();
   if (!iconUrl) {
     wrap.appendChild(fallback);
     return wrap;
@@ -392,10 +392,8 @@ function createProductIcon(item) {
   image.referrerPolicy = "no-referrer";
   image.src = iconUrl;
   image.addEventListener("error", () => {
-    image.src = /邮箱|mail|email/i.test(String(item.name || ""))
-      ? "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg"
-      : "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg";
-    image.onerror = () => { image.remove(); wrap.appendChild(fallback); };
+    image.remove();
+    wrap.appendChild(fallback);
   }, { once: true });
   wrap.appendChild(image);
   return wrap;
