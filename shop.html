@@ -17,11 +17,6 @@
       <img class="brand-logo" src="./logo.jpg" alt="晴天号铺">
       <span class="brand-title">晴天号铺</span>
     </a>
-    <nav class="shop-primary-nav" aria-label="商城主导航">
-      <a class="shop-nav-link is-active" href="#home" data-shop-view="home" aria-current="page">首页</a>
-      <a class="shop-nav-link" href="#catalog" data-shop-view="products" data-i18n="shopping">商品购买</a>
-      <a class="shop-nav-link" href="#nodeCatalog" data-shop-view="nodes">节点服务</a>
-    </nav>
     <div class="top-actions">
       <div class="account-menu-wrap">
         <button class="avatar-button account-profile-link" id="accountMenuToggle" type="button" aria-label="打开账户菜单" aria-expanded="false" aria-controls="accountMenu">
@@ -41,7 +36,13 @@
             </div>
           </div>
           <div class="account-balance-row"><span data-i18n="balanceLabel">账户余额</span><strong><b id="balance">¥0.00</b></strong></div>
-          <a class="account-card-link" href="./profile.html">账户信息与充值服务 <span>›</span></a>
+          <nav class="account-menu-links" aria-label="账户快捷入口">
+            <a class="account-card-link" href="./orders.html" data-i18n="orderDetails">订单详情 <span>›</span></a>
+            <a class="account-card-link" href="./profile.html" data-i18n="personalCenter">个人中心 <span>›</span></a>
+            <a class="account-card-link" href="./invite.html" data-i18n="inviteRewards">邀请奖励 <span>›</span></a>
+            <a class="account-card-link" href="./profile.html#accountCenter" data-i18n="workbench">工作台 <span>›</span></a>
+            <a class="account-card-link" href="./profile.html#recharge" data-i18n="rechargeEntry">充值入口 <span>›</span></a>
+          </nav>
           <button class="account-logout" id="logout" type="button" data-i18n="logout">退出登录</button>
           <button class="language-toggle" id="languageToggle" type="button" hidden><span id="languageToggleLabel">English</span></button>
         </section>
@@ -102,6 +103,11 @@
   <footer class="footer-note" style="width:100%;margin:20px auto 0;text-align:center;color:#a1aab8;font-size:10px;line-height:1.6">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
   <style>
     .account-menu-wrap{position:relative}
+    .top-actions{margin-left:auto}
+    .account-menu-links{display:grid;gap:5px}
+    .account-menu-card .account-card-link{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:10px 12px;border-radius:10px;color:#334155;text-decoration:none;font-size:14px;font-weight:650}
+    .account-menu-card .account-card-link span{color:#94a3b8;font-size:19px}
+    .account-menu-card .account-card-link:hover{background:#f3f7fd;color:#2563eb}
     .account-menu-wrap>summary{list-style:none}
     .account-menu-wrap>summary::-webkit-details-marker{display:none}
     .account-menu-wrap[open] .avatar-button{border-color:#93c5fd;box-shadow:0 8px 22px rgba(37,99,235,.15)}
