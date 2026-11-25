@@ -447,7 +447,7 @@ function storefrontIconUrl(icon,name) {
   }
   if(key==="shop-mail") {
     if(title.includes("proton mail") || title.includes("protonmail")) return "https://cdn.simpleicons.org/protonmail/6D4AFF";
-    if(title.includes("aol")) return "https://cdn.simpleicons.org/aol/3399FF";
+    if(title.includes("aol")) return "https://www.aol.com/favicon.ico";
     if(title.includes("gmx")) return "https://cdn.simpleicons.org/gmx/5B2C83";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/regular/envelope.svg";
   }
