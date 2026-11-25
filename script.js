@@ -439,10 +439,10 @@ const PRODUCT_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 function cleanProductTitle(value) {
   return String(value || "")
-    .replace(/^\\s*\\[货号[^\\]]*\\]\\s*/i, "")
-    .replace(/^[^\\p{L}\\p{N}]+/u, "")
+    .replace(/^\s*\[货号[^\]]*\]\s*/i, "")
+    .replace(/^[^\p{L}\p{N}]+/u, "")
     .split(/[|｜]/)[0]
-    .replace(/\\s+/g, " ")
+    .replace(/\s+/g, " ")
     .trim() || "数字商品";
 }
 
@@ -451,10 +451,10 @@ function cleanProductDescription(item) {
   const parts = raw.split(/[|｜]/).map(x => x.trim()).filter(Boolean);
   const details = parts.length > 1 ? parts.slice(1) : [];
   const text = details
-    .filter(x => !/^\\[?货号/i.test(x) && !/单次最多购买|最多购买\\s*\\d+/i.test(x))
+    .filter(x => !/^\[?货号/i.test(x) && !/单次最多购买|最多购买\s*\d+/i.test(x))
     .join(" · ")
-    .replace(/^[^\\p{L}\\p{N}]+/u, "")
-    .replace(/\\s+/g, " ")
+    .replace(/^[^\p{L}\p{N}]+/u, "")
+    .replace(/\s+/g, " ")
     .trim();
   return text.length > 76 ? text.slice(0, 73) + "…" : text;
 }
