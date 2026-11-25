@@ -78,6 +78,17 @@ function formatPrice(value) {
   const n = Number(value);
   return Number.isFinite(n) ? "¥" + n.toFixed(2) : "价格暂不可用";
 }
+
+function displayProductName(item) {
+  const raw = String(item?.name || item?.title || "数字商品");
+  const cleaned = raw
+    .replace(/^\\s*\\[货号\\s*\\d+\\]\\s*/i, "")
+    .replace(/^\\s*货号\\s*[:：#]?\\s*\\d+\\s*/i, "")
+    .replace(/^[🟥🟦🟩🟨🟪⬛⬜🔴🟢🔵🟡🟣⭐️✨]+\\s*/u, "")
+    .replace(/\\s+/g, " ")
+    .trim();
+  return cleaned || "数字商品";
+}
 const SHOP_I18N = {
  zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",myAccount:"我的账户",shopping:"商品购买",allProducts:"全部商品",catalogHeading:"上架商品",productHeading:"商品购买",searchResults:"搜索结果",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品库存与售价实时读取，支持在线下单。下单前请核对商品信息。",tagStock:"实时库存",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品购买",refreshProducts:"刷新商品 ↻",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在连接商品目录…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogEmpty:"暂无上架商品。",catalogFailed:"目录连接失败，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请点击刷新目录重试。"},
  en:{loggedIn:"Signed in",balanceLabel:"Account balance",accountInfo:"Account details",inviteRewards:"Referral rewards",orderHistory:"Order history",support:"Support",language:"Language",logout:"Sign out",home:"Home",myAccount:"My account",shopping:"Shop",allProducts:"All products",catalogHeading:"Available products",productHeading:"Shop products",searchResults:"Search results",heroEyebrow:"Qingtian Store · Digital goods",heroTitle:"Selected accounts and digital goods",heroSubtitle:"Shop securely · Instant delivery",heroCopy:"Inventory and prices are updated live. Please review product details before ordering.",tagStock:"Live stock",tagPrice:"Clear pricing",tagDelivery:"Online delivery",catalogEyebrow:"Shop products",refreshProducts:"Refresh ↻",searchPlaceholder:"Search products…",category:"Category",allCategories:"All categories",sort:"Sort products",defaultSort:"Default sort",priceLowHigh:"Price: low to high",priceHighLow:"Price: high to low",stockHighLow:"Stock: high to low",loadingCatalog:"Connecting to product catalog…",noProducts:"No products available",noMatches:"No matching products found",stockLabel:"Stock",buyNow:"Buy now",notAvailable:"Unavailable",submitting:"Submitting…",checking:"Checking product and balance…",delivered:"Purchase complete. Your code has been delivered.",insufficient:"Insufficient balance. Please contact support to top up.",catalogUpdated:"Product catalog updated.",catalogEmpty:"No products available.",catalogFailed:"Could not connect to the catalog. Please try again.",temporaryError:"Network unavailable. Your session is saved; refresh the catalog to retry."}
@@ -393,12 +404,12 @@ function createProductCover(item) {
   const fallback=()=>{
     const art=document.createElement("div");art.className="product-cover-art";
     const label=document.createElement("span");label.className="product-cover-kicker";label.textContent=String(item.category||"DIGITAL GOODS");
-    const name=document.createElement("strong");name.textContent=String(item.name||"精选数字商品");
+    const name=document.createElement("strong");name.textContent=displayProductName(item);
     const sub=document.createElement("small");sub.textContent="QINGTIAN · DIGITAL STORE";
     art.append(label,name,sub);wrap.replaceChildren(art);
   };
   if(imageUrl){
-    const image=document.createElement("img");image.className="product-cover-image";image.alt=String(item.name||"商品图片");image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=imageUrl;
+    const image=document.createElement("img");image.className="product-cover-image";image.alt=displayProductName(item);image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=imageUrl;
     image.addEventListener("error",fallback,{once:true});wrap.append(image);
   }else fallback();
   return wrap;
@@ -409,7 +420,7 @@ function createProductIcon(item) {
   wrap.className = "product-icon-wrap";
   const fallback = document.createElement("span");
   fallback.className = "product-icon-fallback";
-  fallback.textContent = (String(item.name || "软").trim().charAt(0) || "软").toUpperCase();
+  fallback.textContent = (displayProductName(item).trim().charAt(0) || "软").toUpperCase();
   fallback.setAttribute("aria-hidden", "true");
   const iconUrl = productBrandIcon(item);
   if (!iconUrl) {
@@ -467,7 +478,7 @@ function drawFilteredProducts() {
     const titleWrap = document.createElement("div");
     titleWrap.className = "product-title-wrap";
     titleWrap.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
-    titleWrap.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
+    titleWrap.appendChild(safeText("h3", "product-name", displayProductName(item), "未命名商品"));
     cardHead.appendChild(titleWrap);
     card.appendChild(cardHead);
     const description = String(item.description || item.description_zh || item.summary || "").trim();
