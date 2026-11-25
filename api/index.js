@@ -423,6 +423,7 @@ function storefrontIconUrl(icon,name) {
   const key=String(icon||"").toLowerCase();
   const title=String(name||"");
   const map={"shop-amazon-circle-fill":"amazon","shop-discord":"discord","shop-google-voice-logo":"googlevoice","shop-google":"google","shop-instagram":"instagram","shop-linkedin":"linkedin","shop-skype":"skype","shop-steam":"steam","shop-tiktok":"tiktok","shop-telegram":"telegram","shop-twitter-circle-fill":"x","shop-whatsapp":"whatsapp","shop-yahoo":"yahoo","shop-youtube":"youtube","shop-facebook":"facebook","shop-microsoft":"microsoft","shop-apple":"apple"};
+  if(/microsoft\\s?teams/i.test(title)) return "https://cdn.simpleicons.org/microsoftteams";
   if(/ixbrowser/i.test(title)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
   if(/aol\.com/i.test(title)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
   if(/gmx\.(us|com)/i.test(title)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
