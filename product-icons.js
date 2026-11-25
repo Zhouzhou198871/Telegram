@@ -6,15 +6,16 @@ export function storefrontIconUrl(icon,name) {
   // Match only clear product identities; generic SMS products get a neutral phone glyph.
   if(!key && /tk账号|tiktok/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/tiktok.svg";
   if(key==="shop-google-voice-logo") return "https://ssl.gstatic.com/images/branding/productlogos/voice_2026/v2/ico/voice_2026_256dp.ico";
-  if(key==="shop-textnow") return "https://iconsdb.app/api/v1/icon/app-icons/textnow-call-text-unlimited.png?size=512";
+  if(key==="shop-textnow") return "https://play-lh.googleusercontent.com/dhPBaff_7shT1IF0fV0P1R0psaYknV9ppvu1IyNrj3f1uXET9F56C_7w5OvfT16nKdKIGJG8Q86QI0YsjU6tIA=w240-h480";
   if(key==="shop-sms") return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/mobile-screen-button.svg";
   // Supplier has one Gmail product filed under YouTube; the product identity wins over its category label.
-  if(key==="shop-youtube" && /google|gmail/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/google.svg";
+  if(key==="shop-youtube" && /google.*gmail|gmail.*google/.test(title)) return "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc=w240-h480";
   if(key==="shop-instagram" && /threads/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/threads.svg";
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
     if(title.includes("deezer")) return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/deezer.svg";
     if(title.includes("snapchat")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/snapchat.svg";
+    if(title.includes("tinder")) return "https://play-lh.googleusercontent.com/VaExVMyjnrd9PkIAKchSBK6Eo7zb4A2rriDbD3pUvmveAy46StPS-Hs5mYVIP9upZV4YCJxRoQRnj77FAaQd2A=w240-h480";
     if(title.includes("reddit")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/reddit.svg";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/box-open.svg";
   }
