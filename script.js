@@ -312,6 +312,8 @@ async function loadUser() {
 }
 
 let allProducts = [];
+let catalogRefreshInFlight = false;
+let catalogAutoRefreshTimer = null;
 
 const PRODUCT_SOURCE_ICONS = {
   "shop-amazon-circle-fill": "amazon",
@@ -514,19 +516,40 @@ function renderProducts(items) {
   drawFilteredProducts();
 }
 
-async function loadProducts() {
+async function loadProducts(options = {}) {
+  if (catalogRefreshInFlight) return;
+  catalogRefreshInFlight = true;
+  const silent = options && options.silent === true;
   const grid = $("productGrid");
-  grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
+  if (!silent) grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
   try {
     const data = await api("/api/products");
     renderProducts(data.items || []);
     const t=SHOP_I18N[currentShopLanguage()];
     if (data.catalog_stale === true) message($("shopMessage"),t.catalogStale,"error");
-    else message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
+    else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
   } catch {
-    grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
-    message($("shopMessage"),SHOP_I18N[currentShopLanguage()].catalogFailed,"error");
+    const t=SHOP_I18N[currentShopLanguage()];
+    if (silent && allProducts.length) {
+      allProducts = allProducts.map(item => ({...item,purchasable:false}));
+      drawFilteredProducts();
+    } else {
+      grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
+    }
+    message($("shopMessage"),t.catalogFailed,"error");
+  } finally {
+    catalogRefreshInFlight = false;
   }
+}
+
+function startCatalogAutoRefresh() {
+  if (catalogAutoRefreshTimer) return;
+  catalogAutoRefreshTimer = window.setInterval(() => {
+    if (!document.hidden && token()) loadProducts({silent:true});
+  }, 60000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && token()) loadProducts({silent:true});
+  });
 }
 
 
@@ -747,7 +770,7 @@ function initShop() {
     if(invalidSession){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;}
     message($("shopMessage"),SHOP_I18N[currentShopLanguage()].temporaryError,"error");
   }).finally(()=>{
-    if(token()){loadProducts();loadNodeProducts();}
+    if(token()){loadProducts();loadNodeProducts();startCatalogAutoRefresh();}
   });
 }
 
