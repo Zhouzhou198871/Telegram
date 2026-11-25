@@ -440,7 +440,7 @@ function storefrontIconUrl(icon,name) {
   const title=String(name||"").toLowerCase();
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
-    if(title.includes("deezer")) return "https://cdn.simpleicons.org/deezer/A238FF";
+    if(title.includes("deezer")) return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/deezer.svg";
     if(title.includes("snapchat")) return "https://cdn.simpleicons.org/snapchat/000000";
     if(title.includes("reddit")) return "https://cdn.simpleicons.org/reddit/FF4500";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/box-open.svg";
