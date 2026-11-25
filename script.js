@@ -824,7 +824,9 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
-  readCachedProducts();
+  const initialCatalog = Array.isArray(window.__QINGTIAN_INITIAL_PRODUCTS__) ? window.__QINGTIAN_INITIAL_PRODUCTS__ : null;
+  if (initialCatalog && initialCatalog.length) renderProducts(initialCatalog, { verified: false });
+  else readCachedProducts();
   loadProducts({silent:true});
   loadNodeProducts();
   startCatalogAutoRefresh();
