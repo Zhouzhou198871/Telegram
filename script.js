@@ -316,43 +316,6 @@ let visibleProductLimit = 48;
 let catalogRefreshInFlight = false;
 let catalogAutoRefreshTimer = null;
 
-function verifiedProductBrandSlug(item) {
-  const name=String(item?.name||"").toLowerCase();
-  const rules=[
-    [/microsoft\s*teams|\bteams\b/i,"microsoftteams"],[/\bskype\b/i,"skype"],
-    [/chatgpt|openai|gpt[- ]?[45]/i,"openai"],[/claude|anthropic/i,"claude"],[/gemini/i,"googlegemini"],
-    [/google\s*voice/i,"googlevoice"],[/youtube/i,"youtube"],[/gmail|google|谷歌/i,"google"],
-    [/outlook|hotmail/i,"outlook"],[/office\s*365|office365/i,"microsoftoffice"],
-    [/onedrive|microsoft|windows|微软/i,"microsoft"],[/apple|icloud|苹果/i,"apple"],
-    [/discord/i,"discord"],[/telegram|飞机号|电报|纸飞机/i,"telegram"],[/whatsapp/i,"whatsapp"],
-    [/instagram/i,"instagram"],[/tiktok|TK账号|抖音/i,"tiktok"],[/facebook|meta|脸书/i,"facebook"],
-    [/x\.com|twitter/i,"x"],[/snapchat/i,"snapchat"],[/reddit/i,"reddit"],[/steam/i,"steam"],
-    [/spotify/i,"spotify"],[/netflix/i,"netflix"],[/amazon/i,"amazon"],[/linkedin/i,"linkedin"],
-    [/github/i,"github"],[/notion/i,"notion"],[/canva/i,"canva"],[/capcut/i,"capcut"],
-    [/adobe|photoshop|premiere/i,"adobe"],[/zoom/i,"zoom"],[/yahoo/i,"yahoo"],
-    [/proton\s?mail|protonmail/i,"protonmail"],[/\baol\b|aol\.com/i,"aol"],
-    [/\bgmx\b|gmx\.(us|com)/i,"gmx"],[/vfemail/i,"vfemail"],[/firstmail/i,"firstmail"],
-    [/ixbrowser/i,"ixbrowser"]
-  ];
-  return rules.find(([pattern])=>pattern.test(name))?.[1]||"";
-}
-function productBrandIcon(item) {
-  const slug=verifiedProductBrandSlug(item);
-  return slug ? "https://cdn.simpleicons.org/"+slug : "";
-}
-function createProductIcon(item) {
-  const wrap=document.createElement("div");wrap.className="product-icon-wrap";
-  const fallback=document.createElement("span");fallback.className="product-icon-fallback";
-  fallback.textContent=(String(item.name||"软").trim().charAt(0)||"软").toUpperCase();
-  fallback.setAttribute("aria-hidden","true");
-  const iconUrl=String(item.icon_url||"").trim();
-  if(!iconUrl){wrap.appendChild(fallback);return wrap;}
-  const image=document.createElement("img");image.className="product-icon-image";image.alt="";
-  image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=iconUrl;
-  image.addEventListener("error",()=>{image.remove();wrap.appendChild(fallback);},{once:true});
-  wrap.appendChild(image);return wrap;
-}
-
 function createProductCover(item) {
   const wrap=document.createElement("div");
   wrap.className="product-cover";
