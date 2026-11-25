@@ -342,7 +342,10 @@ function createProductIcon(item) {
   fallback.className = "product-icon-fallback";
   fallback.textContent = (String(item.name || "软").trim().charAt(0) || "软").toUpperCase();
   fallback.setAttribute("aria-hidden", "true");
-  const iconUrl = String(item.icon_url || "").trim();
+  const isGoogleGmail = /google.*gmail|gmail.*google/i.test(String(item.name || ""));
+  const iconUrl = isGoogleGmail
+    ? "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc=w240-h480"
+    : String(item.icon_url || "").trim();
   if (!iconUrl) {
     wrap.appendChild(fallback);
     return wrap;
