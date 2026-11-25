@@ -196,6 +196,7 @@
     const deepLink=String(location.hash||"").toLowerCase();
     if(deepLink==="#accountcenter")openAccountCenter("api");
     else if(deepLink==="#recharge")openAccountCenter("recharge");
+    else if(deepLink==="#nodes")openAccountCenter("nodes");
     document.querySelectorAll("[data-service-tab]").forEach(button=>button.addEventListener("click",()=>setServiceTab(button.dataset.serviceTab)));
     document.querySelectorAll("[data-recharge-amount]").forEach(button=>button.addEventListener("click",()=>{$("rechargeAmount").value=button.dataset.rechargeAmount;document.querySelectorAll("[data-recharge-amount]").forEach(x=>x.setAttribute("aria-pressed",String(x===button)));}));
     $("createRechargeOrder").addEventListener("click",createRecharge);
