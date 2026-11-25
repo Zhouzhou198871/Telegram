@@ -1002,9 +1002,9 @@ async function adminListProducts(request, env) {
   const pattern = "%" + q + "%";
   const [count, rows] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?)").bind(q, pattern, pattern, pattern).first(),
-    env.DB.prepare("SELECT product_id,supplier_product_id,name,category_name,price_cny::text AS price_cny,price_usdt::text AS price_usdt,stock,is_on_sale,is_local_inventory,purchasable,updated_at FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?) ORDER BY updated_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, pattern, limit, (page - 1) * limit).all()
+    env.DB.prepare("SELECT product_id,supplier_product_id,name,category_name,price_cny::text AS price_cny,price_usdt::text AS price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source->>'Icon' AS source_icon,updated_at FROM shop_catalog WHERE (?='' OR name ILIKE ? OR product_id ILIKE ? OR COALESCE(category_name,'') ILIKE ?) ORDER BY updated_at DESC LIMIT ? OFFSET ?").bind(q, pattern, pattern, pattern, limit, (page - 1) * limit).all()
   ]);
-  return reply(request, env, { ok: true, products: rows.results || [], total: Number(count?.total || 0), page, limit, read_only: true });
+  return reply(request, env, { ok: true, products: (rows.results || []).map(row => ({ ...row, icon_url: storefrontIconUrl(row.source_icon, row.name), is_on_sale: !!row.is_on_sale, is_local_inventory: !!row.is_local_inventory, purchasable: !!row.purchasable })), total: Number(count?.total || 0), page, limit, read_only: true });
 }
 
 async function adminStaff(request,env){
