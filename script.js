@@ -82,10 +82,10 @@ function formatPrice(value) {
 function displayProductName(item) {
   const raw = String(item?.name || item?.title || "数字商品");
   const cleaned = raw
-    .replace(/^\\s*\\[货号\\s*\\d+\\]\\s*/i, "")
-    .replace(/^\\s*货号\\s*[:：#]?\\s*\\d+\\s*/i, "")
-    .replace(/^[🟥🟦🟩🟨🟪⬛⬜🔴🟢🔵🟡🟣⭐️✨]+\\s*/u, "")
-    .replace(/\\s+/g, " ")
+    .replace(/^\s*\[货号\s*\d+\]\s*/i, "")
+    .replace(/^\s*货号\s*[:：#]?\s*\d+\s*/i, "")
+    .replace(/^[🟥🟦🟩🟨🟪⬛⬜🔴🟢🔵🟡🟣⭐️✨]+\s*/u, "")
+    .replace(/\s+/g, " ")
     .trim();
   return cleaned || "数字商品";
 }
