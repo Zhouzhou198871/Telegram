@@ -454,7 +454,7 @@ function storefrontIconUrl(icon,name) {
   }
   const upstreamIcons={
     "shop-google":"https://cdn.simpleicons.org/google/4285F4",
-    "shop-microsoft":"https://cdn.simpleicons.org/microsoft/5E5E5E",
+    "shop-microsoft":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/microsoft.svg",
     "shop-apple":"https://cdn.simpleicons.org/apple/000000",
     "shop-discord":"https://cdn.simpleicons.org/discord/5865F2",
     "shop-telegram":"https://cdn.simpleicons.org/telegram/26A5E4",
@@ -464,10 +464,10 @@ function storefrontIconUrl(icon,name) {
     "shop-facebook":"https://cdn.simpleicons.org/facebook/0866FF",
     "shop-twitter-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/twitter.svg",
     "shop-steam":"https://cdn.simpleicons.org/steam/000000",
-    "shop-yahoo":"https://cdn.simpleicons.org/yahoo/6001D2",
+    "shop-yahoo":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/yahoo.svg",
     "shop-youtube":"https://cdn.simpleicons.org/youtube/FF0000",
-    "shop-linkedin":"https://cdn.simpleicons.org/linkedin/0A66C2",
-    "shop-skype":"https://cdn.simpleicons.org/skype/00AFF0"
+    "shop-linkedin":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/linkedin.svg",
+    "shop-skype":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/skype.svg"
   };
   return upstreamIcons[key] || "";
 }
