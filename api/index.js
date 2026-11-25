@@ -435,18 +435,27 @@ function storefrontPopularityScore(name,icon) {
   return ranks[i]||0;
 }
 function storefrontIconUrl(icon,name) {
-  const key=String(icon||"").toLowerCase();
-  const title=String(name||"");
-  const map={"shop-amazon-circle-fill":"amazon","shop-discord":"discord","shop-google-voice-logo":"googlevoice","shop-google":"google","shop-instagram":"instagram","shop-linkedin":"linkedin","shop-skype":"skype","shop-steam":"steam","shop-tiktok":"tiktok","shop-telegram":"telegram","shop-twitter-circle-fill":"x","shop-whatsapp":"whatsapp","shop-yahoo":"yahoo","shop-youtube":"youtube","shop-facebook":"facebook","shop-microsoft":"microsoft","shop-apple":"apple"};
-  if(/microsoft\s?teams/i.test(title)) return "https://cdn.simpleicons.org/microsoftteams";
-  if(/ixbrowser/i.test(title)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
-  if(/aol\.com/i.test(title)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
-  if(/gmx\.(us|com)/i.test(title)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
-  if(/vfemail/i.test(title)) return "https://www.google.com/s2/favicons?domain=vfemail.net&sz=128";
-  if(/firstmail/i.test(title)) return "https://www.google.com/s2/favicons?domain=firstmail.ltd&sz=128";
-  const slug=map[key]||(/snapchat/i.test(title)?"snapchat":/reddit/i.test(title)?"reddit":/proton\s?mail|protonmail/i.test(title)?"protonmail":null);
-  return slug?"https://cdn.simpleicons.org/"+slug:(/邮箱|mail|email/i.test(title)?"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg":"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg");
+  const title=String(name||"").toLowerCase();
+  const rules=[
+    [/microsoft\s*teams|\bteams\b/i,"microsoftteams"],[/\bskype\b/i,"skype"],
+    [/chatgpt|openai|gpt[- ]?[45]/i,"openai"],[/claude|anthropic/i,"claude"],[/gemini/i,"googlegemini"],
+    [/google\s*voice/i,"googlevoice"],[/youtube/i,"youtube"],[/gmail|google/i,"google"],
+    [/outlook|hotmail/i,"outlook"],[/office\s*365|office365/i,"microsoftoffice"],
+    [/onedrive|microsoft|windows/i,"microsoft"],[/apple|icloud/i,"apple"],
+    [/discord/i,"discord"],[/telegram|飞机号|电报/i,"telegram"],[/whatsapp/i,"whatsapp"],
+    [/instagram/i,"instagram"],[/tiktok|TK账号/i,"tiktok"],[/facebook|meta/i,"facebook"],
+    [/x\.com|twitter/i,"x"],[/snapchat/i,"snapchat"],[/reddit/i,"reddit"],[/steam/i,"steam"],
+    [/spotify/i,"spotify"],[/netflix/i,"netflix"],[/amazon/i,"amazon"],[/linkedin/i,"linkedin"],
+    [/github/i,"github"],[/notion/i,"notion"],[/canva/i,"canva"],[/capcut/i,"capcut"],
+    [/adobe|photoshop|premiere/i,"adobe"],[/zoom/i,"zoom"],[/yahoo/i,"yahoo"],
+    [/proton\s?mail|protonmail/i,"protonmail"],[/\baol\b|aol\.com/i,"aol"],
+    [/\bgmx\b|gmx\.(us|com)/i,"gmx"],[/vfemail/i,"vfemail"],[/firstmail/i,"firstmail"],
+    [/ixbrowser/i,"ixbrowser"]
+  ];
+  const slug=rules.find(([pattern])=>pattern.test(title))?.[1];
+  return slug ? "https://cdn.simpleicons.org/"+slug : "";
 }
+
 async function renderStorefront(res) {
   const fileUrl = new URL("../shop.html", import.meta.url);
   let html = await readFile(fileUrl, "utf8");
@@ -471,7 +480,7 @@ async function renderStorefront(res) {
       const image=/^https:\/\//i.test(item.image_url)
         ? '<img class="product-cover-image" alt="'+escapeHtml(title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.image_url)+'">'
         : '<div class="product-cover-art"><span class="product-cover-kicker">'+escapeHtml(item.category)+'</span><strong>'+escapeHtml(title)+'</strong><small>QINGTIAN · DIGITAL STORE</small></div>';
-      const icon='<img class="product-icon-image" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.icon_url)+'">';
+      const icon=item.icon_url?'<img class="product-icon-image" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.icon_url)+'">':'<span class="product-icon-fallback" aria-hidden="true">'+escapeHtml(title.slice(0,1)||"软")+'</span>';
       return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap">'+icon+'</div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+"价格实时核验中"+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
     }).join("");
     const placeholder='<div class="product-grid" id="productGrid" aria-live="polite">\n        <div class="loading-card" data-i18n="loadingCatalog">正在连接商品目录…</div>\n      </div>';
