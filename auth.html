@@ -69,14 +69,10 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
 .social-auth-card:hover{border-color:#cbd8eb;background:#fbfdff;box-shadow:0 5px 14px rgba(15,23,42,.06);transform:translateY(-1px)}
 .social-auth-icon{display:flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px}
 .github-auth-icon{background:#172033;color:#fff}
-.telegram-auth-icon{background:#e8f5ff;color:#229ed9}
 .social-auth-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
 .social-auth-copy strong{color:#263449;font-size:14px;font-weight:750;line-height:1.25}
 .social-auth-copy small{color:#8a96a8;font-size:11px;line-height:1.3}
 .social-auth-arrow{color:#a0aaba;font-size:25px;line-height:1}
-.telegram-auth-card{flex-wrap:wrap;padding-right:15px}
-.telegram-widget-host{display:flex;align-items:center;justify-content:center;flex:1 0 100%;width:100%;min-width:0;max-width:none;min-height:40px;overflow:visible;padding:5px 0 1px}
-.telegram-widget-host iframe{max-width:100%!important}
 @media(max-width:360px){.social-auth-card{gap:9px;padding:10px}.social-auth-icon{flex-basis:36px;width:36px;height:36px}.social-auth-copy strong{font-size:13px}.social-auth-copy small{font-size:10px}}
 </style>
 </head>
@@ -118,78 +114,7 @@ h1{margin:0;color:#172033;font-size:26px;font-weight:800;letter-spacing:-.035em;
       <span class="social-auth-copy"><strong>使用 GitHub 登录</strong><small>通过 GitHub 账号安全授权</small></span>
       <span class="social-auth-arrow" aria-hidden="true">›</span>
     </a>
-    <div id="telegramLoginButton" class="social-auth-card telegram-auth-card">
-      <span class="social-auth-icon telegram-auth-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="25" height="25" fill="currentColor"><path d="M21.7 3.3 18.4 20c-.25 1.18-.92 1.47-1.86.92l-5.15-3.8-2.48 2.39c-.27.27-.5.5-1.02.5l.37-5.25 9.55-8.63c.42-.37-.09-.58-.65-.21L5.36 13.3.3 11.72c-1.1-.34-1.12-1.1.23-1.62L20.3 2.55c.91-.34 1.71.22 1.4.75Z"/></svg>
-      </span>
-      <span class="social-auth-copy"><strong>使用 Telegram 登录</strong><small>通过 Telegram 官方账号授权</small></span>
-      <span id="telegramWidgetHost" class="telegram-widget-host"></span>
-    </div>
-  </div>
-</section>
-  <script>
-    (() => {
-      const host = document.getElementById("telegramWidgetHost");
-      const message = document.getElementById("loginMessage");
-      const githubButton = document.getElementById("githubLoginButton");
-      const api = "";
 
-      // Complete the GitHub OAuth callback and expose the button only when OAuth is enabled.
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      const githubToken = hashParams.get("github_token");
-      if (githubToken) {
-        localStorage.setItem("qingtian_shop_token", githubToken);
-        localStorage.removeItem("qingtian_referral_code");
-        history.replaceState(null, "", window.location.pathname + window.location.search);
-        window.location.replace("./shop.html");
-        return;
-      }
-      const queryParams = new URLSearchParams(window.location.search);
-      const githubError = queryParams.get("github_error");
-      if (githubError && message) {
-        const errors = {
-          authorization_denied: "你已取消 GitHub 授权。",
-          verified_email_required: "GitHub 账号需要至少一个已验证邮箱。",
-          oauth_failed: "GitHub 登录失败，请稍后重试。"
-        };
-        message.textContent = errors[githubError] || "GitHub 登录失败，请重试。";
-        message.className = "form-message error";
-      }
-      if (githubButton) {
-        fetch(api + "/api/auth/github/status", { cache: "no-store" })
-          .then(response => response.json())
-          .then(data => { if (data && data.ok && data.enabled) githubButton.hidden = false; })
-          .catch(() => {});
-      }
-
-      if (!host) return;
-      window.onTelegramAuth = async function(user) {
-        try {
-          if (message) { message.textContent = "正在验证 Telegram 账号…"; message.className = "form-message"; }
-          const response = await fetch(api + "/api/auth/telegram_login", {
-            method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ user, referral_code: localStorage.getItem("qingtian_referral_code") || "" })
-          });
-          const data = await response.json();
-          if (!response.ok || !data.ok || !data.token) throw new Error(data.error || "telegram_login_failed");
-          localStorage.setItem("qingtian_shop_token", data.token);
-          localStorage.removeItem("qingtian_referral_code");
-          if (message) { message.textContent = "Telegram 登录成功，正在进入商城…"; message.className = "form-message success"; }
-          window.location.replace("./shop.html");
-        } catch (error) {
-          if (message) { message.textContent = "Telegram 登录验证失败，请重新授权。"; message.className = "form-message error"; }
-        }
-      };
-      const widget = document.createElement("script");
-      widget.async = true;
-      widget.src = "https://telegram.org/js/telegram-widget.js?22";
-      widget.setAttribute("data-telegram-login", "qingtian_tiezibot");
-      widget.setAttribute("data-size", "large");
-      widget.setAttribute("data-userpic", "false");
-      widget.setAttribute("data-request-access", "write");
-      widget.setAttribute("data-onauth", "onTelegramAuth(user)");
-      host.appendChild(widget);
-    })();
-  </script>
 </div>
 <div class="go-register">没有账号？<a href="./register.html">立即注册</a></div>
 </section>
