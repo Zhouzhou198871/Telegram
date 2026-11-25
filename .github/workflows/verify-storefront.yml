@@ -28,6 +28,7 @@ jobs:
           node --check invite.js
           node --check api/index.js
           node --check worker.js
+          node --check product-icons.js
       - name: Verify Vercel configuration
         run: |
           node -e "const c=require('./vercel.json'); const routes=Array.isArray(c.routes)?c.routes:[]; const shop=routes.some(r=>String(r.src).includes('shop') && r.dest==='/api?path=storefront'); const api=routes.some(r=>String(r.src).includes('/api/') && String(r.dest).startsWith('/api?path=')); if(c.version!==2 || !shop || !api) process.exit(1); console.log('Vercel routes OK')"
