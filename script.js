@@ -487,7 +487,7 @@ function drawFilteredProducts() {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.catalog_verified === false || item.price_verified !== true ? (currentShopLanguage()==="en"?"Verifying live price":"核对上游价格中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
+    buyButton.textContent = item.catalog_verified === false || item.price_verified !== true ? (currentShopLanguage()==="en"?"Checking price":"价格核验中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
     buyButton.disabled = item.catalog_verified === false || item.price_verified !== true || item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
@@ -503,6 +503,23 @@ function drawFilteredProducts() {
   }
 }
 
+function renderCatalogCategoryStrip(categories, selectedCategory = "") {
+  const strip = $("catalogCategoryStrip");
+  if (!strip) return;
+  strip.replaceChildren();
+  const labels = currentShopLanguage()==="en" ? {"digital":"Digital goods","account":"Accounts","accounts":"Accounts","discord":"Discord","game":"Game accounts","software":"Software","subscription":"Protocols","其他":"Other"} : {"digital":"数字商品","account":"账号类","accounts":"账号类","discord":"Discord账号","game":"游戏账号","software":"软件服务","subscription":"协议服务","其他":"其他商品"};
+  const icons = {"digital":"✦","account":"👤","accounts":"👤","discord":"◉","game":"🎮","software":"▣","subscription":"⌁"};
+  const addChip = (value,label,item) => {
+    const button=document.createElement("button"); button.type="button"; button.className="catalog-category-chip"; button.setAttribute("aria-pressed",String(value===selectedCategory));
+    if(item&&item.icon_url){const img=document.createElement("img");img.src=item.icon_url;img.alt="";img.loading="lazy";img.onerror=()=>img.replaceWith(safeText("span","category-chip-fallback",icons[String(value).toLowerCase()]||"✦"));button.appendChild(img);}
+    else button.appendChild(safeText("span","category-chip-fallback",icons[String(value).toLowerCase()]||"✦"));
+    button.appendChild(safeText("span","",label));
+    button.addEventListener("click",()=>{$("categoryFilter").value=value;visibleProductLimit=48;renderCatalogCategoryStrip(categories,value);drawFilteredProducts();$("productGrid")?.scrollIntoView({behavior:"smooth",block:"start"});});
+    strip.appendChild(button);
+  };
+  addChip("",currentShopLanguage()==="en"?"All":"全部",allProducts[0]);
+  for(const category of categories){const first=allProducts.find(item=>String(item.category||"").trim()===category);addChip(category,labels[category.toLowerCase()]||category,first);}
+}
 function renderProducts(items, options = {}) {
   visibleProductLimit = 48;
   const verified = options.verified !== false;
@@ -510,6 +527,7 @@ function renderProducts(items, options = {}) {
   const select = $("categoryFilter");
   const current = select.value;
   const categories = [...new Set(allProducts.map(item => String(item.category || "").trim()).filter(Boolean))];
+  renderCatalogCategoryStrip(categories, current);
   select.replaceChildren(new Option(SHOP_I18N[currentShopLanguage()].allCategories, ""));
   const categoryNames = currentShopLanguage()==="en"
     ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
@@ -533,7 +551,7 @@ async function loadProducts(options = {}) {
     saveCachedProducts(data.items || []);
     renderProducts(data.items || [], { verified: true });
     const t=SHOP_I18N[currentShopLanguage()];
-    if (data.catalog_stale === true) message($("shopMessage"),"上游价格暂时无法核实，相关商品价格已隐藏并暂停购买。","error");
+    if (data.catalog_stale === true) message($("shopMessage"),"部分商品信息暂不可用，已暂时隐藏相关价格并暂停购买。","error");
     else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
   } catch {
     const t=SHOP_I18N[currentShopLanguage()];
@@ -541,7 +559,7 @@ async function loadProducts(options = {}) {
       allProducts = allProducts.map(item => ({...item,purchasable:false,price_verified:false,catalog_verified:true}));
       drawFilteredProducts();
     } else {
-      grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
+      grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
     }
     message($("shopMessage"),t.catalogFailed,"error");
   } finally {
@@ -755,8 +773,7 @@ function initShop() {
   $("categoryFilter").addEventListener("change", () => {visibleProductLimit=48;drawFilteredProducts();updateShopHeading();});
   $("sortProducts").addEventListener("change", () => {visibleProductLimit=48;drawFilteredProducts();});
   $("loadMoreProducts")?.addEventListener("click",()=>{visibleProductLimit+=48;drawFilteredProducts();});
-  $("refreshProducts").addEventListener("click", loadProducts);
-  $("refreshNodeProducts")?.addEventListener("click",loadNodeProducts);
+
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
   $("deliveryModal").addEventListener("click", event => {
     if (event.target === $("deliveryModal")) $("deliveryModal").hidden = true;
