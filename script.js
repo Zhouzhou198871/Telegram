@@ -641,7 +641,13 @@ async function loadNodeProducts() {
         const span=document.createElement("span");span.textContent=pkg.name||String(pkg.duration_days)+" 天";
         const price=document.createElement("strong");price.textContent="¥"+Number(pkg.price_cny||0).toFixed(2);
         button.append(span,price);
-        button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
+        if(Number(pkg.traffic_limit_bytes||0)>0){
+          button.disabled=true;
+          button.title="流量计量功能尚未完成，暂不可购买";
+          button.setAttribute("aria-label",span.textContent+"，暂不可购买");
+        }else{
+          button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
+        }
         plans.append(button);
       }
       if(!plans.childElementCount)plans.append(safeText("div","empty-card",item.server_present?"套餐准备中":"线路接入中"));
