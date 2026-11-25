@@ -676,7 +676,7 @@ function nodeClashYaml(proxy){
 }
 async function nodeProducts(request,env){
   let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE AND server_present=TRUE AND provisioning_ready=TRUE ORDER BY display_order").all();
+  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE ORDER BY display_order").all();
   const products=[];
   for(const p of result.results||[]){
     const pkgs=await env.DB.prepare("SELECT package_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices FROM node_packages WHERE product_id=? AND active=TRUE ORDER BY display_order").bind(p.product_id).all();
@@ -725,7 +725,6 @@ async function userNodeOrders(request,env){
   }
   const pkg=await env.DB.prepare("SELECT g.package_id,g.product_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices,p.name AS product_name,p.protocol,p.server_ref,p.provisioning_ready,p.server_present,p.active AS product_active FROM node_packages g JOIN node_products p ON p.product_id=g.product_id WHERE g.package_id=? AND g.active=TRUE").bind(packageId).first();
   if(!pkg||!pkg.product_active||!pkg.provisioning_ready||!pkg.server_present)return reply(request,env,{ok:false,error:"node_package_unavailable"},404);
-  if(pkg.traffic_limit_bytes!==null&&Number(pkg.traffic_limit_bytes)>0)return reply(request,env,{ok:false,error:"traffic_plans_not_ready"},409);
   const cents=Math.round(Number(pkg.price_cny)*100),units=cents*25;
   if(!Number.isSafeInteger(units)||units<1)return reply(request,env,{ok:false,error:"invalid_package_price"},409);
   const orderId=crypto.randomUUID(),now=Math.floor(Date.now()/1000);
@@ -1062,7 +1061,18 @@ async function adminNodeAccounts(request,env){
  if(request.method==="GET"){
   const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
   const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,u.email,a.product_id,p.name AS product_name,a.order_id,a.protocol,a.server_ref,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.traffic_used_bytes,a.status,a.created_at,a.updated_at FROM node_accounts a LEFT JOIN users u ON u.id=a.user_id LEFT JOIN node_products p ON p.product_id=a.product_id ORDER BY a.created_at DESC LIMIT ?").bind(limit).all();
-  return reply(request,env,{ok:true,accounts:(rows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}))});
+  const accounts=(rows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}));
+  if(accounts.length){
+   try{
+    const usage=await originRequest(env,"POST","/api/internal/nodes/usage",{client_refs:accounts.map(x=>x.client_ref)});
+    for(const item of usage.accounts||[]){
+     const used=Number(item.traffic_used_bytes||0),status=String(item.status||"active"),expires=Number(item.expires_at||0),now=Math.floor(Date.now()/1000);
+     await env.DB.prepare("UPDATE node_accounts SET traffic_used_bytes=?,status=?,expires_at=?,updated_at=? WHERE client_ref=?").bind(used,status,expires||now,item.updated_at?Number(item.updated_at):now,item.client_ref).run();
+     const local=accounts.find(x=>x.client_ref===item.client_ref);if(local){local.traffic_used_bytes=used;local.status=status;if(expires)local.expires_at=expires;}
+    }
+   }catch{}
+  }
+  return reply(request,env,{ok:true,accounts});
  }
  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
  const id=String(body.account_id||"").trim(),action=String(body.action||"");
@@ -1105,7 +1115,6 @@ async function adminNodePackageSave(request,env,packageId=null){
  if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
  const active=body.active===true||body.active===1||body.active==="1";
  if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
- if(traffic!==null&&traffic>0)return reply(request,env,{ok:false,error:"traffic_plans_not_ready",message:"当前节点系统仅支持不限流量套餐，计量流量套餐尚未接入"},409);
 
  const existing=await env.DB.prepare("SELECT package_id,product_id FROM node_packages WHERE package_id=?").bind(id).first();
  if(packageId&&!existing)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
