@@ -641,9 +641,9 @@ async function loadNodeProducts() {
         const span=document.createElement("span");span.textContent=pkg.name||String(pkg.duration_days)+" 天";
         const price=document.createElement("strong");price.textContent="¥"+Number(pkg.price_cny||0).toFixed(2);
         button.append(span,price);
-        if(Number(pkg.traffic_limit_bytes||0)>0){
+        if(!item.server_present||!item.provisioning_ready){
           button.disabled=true;
-          button.title="流量计量功能尚未完成，暂不可购买";
+          button.title="该协议正在完成服务器开通验证，暂不可购买";
           button.setAttribute("aria-label",span.textContent+"，暂不可购买");
         }else{
           button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
