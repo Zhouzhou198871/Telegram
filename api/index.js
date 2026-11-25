@@ -427,12 +427,12 @@ async function renderStorefront(res) {
     const freshness=await db.unsafe("SELECT MAX(updated_at) AS latest FROM shop_catalog WHERE is_local_inventory=false");
     const latest=Number(freshness[0]?.latest||0);
     const fresh=latest>0 && Math.floor(Date.now()/1000)-latest<=180;
-    const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,purchasable,source FROM shop_catalog WHERE is_on_sale=true AND stock>0 ORDER BY updated_at DESC, name ASC LIMIT 48");
+    const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source FROM shop_catalog WHERE is_on_sale=true AND stock>0 ORDER BY updated_at DESC, name ASC LIMIT 48");
     const products=rows.map(row=>{
       const source=row.source&&typeof row.source==="object"?row.source:{};
       return {product_id:String(row.product_id),name:String(row.name||""),category:String(row.category_name||"其他商品"),
         price_cny:Number(row.price_cny),price_usdt:Number(row.price_usdt),stock:Number(row.stock||0),
-        purchasable:Boolean(row.purchasable)&&fresh,icon:String(source.Icon||""),
+        purchasable:Boolean(row.purchasable)&&(Boolean(row.is_local_inventory)||fresh),icon:String(source.Icon||""),
         image_url:String(source.ImageUrl||source.ImageURL||source.Image||source.image_url||""),
         description:String(source.Description||source.DescriptionZh||source.description||"")};
     });
