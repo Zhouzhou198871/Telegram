@@ -120,12 +120,13 @@ async function originRequest(env, method, path, payload) {
   if (typeof env.INTERNAL_HANDLER === "function") {
     return await env.INTERNAL_HANDLER(method, path, payload);
   }
-  if (!env.SERVER_ORIGIN || !env.INTERNAL_API_SECRET) throw new Error("origin_not_configured");
+  const signingSecret = path.startsWith("/api/internal/nodes/") ? env.NODE_STORE_SECRET : env.INTERNAL_API_SECRET;
+  if (!env.SERVER_ORIGIN || !signingSecret) throw new Error("origin_not_configured");
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = String(Math.floor(Date.now() / 1000));
   const nonce = crypto.randomUUID();
   const signed = ts + "\n" + nonce + "\n" + method.toUpperCase() + "\n" + path + "\n" + body;
-  const signature = Array.from(await hmac(env.INTERNAL_API_SECRET, signed))
+  const signature = Array.from(await hmac(signingSecret, signed))
     .map(b => b.toString(16).padStart(2, "0")).join("");
   const url = new URL(path, env.SERVER_ORIGIN);
   const response = await fetch(url.toString(), {
@@ -729,7 +730,7 @@ async function userNodeOrders(request,env){
   let account;
   const serverRef=String(pkg.server_ref||"us").toLowerCase();
   try{
-    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days),server_ref:serverRef});
+    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days),server_ref:serverRef,traffic_limit_bytes:Number(pkg.traffic_limit_bytes||0)});
     account=provisioned.account;
     if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
     const delivery={protocol:pkg.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将 Clash YAML 保存为 .yaml 文件后导入 Mihomo / Clash Meta。"};
