@@ -597,7 +597,14 @@ async function userReferrals(request, env) {
 
 async function products(request, env) {
   try {
-    await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
+    try {
+      await originRequest(env, "POST", "/api/internal/catalog_sync", {});
+    } catch {}
+    const state = await env.DB.prepare(
+      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog"
+    ).first();
+    const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
+    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
@@ -612,9 +619,12 @@ async function products(request, env) {
       price_cny: String(row.price_cny),
       currency: "CNY",
       is_local_inventory: Boolean(row.is_local_inventory),
-      purchasable: Boolean(row.purchasable)
+      purchasable: Boolean(row.purchasable) && (Boolean(row.is_local_inventory) || !catalogStale)
     }));
-    return reply(request, env, { ok: true, count: items.length, items, updated_at: Math.floor(Date.now()/1000) });
+    return reply(request, env, {
+      ok: true, count: items.length, items,
+      updated_at: catalogUpdatedAt, catalog_stale: catalogStale
+    });
   } catch {
     return reply(request, env, { ok: false, error: "catalog_unavailable" }, 503);
   }
@@ -675,10 +685,13 @@ async function buy(request, env) {
   }
 
   const product = await env.DB.prepare(
-    "SELECT product_id,supplier_product_id,price_usdt,price_cny,stock,is_on_sale,purchasable FROM shop_catalog WHERE product_id=?"
+    "SELECT product_id,supplier_product_id,price_usdt,price_cny,stock,is_on_sale,purchasable,is_local_inventory,updated_at FROM shop_catalog WHERE product_id=?"
   ).bind(productId).first();
   if (!product || !product.is_on_sale || Number(product.stock || 0) < 1) {
     return reply(request, env, { ok: false, error: "product_unavailable" }, 409);
+  }
+  if (!product.is_local_inventory && Math.floor(Date.now()/1000) - Number(product.updated_at || 0) > 180) {
+    return reply(request, env, { ok: false, error: "catalog_stale", message: "商品价格和库存正在同步，请稍后重试。" }, 409);
   }
   if (!product.purchasable) return reply(request, env, { ok: false, error: "product_not_enabled_for_purchase" }, 409);
   const amount = amountUnits(product.price_usdt);
