@@ -395,7 +395,7 @@ function createProductCover(item) {
   const fallback=()=>{
     const art=document.createElement("div");art.className="product-cover-art";
     const label=document.createElement("span");label.className="product-cover-kicker";label.textContent=String(item.category||"DIGITAL GOODS");
-    const name=document.createElement("strong");name.textContent=String(item.name||"精选数字商品");
+    const name=document.createElement("strong");name.textContent=cleanProductTitle(item.name);
     const sub=document.createElement("small");sub.textContent="QINGTIAN · DIGITAL STORE";
     art.append(label,name,sub);wrap.replaceChildren(art);
   };
@@ -580,7 +580,7 @@ async function loadProducts(options = {}) {
   } catch {
     const t=SHOP_I18N[currentShopLanguage()];
     if (silent && allProducts.length) {
-      allProducts = allProducts.map(item => ({...item,purchasable:false}));
+      allProducts = allProducts.map(item => ({...item,purchasable:false,catalog_verified:true}));
       drawFilteredProducts();
     } else {
       grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
