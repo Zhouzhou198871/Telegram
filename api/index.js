@@ -468,7 +468,7 @@ function storefrontIconUrl(icon,name) {
     "shop-yahoo":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/yahoo.svg",
     "shop-youtube":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/youtube.svg",
     "shop-linkedin":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/linkedin.svg",
-    "shop-skype":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/skype.svg"
+    "shop-skype":"https://teams.public.onecdn.static.microsoft/hashed/favicon/prod/favicon-f1722d9.ico"
   };
   return upstreamIcons[key] || "";
 }
