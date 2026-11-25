@@ -441,30 +441,30 @@ function storefrontIconUrl(icon,name) {
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
     if(title.includes("deezer")) return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/deezer.svg";
-    if(title.includes("snapchat")) return "https://cdn.simpleicons.org/snapchat/000000";
-    if(title.includes("reddit")) return "https://cdn.simpleicons.org/reddit/FF4500";
+    if(title.includes("snapchat")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/snapchat.svg";
+    if(title.includes("reddit")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/reddit.svg";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/box-open.svg";
   }
   if(key==="shop-mail") {
-    if(title.includes("proton mail") || title.includes("protonmail")) return "https://cdn.simpleicons.org/protonmail/6D4AFF";
+    if(title.includes("proton mail") || title.includes("protonmail")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/protonmail.svg";
     if(title.includes("aol")) return "https://www.aol.com/favicon.ico";
-    if(title.includes("gmx")) return "https://cdn.simpleicons.org/gmx/5B2C83";
+    if(title.includes("gmx")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/gmx.svg";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/regular/envelope.svg";
   }
   const upstreamIcons={
-    "shop-google":"https://cdn.simpleicons.org/google/4285F4",
+    "shop-google":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/google.svg",
     "shop-microsoft":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/microsoft.svg",
-    "shop-apple":"https://cdn.simpleicons.org/apple/000000",
-    "shop-discord":"https://cdn.simpleicons.org/discord/5865F2",
-    "shop-telegram":"https://cdn.simpleicons.org/telegram/26A5E4",
-    "shop-whatsapp":"https://cdn.simpleicons.org/whatsapp/25D366",
-    "shop-instagram":"https://cdn.simpleicons.org/instagram/E4405F",
-    "shop-tiktok":"https://cdn.simpleicons.org/tiktok/000000",
-    "shop-facebook":"https://cdn.simpleicons.org/facebook/0866FF",
+    "shop-apple":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/apple.svg",
+    "shop-discord":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/discord.svg",
+    "shop-telegram":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/telegram.svg",
+    "shop-whatsapp":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/whatsapp.svg",
+    "shop-instagram":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/instagram.svg",
+    "shop-tiktok":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/tiktok.svg",
+    "shop-facebook":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/facebook.svg",
     "shop-twitter-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/twitter.svg",
-    "shop-steam":"https://cdn.simpleicons.org/steam/000000",
+    "shop-steam":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/steam.svg",
     "shop-yahoo":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/yahoo.svg",
-    "shop-youtube":"https://cdn.simpleicons.org/youtube/FF0000",
+    "shop-youtube":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/youtube.svg",
     "shop-linkedin":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/linkedin.svg",
     "shop-skype":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/skype.svg"
   };
