@@ -433,6 +433,53 @@ function createProductIcon(item) {
   return wrap;
 }
 
+const PRODUCT_CACHE_KEY = "qingtian_catalog_cache_v2";
+const PRODUCT_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
+
+function cleanProductTitle(value) {
+  return String(value || "")
+    .replace(/^\\s*\\[货号[^\\]]*\\]\\s*/i, "")
+    .replace(/^[^\\p{L}\\p{N}]+/u, "")
+    .split(/[|｜]/)[0]
+    .replace(/\\s+/g, " ")
+    .trim() || "数字商品";
+}
+
+function cleanProductDescription(item) {
+  const raw = String(item.description || item.description_zh || item.summary || item.name || "");
+  const parts = raw.split(/[|｜]/).map(x => x.trim()).filter(Boolean);
+  const details = parts.length > 1 ? parts.slice(1) : [];
+  const text = details
+    .filter(x => !/^\\[?货号/i.test(x) && !/单次最多购买|最多购买\\s*\\d+/i.test(x))
+    .join(" · ")
+    .replace(/^[^\\p{L}\\p{N}]+/u, "")
+    .replace(/\\s+/g, " ")
+    .trim();
+  return text.length > 76 ? text.slice(0, 73) + "…" : text;
+}
+
+function readCachedProducts() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(PRODUCT_CACHE_KEY) || "null");
+    if (!cached || !Array.isArray(cached.items) || !cached.items.length) return false;
+    renderProducts(cached.items, { verified: false });
+    return true;
+  } catch { return false; }
+}
+
+function saveCachedProducts(items) {
+  try {
+    localStorage.setItem(PRODUCT_CACHE_KEY, JSON.stringify({
+      saved_at: Date.now(),
+      items: items.map(item => ({
+        product_id: item.product_id, name: item.name, category: item.category,
+        icon: item.icon, price_cny: item.price_cny, price_usdt: item.price_usdt,
+        stock: item.stock, purchasable: item.purchasable
+      }))
+    }));
+  } catch {}
+}
+
 function drawFilteredProducts() {
   const grid = $("productGrid");
   const query = String($("productSearch")?.value || "").trim().toLowerCase();
@@ -469,10 +516,10 @@ function drawFilteredProducts() {
     const titleWrap = document.createElement("div");
     titleWrap.className = "product-title-wrap";
     titleWrap.appendChild(safeText("div", "product-category", categoryLabel, "商品"));
-    titleWrap.appendChild(safeText("h3", "product-name", item.name, "未命名商品"));
+    titleWrap.appendChild(safeText("h3", "product-name", cleanProductTitle(item.name), "数字商品"));
     cardHead.appendChild(titleWrap);
     card.appendChild(cardHead);
-    const description = String(item.description || item.description_zh || item.summary || "").trim();
+    const description = cleanProductDescription(item);
     if (description) card.appendChild(safeText("p", "product-description", description, ""));
     const meta = document.createElement("div");
     meta.className = "product-meta";
@@ -489,8 +536,8 @@ function drawFilteredProducts() {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
-    buyButton.disabled = item.purchasable === false;
+    buyButton.textContent = item.catalog_verified === false ? (currentShopLanguage()==="en"?"Checking price":"核对价格中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
+    buyButton.disabled = item.catalog_verified === false || item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
     fragment.appendChild(card);
@@ -499,8 +546,9 @@ function drawFilteredProducts() {
   else grid.appendChild(fragment);
 }
 
-function renderProducts(items) {
-  allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object") : [];
+function renderProducts(items, options = {}) {
+  const verified = options.verified !== false;
+  allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object").map(item => ({...item, catalog_verified: verified})) : [];
   const select = $("categoryFilter");
   const current = select.value;
   const categories = [...new Set(allProducts.map(item => String(item.category || "").trim()).filter(Boolean))];
@@ -524,7 +572,8 @@ async function loadProducts(options = {}) {
   if (!silent) grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
   try {
     const data = await api("/api/products");
-    renderProducts(data.items || []);
+    saveCachedProducts(data.items || []);
+    renderProducts(data.items || [], { verified: true });
     const t=SHOP_I18N[currentShopLanguage()];
     if (data.catalog_stale === true) message($("shopMessage"),t.catalogStale,"error");
     else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
@@ -763,14 +812,16 @@ function initShop() {
       $("copyDelivery").textContent = "请长按复制";
     }
   });
+  readCachedProducts();
+  loadProducts({silent:true});
+  loadNodeProducts();
+  startCatalogAutoRefresh();
   loadUser().catch(error => {
     // Do not block public catalog requests when account-profile hydration is unavailable.
     const code=String(error?.message||"");
     const invalidSession=error?.status===401||["auth_required","invalid_token","token_expired","token_revoked"].includes(code);
     if(invalidSession){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;}
     message($("shopMessage"),SHOP_I18N[currentShopLanguage()].temporaryError,"error");
-  }).finally(()=>{
-    if(token()){loadProducts();loadNodeProducts();startCatalogAutoRefresh();}
   });
 }
 
