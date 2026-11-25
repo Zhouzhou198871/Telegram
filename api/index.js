@@ -443,14 +443,14 @@ function storefrontIconUrl(icon,name) {
     if(title.includes("deezer")) return "https://cdn.simpleicons.org/deezer/A238FF";
     if(title.includes("snapchat")) return "https://cdn.simpleicons.org/snapchat/000000";
     if(title.includes("reddit")) return "https://cdn.simpleicons.org/reddit/FF4500";
-    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/solid/box-open.svg";
+    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/box-open.svg";
   }
   if(key==="shop-mail") {
     if(title.includes("proton mail") || title.includes("protonmail")) return "https://cdn.simpleicons.org/protonmail/6D4AFF";
     if(title.includes("aol")) return "https://www.aol.com/favicon.ico";
     if(title.includes("gmx")) return "https://cdn.simpleicons.org/gmx/5B2C83";
     if(title.includes("firstmail")) return "https://firstmail.ltd/favicon.ico";
-    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/regular/envelope.svg";
+    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/regular/envelope.svg";
   }
   const upstreamIcons={
     "shop-google":"https://cdn.simpleicons.org/google/4285F4",
