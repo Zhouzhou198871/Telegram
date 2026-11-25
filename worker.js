@@ -1,3 +1,5 @@
+import { storefrontIconUrl } from "./product-icons.js";
+
 const JSON_HEADERS = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" };
 
 function corsHeaders(request, env) {
@@ -439,6 +441,7 @@ async function products(request, env) {
       name: row.name,
       category: row.category_name || "数字商品",
       icon: String(row.icon || ""),
+      icon_url: storefrontIconUrl(row.icon,row.name),
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
       price_cny: String(row.price_cny),
