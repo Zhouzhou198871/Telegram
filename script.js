@@ -317,24 +317,13 @@ let catalogRefreshInFlight = false;
 let catalogAutoRefreshTimer = null;
 
 const PRODUCT_SOURCE_ICONS = {
-  "shop-amazon-circle-fill": "amazon",
-  "shop-discord": "discord",
-  "shop-google-voice-logo": "googlevoice",
-  "shop-google": "google",
-  "shop-instagram": "instagram",
-  "shop-linkedin": "linkedin",
-  "shop-skype": "skype",
-  "shop-steam": "steam",
-  "shop-tiktok": "tiktok",
-  "shop-telegram": "telegram",
-  "shop-textnow": "textnow",
-  "shop-twitter-circle-fill": "x",
-  "shop-whatsapp": "whatsapp",
-  "shop-yahoo": "yahoo",
-  "shop-youtube": "youtube",
-  "shop-facebook": "facebook",
-  "shop-microsoft": "microsoft",
-  "shop-apple": "apple"
+  "shop-amazon-circle-fill": "amazon", "shop-discord": "discord",
+  "shop-google-voice-logo": "googlevoice", "shop-google": "google",
+  "shop-instagram": "instagram", "shop-linkedin": "linkedin",
+  "shop-skype": "skype", "shop-steam": "steam", "shop-tiktok": "tiktok",
+  "shop-telegram": "telegram", "shop-twitter-circle-fill": "x",
+  "shop-whatsapp": "whatsapp", "shop-yahoo": "yahoo", "shop-youtube": "youtube",
+  "shop-facebook": "facebook", "shop-microsoft": "microsoft", "shop-apple": "apple"
 };
 
 const PRODUCT_BRAND_ICONS = [
@@ -373,7 +362,10 @@ const PRODUCT_BRAND_ICONS = [
   [/linkedin/i, "linkedin"],
   [/skype|teams/i, "skype"],
   [/textnow/i, "textnow"],
-  [/yahoo/i, "yahoo"]
+  [/yahoo/i, "yahoo"],
+  [/snapchat/i, "snapchat"],
+  [/reddit/i, "reddit"],
+  [/proton\s?mail|protonmail/i, "protonmail"]
 ];
 
 function productBrandIcon(item) {
@@ -382,10 +374,17 @@ function productBrandIcon(item) {
     typeof value === "string" && /^https:\/\//i.test(value)
   );
   if (custom) return custom;
+  if (/ixbrowser/i.test(name)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
+  if (/aol\.com/i.test(name)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
+  if (/gmx\.(us|com)/i.test(name)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
+  if (/vfemail/i.test(name)) return "https://www.google.com/s2/favicons?domain=vfemail.net&sz=128";
+  if (/firstmail/i.test(name)) return "https://www.google.com/s2/favicons?domain=firstmail.ltd&sz=128";
   const sourceIcon = String(item.icon || item.source?.Icon || "").trim().toLowerCase();
   const slug = PRODUCT_SOURCE_ICONS[sourceIcon] ||
     PRODUCT_BRAND_ICONS.find(([pattern]) => pattern.test(name))?.[1];
-  return slug ? "https://cdn.simpleicons.org/" + slug : "";
+  if (slug) return "https://cdn.simpleicons.org/" + slug;
+  if (/邮箱|mail|email/i.test(name)) return "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg";
+  return "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg";
 }
 
 function createProductCover(item) {
