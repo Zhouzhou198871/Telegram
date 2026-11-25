@@ -548,7 +548,7 @@ function drawFilteredProducts() {
     if (description) card.appendChild(safeText("p", "product-description", description, ""));
     const meta = document.createElement("div");
     meta.className = "product-meta";
-    meta.appendChild(safeText("div","product-price",item.price_verified === true ? formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4) : "价格核验失败"));
+    meta.appendChild(safeText("div","product-price",item.price_verified === true ? formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4) : item.catalog_verified === false ? "价格核验中" : "价格核验失败"));
     meta.appendChild(safeText("div","product-stock",SHOP_I18N[currentShopLanguage()].stockLabel+" "+Number(item.stock||0)));
     card.appendChild(meta);
     const stock = Number(item.stock || 0);
@@ -612,7 +612,7 @@ async function loadProducts(options = {}) {
   } catch {
     const t=SHOP_I18N[currentShopLanguage()];
     if (silent && allProducts.length) {
-      allProducts = allProducts.map(item => ({...item,purchasable:false,catalog_verified:true}));
+      allProducts = allProducts.map(item => ({...item,purchasable:false,price_verified:false,catalog_verified:true}));
       drawFilteredProducts();
     } else {
       grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
