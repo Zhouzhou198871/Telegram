@@ -503,7 +503,7 @@ async function renderStorefront(res) {
     html=html.replace(placeholder,'<div class="product-grid" id="productGrid" aria-live="polite">'+(cards||'<div class="empty-card">暂无上架商品</div>')+'</div>');
     const payload=JSON.stringify(products).replace(/</g,"\\u003c").replace(/>/g,"\\u003e").replace(/&/g,"\\u0026");
     html=html.replace('<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=popular-apps-live-price-20261125-v1" defer></script>',
-      '<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=catalog-cache-copy-20261125-v5" defer></script>');
+      '<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=catalog-cache-copy-20261125-v6" defer></script>');
     res.statusCode=200;res.setHeader("Content-Type","text/html; charset=utf-8");
     res.setHeader("Cache-Control","public, s-maxage=20, stale-while-revalidate=40, stale-if-error=86400");
     res.setHeader("X-Storefront-Render","database-snapshot");res.end(html);
