@@ -219,7 +219,6 @@ async function handleInternal(method, url, headers, rawBody, db) {
       await tx.unsafe("UPDATE shop_catalog SET stock=0,is_on_sale=false,purchasable=false,updated_at=$1 WHERE is_local_inventory=false AND updated_at < $1",[syncEpoch]);
       await tx.unsafe("INSERT INTO catalog_sync_state(id,synced_at,product_count,category_count) VALUES(1,$1,$2,$3) ON CONFLICT(id) DO UPDATE SET synced_at=EXCLUDED.synced_at,product_count=EXCLUDED.product_count,category_count=EXCLUDED.category_count",[version,products.length,categories.length]);
       await tx.unsafe("INSERT INTO catalog_sync_runs(attempted_at,status,product_count,category_count,active_count,error) VALUES($1,'success',$2,$3,$4,NULL)",[version,products.length,categories.length,activeCount]);
-      await tx.unsafe("INSERT INTO catalog_sync_runs(attempted_at,status,product_count,category_count,active_count,error) VALUES($1,'success',$2,$3,$4,NULL)",[version,products.length,categories.length,activeCount]);
       await tx.unsafe("DELETE FROM catalog_snapshot_products WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_products ORDER BY version DESC LIMIT 2)");
       await tx.unsafe("DELETE FROM catalog_snapshot_categories WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_categories ORDER BY version DESC LIMIT 2)");
     });
