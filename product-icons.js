@@ -8,8 +8,8 @@ export function storefrontIconUrl(icon,name) {
   if(key==="shop-google-voice-logo") return "https://play-lh.googleusercontent.com/k2dlxKuS46VOCluBwZDz6iGnmslA-ImxlZPjgaAMJvpvmP6aQlrLuQY0hSWhZL49IB9WnqzfAZCE_yCjO7un1g=w240-h480";
   if(key==="shop-textnow") return "https://play-lh.googleusercontent.com/dhPBaff_7shT1IF0fV0P1R0psaYknV9ppvu1IyNrj3f1uXET9F56C_7w5OvfT16nKdKIGJG8Q86QI0YsjU6tIA=w240-h480";
   if(key==="shop-sms") return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/mobile-screen-button.svg";
-  // Supplier has one Gmail product filed under YouTube; the product identity wins over its category label.
-  if(key==="shop-youtube" && /google.*gmail|gmail.*google/.test(title)) return "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc=w240-h480";
+  // Product identity takes priority over a misclassified supplier category/icon.
+  if(/google.*gmail|gmail.*google/.test(title)) return "https://play-lh.googleusercontent.com/c6KD_8-GvnGRJA4lRQ4y5YnUa3-LOeYAS7ubw1jWyB9bmr6Kj6zzRvh2A5WBB-Vd3e6zhElmhDv07fCJx2Fc=w240-h480";
   if(key==="shop-instagram" && /threads/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/threads.svg";
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
