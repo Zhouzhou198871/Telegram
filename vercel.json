@@ -1,17 +1,17 @@
 {
   "version": 2,
   "cleanUrls": false,
-  "rewrites": [
-    {
-      "source": "/shop.html",
-      "destination": "/api?path=storefront"
-    },
-    {
-      "source": "/api/(.*)",
-      "destination": "/api?path=$1"
-    }
-  ],
   "git": {
     "deploymentEnabled": true
-  }
+  },
+  "routes": [
+    {
+      "src": "^/shop\\.html$",
+      "dest": "/api?path=storefront"
+    },
+    {
+      "src": "^/api/(.*)$",
+      "dest": "/api?path=$1"
+    }
+  ]
 }
