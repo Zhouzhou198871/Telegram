@@ -438,6 +438,8 @@ function storefrontIconUrl(icon,name) {
   // Prefer exact upstream identifiers; only inspect names inside generic buckets.
   const key=String(icon||"").trim().toLowerCase();
   const title=String(name||"").toLowerCase();
+  // Supplier has one Gmail product filed under YouTube; the product identity wins over its category label.
+  if(key==="shop-youtube" && /google|gmail/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/google.svg";
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
     if(title.includes("deezer")) return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/deezer.svg";
