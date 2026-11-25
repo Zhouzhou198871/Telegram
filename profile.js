@@ -153,9 +153,22 @@
   async function loadNodeOrders() {
     const root=$("nodeOrderList");root.replaceChildren();
     try {
-      const data=await api("/api/user/node-orders"),orders=data.orders||[];
-      if(!orders.length){const empty=document.createElement("div");empty.className="node-order-empty";empty.textContent="暂无节点订单。可前往商城的「节点服务」选择线路套餐。";root.append(empty);return;}
-      const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto"};
+      const data=await api("/api/user/node-orders"),orders=data.orders||[],accounts=data.accounts||[];
+      const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto","http-connect":"HTTP / HTTPS",shadowsocks:"Shadowsocks","shadowsocks-2022":"Shadowsocks 2022",trojan:"Trojan"};
+      const orderMap=new Map(orders.map(x=>[x.order_id,x]));
+      const bytes=n=>{n=Number(n||0);if(n<1073741824)return (n/1048576).toFixed(1)+" MB";return (n/1073741824).toFixed(2)+" GB";};
+      for(const account of accounts){
+        const card=document.createElement("article");card.className="node-order-card";
+        const title=document.createElement("h4");title.textContent=(labels[account.protocol]||String(account.protocol||"").toUpperCase())+" · "+(account.status==="active"?"使用中":account.status==="exhausted"?"流量已用尽":account.status==="expired"?"已到期":"已停用");card.append(title);
+        const limit=Number(account.traffic_limit_bytes||0),used=Number(account.traffic_used_bytes||0);
+        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="节点："+(account.server_ref||"—")+"\n到期："+dateText(account.expires_at)+"\n流量："+bytes(used)+" / "+(limit?bytes(limit):"不限");card.append(meta);
+        const order=orderMap.get(account.order_id),delivery=order?.delivery,actions=document.createElement("div");actions.className="node-order-actions";
+        const config=delivery?.clash_yaml||delivery?.uri;
+        if(config){const copy=document.createElement("button");copy.type="button";copy.textContent=delivery?.clash_yaml?"复制 Clash 配置":"复制连接配置";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(config);message("nodeOrderMessage","连接配置已复制。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);}
+        if(actions.childElementCount)card.append(actions);
+        root.append(card);
+      }
+      if(!orders.length&&!accounts.length){const empty=document.createElement("div");empty.className="node-order-empty";empty.textContent="暂无节点订单。可前往商城的「节点服务」选择线路套餐。";root.append(empty);return;}
       const statuses={fulfilled:"已开通",provisioning:"正在开通",refunded:"已退款",failed:"开通失败"};
       for(const order of orders){
         const card=document.createElement("article");card.className="node-order-card";
