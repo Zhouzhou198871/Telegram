@@ -426,8 +426,10 @@ function createProductIcon(item) {
   image.referrerPolicy = "no-referrer";
   image.src = iconUrl;
   image.addEventListener("error", () => {
-    image.remove();
-    wrap.appendChild(fallback);
+    image.src = /邮箱|mail|email/i.test(String(item.name || ""))
+      ? "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg"
+      : "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg";
+    image.onerror = () => { image.remove(); wrap.appendChild(fallback); };
   }, { once: true });
   wrap.appendChild(image);
   return wrap;
