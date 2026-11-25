@@ -446,19 +446,19 @@ function storefrontIconUrl(icon,name) {
   };
   const normalizedIcon=String(icon||"").trim().toLowerCase();
   const rules=[
-    [/microsoft\\s*teams|\\bteams\\b/i,"microsoftteams"],[/\\bskype\\b/i,"skype"],
+    [/microsoft\s*teams|\bteams\b/i,"microsoftteams"],[/\bskype\b/i,"skype"],
     [/chatgpt|openai|gpt[- ]?[45]/i,"openai"],[/claude|anthropic/i,"claude"],[/gemini/i,"googlegemini"],
-    [/google\\s*voice/i,"googlevoice"],[/youtube/i,"youtube"],[/gmail|google|谷歌/i,"google"],
-    [/outlook|hotmail/i,"outlook"],[/office\\s*365|office365/i,"microsoftoffice"],
+    [/google\s*voice/i,"googlevoice"],[/youtube/i,"youtube"],[/gmail|google|谷歌/i,"google"],
+    [/outlook|hotmail/i,"outlook"],[/office\s*365|office365/i,"microsoftoffice"],
     [/onedrive|microsoft|windows|微软/i,"microsoft"],[/apple|icloud|苹果/i,"apple"],
     [/discord/i,"discord"],[/telegram|飞机号|电报|纸飞机/i,"telegram"],[/whatsapp/i,"whatsapp"],
     [/instagram/i,"instagram"],[/tiktok|TK账号|抖音/i,"tiktok"],[/facebook|meta|脸书/i,"facebook"],
-    [/x\\.com|twitter/i,"x"],[/snapchat/i,"snapchat"],[/reddit/i,"reddit"],[/steam/i,"steam"],
+    [/x\.com|twitter/i,"x"],[/snapchat/i,"snapchat"],[/reddit/i,"reddit"],[/steam/i,"steam"],
     [/spotify/i,"spotify"],[/netflix/i,"netflix"],[/amazon/i,"amazon"],[/linkedin/i,"linkedin"],
     [/github/i,"github"],[/notion/i,"notion"],[/canva/i,"canva"],[/capcut/i,"capcut"],
     [/adobe|photoshop|premiere/i,"adobe"],[/zoom/i,"zoom"],[/yahoo/i,"yahoo"],
-    [/proton\\s?mail|protonmail/i,"protonmail"],[/\\baol\\b|aol\\.com/i,"aol"],
-    [/\\bgmx\\b|gmx\\.(us|com)/i,"gmx"],[/vfemail/i,"vfemail"],[/firstmail/i,"firstmail"],
+    [/proton\s?mail|protonmail/i,"protonmail"],[/\baol\b|aol\.com/i,"aol"],
+    [/\bgmx\b|gmx\.(us|com)/i,"gmx"],[/vfemail/i,"vfemail"],[/firstmail/i,"firstmail"],
     [/ixbrowser/i,"ixbrowser"]
   ];
   const slug=rules.find(([pattern])=>pattern.test(title))?.[1] || upstreamIcons[normalizedIcon] || "";
