@@ -420,16 +420,16 @@ async function userReferrals(request, env) {
 
 async function products(request, env) {
   try {
-    let liveSyncOk = false;
-    try {
-      const syncResult = await originRequest(env, "POST", "/api/internal/catalog_sync", {});
-      liveSyncOk = syncResult?.ok === true;
-    } catch {}
+    // The dedicated read-only catalog sync service publishes a validated full
+    // snapshot every minute. Use that snapshot's timestamp as the freshness
+    // source; do not make every signed-in visitor trigger a second upstream sync.
+    // Purchases still recheck the exact live supplier SKU, stock and CNY price
+    // in the internal buy handler before any upstream purchase is submitted.
     const state = await env.DB.prepare(
       "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog WHERE is_local_inventory=FALSE"
     ).first();
     const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
-    const catalogStale = !liveSyncOk || !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
+    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
