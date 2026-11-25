@@ -13,10 +13,10 @@ export function storefrontIconUrl(icon,name) {
   if(key==="shop-instagram" && /threads/.test(title)) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/threads.svg";
   if(key==="shop-other") {
     if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
-    if(title.includes("deezer")) return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/deezer.svg";
+    if(title.includes("deezer")) return "https://play-lh.googleusercontent.com/RFBXn4V0H8Zmi3_jViu73GTpQOmGmrvG7mdM1ynStAAYEd2aOLo5G0v9AHSUMwia1lQGI-c5oXMzZJCq0RMlJA=w240-h480";
     if(title.includes("snapchat")) return "https://play-lh.googleusercontent.com/nOJWJoDAzuRSHmlFfpzHXAj8UbTJwk_JGYf0uAPTKPtiiIX_2Y7r5ATO1ZtxHRqaFTqfIDZ40PnBK4hukeJh=w240-h480";
     if(title.includes("tinder")) return "https://play-lh.googleusercontent.com/VaExVMyjnrd9PkIAKchSBK6Eo7zb4A2rriDbD3pUvmveAy46StPS-Hs5mYVIP9upZV4YCJxRoQRnj77FAaQd2A=w240-h480";
-    if(title.includes("reddit")) return "https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/reddit.svg";
+    if(title.includes("reddit")) return "https://play-lh.googleusercontent.com/8FVS0kvM60JwqZWRNzBIlwrZZxJa8vpli8IWaaTo8QXRe1PHmCNJ8UpWoXkGPV3jKEaTY2OVAeYoisOnGJXY=w240-h480";
     return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/solid/box-open.svg";
   }
   if(key==="shop-mail") {
