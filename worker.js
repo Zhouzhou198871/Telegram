@@ -604,10 +604,10 @@ async function products(request, env) {
       syncSucceeded = false;
     }
     const state = await env.DB.prepare(
-      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog"
+      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog WHERE is_local_inventory=FALSE"
     ).first();
     const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
-    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 1800;
+    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
