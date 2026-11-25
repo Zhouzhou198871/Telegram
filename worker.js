@@ -597,7 +597,17 @@ async function userReferrals(request, env) {
 
 async function products(request, env) {
   try {
-    await originRequest(env, "POST", "/api/internal/catalog_sync", {}).catch(() => null);
+    let syncSucceeded = true;
+    try {
+      await originRequest(env, "POST", "/api/internal/catalog_sync", {});
+    } catch {
+      syncSucceeded = false;
+    }
+    const state = await env.DB.prepare(
+      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog"
+    ).first();
+    const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
+    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 1800;
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
@@ -612,9 +622,14 @@ async function products(request, env) {
       price_cny: String(row.price_cny),
       currency: "CNY",
       is_local_inventory: Boolean(row.is_local_inventory),
-      purchasable: Boolean(row.purchasable)
+      purchasable: Boolean(row.purchasable) && !catalogStale
     }));
-    return reply(request, env, { ok: true, count: items.length, items, updated_at: Math.floor(Date.now()/1000) });
+    return reply(request, env, {
+      ok: true, count: items.length, items,
+      updated_at: catalogUpdatedAt,
+      catalog_stale: catalogStale,
+      catalog_sync_ok: syncSucceeded
+    });
   } catch {
     return reply(request, env, { ok: false, error: "catalog_unavailable" }, 503);
   }
