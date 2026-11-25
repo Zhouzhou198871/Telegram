@@ -3,6 +3,10 @@
   "cleanUrls": false,
   "rewrites": [
     {
+      "source": "/shop.html",
+      "destination": "/api?path=storefront"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api?path=$1"
     }
