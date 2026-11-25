@@ -36,11 +36,11 @@ export function storefrontIconUrl(icon,name) {
     "shop-tiktok":"https://play-lh.googleusercontent.com/2o7iuqPe-0msP3DvNhzoOgNo4eZ6GkL_RtGVeKyBn5UBQAW5cw-GW5V3wDOHB1yTQuqWzrFLFOv2u4_5ea1uhg=w240-h480",
     "shop-facebook":"https://play-lh.googleusercontent.com/12KEJDhgk6oyE1VgmfCuFzFrQripZ_endElbvEhU1rZawQgV3RI-v3II8fDslI1sdC_WKBkmtxS3jxuIihk33Q=w240-h480",
     "shop-twitter-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/twitter.svg",
-    "shop-steam":"https://cdn.jsdelivr.net/npm/simple-icons@15.15.0/icons/steam.svg",
-    "shop-yahoo":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/yahoo.svg",
+    "shop-steam":"https://play-lh.googleusercontent.com/E_x2GPSJakCdUYfECBptVyFoVnC4BxIPy3K4OdbwNyEtEJkRAY_J-Lo_Ltiybq6LiJ_aZCIzvqLv5h4Fbk91=w240-h480",
+    "shop-yahoo":"https://play-lh.googleusercontent.com/qWWpxNSBSTXvDgbnAMpBQEI8QmWXuE8lEhFSxoeBCEoKedY2g2K8-3b0mgxC5M0Xos_BYNfzZJefdlc9q1eZbw=w240-h480",
     "shop-youtube":"https://play-lh.googleusercontent.com/QNmuZQc9I6Zbe3mWnSr0hycnENqGFCI5p3yE29Hkxtf22T0IWS6zTrpxULLyyjWpB7ONAXDsDQXnXcVWokl3eg=w240-h480",
-    "shop-linkedin":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/linkedin.svg",
-    "shop-amazon-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/amazon.svg",
+    "shop-linkedin":"https://play-lh.googleusercontent.com/oij55bxj3e-4JrhGntpki0lnQyE8yQn8X5FPEzZ0t7cLppeiSINynEk7n9COoh7QSaCOZ_yiPO31NVaW4SDbWg=w240-h480",
+    "shop-amazon-circle-fill":"https://play-lh.googleusercontent.com/UIYZ9hTFNg-zZUg_uzLS9YdyDpvoo1VHNFb6VlzHy5JqNMq9Uq-p2S1VPwzXCipHTFacfGKhJkyAuKL19VVlcWA=w240-h480",
     "shop-skype":"https://teams.public.onecdn.static.microsoft/hashed/favicon/prod/favicon-f1722d9.ico"
   };
   return upstreamIcons[key] || "";
