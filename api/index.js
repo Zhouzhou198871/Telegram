@@ -1,4 +1,5 @@
 import worker from "../worker.js";
+import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import nodemailer from "nodemailer";
 import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv, createHash } from "node:crypto";
@@ -406,6 +407,58 @@ async function handleInternal(method, url, headers, rawBody, db) {
   return {status:405,body:{ok:false,error:"method_not_allowed"}};
 }
 
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function storefrontTitle(value) {
+  return String(value || "数字商品").replace(/^\s*\[货号[^\]]*\]\s*/i,"").replace(/^[^\p{L}\p{N}]+/u,"").split(/[|｜]/)[0].replace(/\s+/g," ").trim() || "数字商品";
+}
+function storefrontDescription(value) {
+  const parts=String(value||"").split(/[|｜]/).map(x=>x.trim()).filter(Boolean);
+  const detail=parts.length>1?parts.slice(1).filter(x=>!/^\[?货号/i.test(x)&&!/单次最多购买|最多购买\s*\d+/i.test(x)).join(" · "):"";
+  return detail.length>76?detail.slice(0,73)+"…":detail;
+}
+async function renderStorefront(res) {
+  const fileUrl = new URL("../shop.html", import.meta.url);
+  let html = await readFile(fileUrl, "utf8");
+  try {
+    const db=getSql();
+    const freshness=await db.unsafe("SELECT MAX(updated_at) AS latest FROM shop_catalog WHERE is_local_inventory=false");
+    const latest=Number(freshness[0]?.latest||0);
+    const fresh=latest>0 && Math.floor(Date.now()/1000)-latest<=180;
+    const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,purchasable,source FROM shop_catalog WHERE is_on_sale=true AND stock>0 ORDER BY updated_at DESC, name ASC LIMIT 48");
+    const products=rows.map(row=>{
+      const source=row.source&&typeof row.source==="object"?row.source:{};
+      return {product_id:String(row.product_id),name:String(row.name||""),category:String(row.category_name||"其他商品"),
+        price_cny:Number(row.price_cny),price_usdt:Number(row.price_usdt),stock:Number(row.stock||0),
+        purchasable:Boolean(row.purchasable)&&fresh,icon:String(source.Icon||""),
+        image_url:String(source.ImageUrl||source.ImageURL||source.Image||source.image_url||""),
+        description:String(source.Description||source.DescriptionZh||source.description||"")};
+    });
+    const cards=products.map(item=>{
+      const title=storefrontTitle(item.name),desc=storefrontDescription(item.description||item.name);
+      const image=/^https:\/\//i.test(item.image_url)
+        ? '<img class="product-cover-image" alt="'+escapeHtml(title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.image_url)+'">'
+        : '<div class="product-cover-art"><span class="product-cover-kicker">'+escapeHtml(item.category)+'</span><strong>'+escapeHtml(title)+'</strong><small>QINGTIAN · DIGITAL STORE</small></div>';
+      return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap"><span class="product-icon-fallback" aria-hidden="true">'+escapeHtml(title.slice(0,1)||"数")+'</span></div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+(Number.isFinite(item.price_cny)?"¥"+item.price_cny.toFixed(2):"价格暂不可用")+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
+    }).join("");
+    const placeholder='<div class="product-grid" id="productGrid" aria-live="polite">\n        <div class="loading-card" data-i18n="loadingCatalog">正在连接商品目录…</div>\n      </div>';
+    html=html.replace(placeholder,'<div class="product-grid" id="productGrid" aria-live="polite">'+(cards||'<div class="empty-card">暂无上架商品</div>')+'</div>');
+    const payload=JSON.stringify(products).replace(/</g,"\\u003c").replace(/>/g,"\\u003e").replace(/&/g,"\\u0026");
+    html=html.replace('<script src="./script.js?v=catalog-cache-copy-20261125-v4" defer></script>',
+      '<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=catalog-cache-copy-20261125-v4" defer></script>');
+    res.statusCode=200;res.setHeader("Content-Type","text/html; charset=utf-8");
+    res.setHeader("Cache-Control","public, s-maxage=20, stale-while-revalidate=40, stale-if-error=86400");
+    res.setHeader("X-Storefront-Render","database-snapshot");res.end(html);
+  } catch(error) {
+    console.error("[storefront_ssr_fallback]",String(error?.message||error));
+    res.statusCode=200;res.setHeader("Content-Type","text/html; charset=utf-8");
+    res.setHeader("Cache-Control","public, s-maxage=10, stale-while-revalidate=30");
+    res.setHeader("X-Storefront-Render","static-fallback");res.end(html);
+  }
+}
+
 function makeHeaders(source) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(source || {})) {
@@ -431,6 +484,7 @@ export default async function handler(req, res) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
+    if (url.pathname === "/api/storefront" && (method === "GET" || method === "HEAD")) return await renderStorefront(res);
     if (url.pathname === "/api/internal/catalog_snapshot_sync" && method === "POST") {
       try {
         const result = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
