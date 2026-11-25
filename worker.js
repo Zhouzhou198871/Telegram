@@ -601,7 +601,7 @@ async function products(request, env) {
       await originRequest(env, "POST", "/api/internal/catalog_sync", {});
     } catch {}
     const state = await env.DB.prepare(
-      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog"
+      "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog WHERE is_local_inventory=FALSE"
     ).first();
     const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
     const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
