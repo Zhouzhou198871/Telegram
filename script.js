@@ -316,76 +316,41 @@ let visibleProductLimit = 48;
 let catalogRefreshInFlight = false;
 let catalogAutoRefreshTimer = null;
 
-const PRODUCT_SOURCE_ICONS = {
-  "shop-amazon-circle-fill": "amazon", "shop-discord": "discord",
-  "shop-google-voice-logo": "googlevoice", "shop-google": "google",
-  "shop-instagram": "instagram", "shop-linkedin": "linkedin",
-  "shop-skype": "skype", "shop-steam": "steam", "shop-tiktok": "tiktok",
-  "shop-telegram": "telegram", "shop-twitter-circle-fill": "x",
-  "shop-whatsapp": "whatsapp", "shop-yahoo": "yahoo", "shop-youtube": "youtube",
-  "shop-facebook": "facebook", "shop-microsoft": "microsoft", "shop-apple": "apple"
-};
-
-const PRODUCT_BRAND_ICONS = [
-  [/chatgpt|openai|gpt[- ]?4|gpt[- ]?5/i, "openai"],
-  [/claude|anthropic/i, "claude"],
-  [/gemini|google ai/i, "googlegemini"],
-  [/discord/i, "discord"],
-  [/telegram/i, "telegram"],
-  [/spotify/i, "spotify"],
-  [/netflix/i, "netflix"],
-  [/youtube/i, "youtube"],
-  [/tiktok/i, "tiktok"],
-  [/instagram/i, "instagram"],
-  [/facebook|meta/i, "facebook"],
-  [/whatsapp/i, "whatsapp"],
-  [/microsoft|office 365|office365|onedrive|outlook/i, "microsoft"],
-  [/windows/i, "windows"],
-  [/apple|icloud/i, "apple"],
-  [/adobe|photoshop|premiere/i, "adobe"],
-  [/steam/i, "steam"],
-  [/github/i, "github"],
-  [/notion/i, "notion"],
-  [/canva/i, "canva"],
-  [/figma/i, "figma"],
-  [/dropbox/i, "dropbox"],
-  [/zoom/i, "zoom"],
-  [/perplexity/i, "perplexity"],
-  [/capcut/i, "capcut"],
-  [/midjourney/i, "midjourney"],
-  [/cursor/i, "cursor"],
-  [/vscode|visual studio code/i, "visualstudiocode"],
-  [/x\.com|twitter/i, "x"],
-  [/amazon/i, "amazon"],
-  [/google voice/i, "googlevoice"],
-  [/google|gmail/i, "google"],
-  [/linkedin/i, "linkedin"],
-  [/skype|teams/i, "skype"],
-  [/textnow/i, "textnow"],
-  [/yahoo/i, "yahoo"],
-  [/snapchat/i, "snapchat"],
-  [/reddit/i, "reddit"],
-  [/proton\s?mail|protonmail/i, "protonmail"]
-];
-
+function verifiedProductBrandSlug(item) {
+  const name=String(item?.name||"").toLowerCase();
+  const rules=[
+    [/microsoft\s*teams|\bteams\b/i,"microsoftteams"],[/\bskype\b/i,"skype"],
+    [/chatgpt|openai|gpt[- ]?[45]/i,"openai"],[/claude|anthropic/i,"claude"],[/gemini/i,"googlegemini"],
+    [/google\s*voice/i,"googlevoice"],[/youtube/i,"youtube"],[/gmail|google/i,"google"],
+    [/outlook|hotmail/i,"outlook"],[/office\s*365|office365/i,"microsoftoffice"],
+    [/onedrive|microsoft|windows/i,"microsoft"],[/apple|icloud/i,"apple"],
+    [/discord/i,"discord"],[/telegram|飞机号|电报/i,"telegram"],[/whatsapp/i,"whatsapp"],
+    [/instagram/i,"instagram"],[/tiktok|TK账号/i,"tiktok"],[/facebook|meta/i,"facebook"],
+    [/x\.com|twitter/i,"x"],[/snapchat/i,"snapchat"],[/reddit/i,"reddit"],[/steam/i,"steam"],
+    [/spotify/i,"spotify"],[/netflix/i,"netflix"],[/amazon/i,"amazon"],[/linkedin/i,"linkedin"],
+    [/github/i,"github"],[/notion/i,"notion"],[/canva/i,"canva"],[/capcut/i,"capcut"],
+    [/adobe|photoshop|premiere/i,"adobe"],[/zoom/i,"zoom"],[/yahoo/i,"yahoo"],
+    [/proton\s?mail|protonmail/i,"protonmail"],[/\baol\b|aol\.com/i,"aol"],
+    [/\bgmx\b|gmx\.(us|com)/i,"gmx"],[/vfemail/i,"vfemail"],[/firstmail/i,"firstmail"],
+    [/ixbrowser/i,"ixbrowser"]
+  ];
+  return rules.find(([pattern])=>pattern.test(name))?.[1]||"";
+}
 function productBrandIcon(item) {
-  const name = String(item.name || "");
-  const custom = [item.icon_url, item.logo_url, item.image_url].find(value =>
-    typeof value === "string" && /^https:\/\//i.test(value)
-  );
-  if (custom) return custom;
-  if (/microsoft\s?teams/i.test(name)) return "https://cdn.simpleicons.org/microsoftteams";
-  if (/ixbrowser/i.test(name)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
-  if (/aol\.com/i.test(name)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
-  if (/gmx\.(us|com)/i.test(name)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
-  if (/vfemail/i.test(name)) return "https://www.google.com/s2/favicons?domain=vfemail.net&sz=128";
-  if (/firstmail/i.test(name)) return "https://www.google.com/s2/favicons?domain=firstmail.ltd&sz=128";
-  const sourceIcon = String(item.icon || item.source?.Icon || "").trim().toLowerCase();
-  const slug = PRODUCT_SOURCE_ICONS[sourceIcon] ||
-    PRODUCT_BRAND_ICONS.find(([pattern]) => pattern.test(name))?.[1];
-  if (slug) return "https://cdn.simpleicons.org/" + slug;
-  if (/邮箱|mail|email/i.test(name)) return "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg";
-  return "https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg";
+  const slug=verifiedProductBrandSlug(item);
+  return slug ? "https://cdn.simpleicons.org/"+slug : "";
+}
+function createProductIcon(item) {
+  const wrap=document.createElement("div");wrap.className="product-icon-wrap";
+  const fallback=document.createElement("span");fallback.className="product-icon-fallback";
+  fallback.textContent=(String(item.name||"软").trim().charAt(0)||"软").toUpperCase();
+  fallback.setAttribute("aria-hidden","true");
+  const iconUrl=productBrandIcon(item);
+  if(!iconUrl){wrap.appendChild(fallback);return wrap;}
+  const image=document.createElement("img");image.className="product-icon-image";image.alt="";
+  image.loading="lazy";image.decoding="async";image.referrerPolicy="no-referrer";image.src=iconUrl;
+  image.addEventListener("error",()=>{image.remove();wrap.appendChild(fallback);},{once:true});
+  wrap.appendChild(image);return wrap;
 }
 
 function createProductCover(item) {
