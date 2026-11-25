@@ -494,6 +494,25 @@ function drawFilteredProducts() {
     return (!query || name.includes(query) || rawCategory.toLowerCase().includes(query)) &&
       (!category || rawCategory === category);
   });
+  if (sort === "default") {
+    const popularity = item => {
+      const name=String(item.name||"").toLowerCase(), icon=String(item.icon||"").toLowerCase();
+      const rules=[
+        [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
+        [/google|gmail|youtube|google voice/i,94],[/microsoft|office 365|office365|outlook|onedrive|teams/i,92],
+        [/apple|icloud/i,90],[/discord/i,88],[/telegram/i,86],[/whatsapp/i,84],
+        [/instagram/i,82],[/tiktok/i,80],[/facebook|meta/i,78],[/x\.com|twitter/i,76],
+        [/snapchat/i,74],[/reddit/i,72],[/steam/i,70],[/spotify/i,68],[/netflix/i,66],
+        [/amazon/i,64],[/linkedin/i,62],[/github/i,60],[/notion/i,58],[/canva/i,56],
+        [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
+      ];
+      const hit=rules.find(([pattern])=>pattern.test(name));
+      if(hit)return hit[1];
+      const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
+      return ranks[icon]||0;
+    };
+    items.sort((a,b)=>popularity(b)-popularity(a));
+  }
   if (sort === "price-asc") items.sort((a,b) => Number(a.price_cny ?? Number(a.price_usdt || 0) * 4) - Number(b.price_cny ?? Number(b.price_usdt || 0) * 4));
   if (sort === "price-desc") items.sort((a,b) => Number(b.price_cny ?? Number(b.price_usdt || 0) * 4) - Number(a.price_cny ?? Number(a.price_usdt || 0) * 4));
   if (sort === "stock-desc") items.sort((a,b) => Number(b.stock || 0) - Number(a.stock || 0));
@@ -529,7 +548,7 @@ function drawFilteredProducts() {
     if (description) card.appendChild(safeText("p", "product-description", description, ""));
     const meta = document.createElement("div");
     meta.className = "product-meta";
-    meta.appendChild(safeText("div","product-price",formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4)));
+    meta.appendChild(safeText("div","product-price",item.price_verified === true ? formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4) : "价格核验失败"));
     meta.appendChild(safeText("div","product-stock",SHOP_I18N[currentShopLanguage()].stockLabel+" "+Number(item.stock||0)));
     card.appendChild(meta);
     const stock = Number(item.stock || 0);
@@ -542,8 +561,8 @@ function drawFilteredProducts() {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.catalog_verified === false ? (currentShopLanguage()==="en"?"Checking price":"核对价格中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
-    buyButton.disabled = item.catalog_verified === false || item.purchasable === false;
+    buyButton.textContent = item.catalog_verified === false || item.price_verified !== true ? (currentShopLanguage()==="en"?"Verifying live price":"核对上游价格中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
+    buyButton.disabled = item.catalog_verified === false || item.price_verified !== true || item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
     fragment.appendChild(card);
@@ -588,7 +607,7 @@ async function loadProducts(options = {}) {
     saveCachedProducts(data.items || []);
     renderProducts(data.items || [], { verified: true });
     const t=SHOP_I18N[currentShopLanguage()];
-    if (data.catalog_stale === true) message($("shopMessage"),t.catalogStale,"error");
+    if (data.catalog_stale === true) message($("shopMessage"),"上游价格暂时无法核实，相关商品价格已隐藏并暂停购买。","error");
     else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
   } catch {
     const t=SHOP_I18N[currentShopLanguage()];
