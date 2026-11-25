@@ -420,14 +420,16 @@ async function userReferrals(request, env) {
 
 async function products(request, env) {
   try {
+    let liveSyncOk = false;
     try {
-      await originRequest(env, "POST", "/api/internal/catalog_sync", {});
+      const syncResult = await originRequest(env, "POST", "/api/internal/catalog_sync", {});
+      liveSyncOk = syncResult?.ok === true;
     } catch {}
     const state = await env.DB.prepare(
       "SELECT COALESCE(MAX(updated_at),0) AS catalog_updated_at FROM shop_catalog WHERE is_local_inventory=FALSE"
     ).first();
     const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
-    const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
+    const catalogStale = !liveSyncOk || !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
     const result = await env.DB.prepare(
       "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
@@ -442,6 +444,7 @@ async function products(request, env) {
       price_cny: String(row.price_cny),
       currency: "CNY",
       is_local_inventory: Boolean(row.is_local_inventory),
+      price_verified: Boolean(row.is_local_inventory) || !catalogStale,
       purchasable: Boolean(row.purchasable) && (Boolean(row.is_local_inventory) || !catalogStale)
     }));
     return reply(request, env, {
