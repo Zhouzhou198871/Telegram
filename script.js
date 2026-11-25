@@ -90,8 +90,8 @@ function displayProductName(item) {
   return cleaned || "数字商品";
 }
 const SHOP_I18N = {
- zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",myAccount:"我的账户",shopping:"商品购买",allProducts:"全部商品",catalogHeading:"上架商品",productHeading:"商品购买",searchResults:"搜索结果",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品售价与库存以最新同步数据为准，下单时会再次核验商品状态。",tagStock:"库存核验",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品购买",refreshProducts:"刷新商品 ↻",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在连接商品目录…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogStale:"库存数据已超过30分钟未同步，商品暂时停止购买。",catalogEmpty:"暂无上架商品。",catalogFailed:"目录连接失败，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请点击刷新目录重试。"},
- en:{loggedIn:"Signed in",balanceLabel:"Account balance",accountInfo:"Account details",inviteRewards:"Referral rewards",orderHistory:"Order history",support:"Support",language:"Language",logout:"Sign out",home:"Home",myAccount:"My account",shopping:"Shop",allProducts:"All products",catalogHeading:"Available products",productHeading:"Shop products",searchResults:"Search results",heroEyebrow:"Qingtian Store · Digital goods",heroTitle:"Selected accounts and digital goods",heroSubtitle:"Shop securely · Instant delivery",heroCopy:"Prices and stock reflect the latest catalog sync. Product availability is checked again when ordering.",tagStock:"Stock verified",tagPrice:"Clear pricing",tagDelivery:"Online delivery",catalogEyebrow:"Shop products",refreshProducts:"Refresh ↻",searchPlaceholder:"Search products…",category:"Category",allCategories:"All categories",sort:"Sort products",defaultSort:"Default sort",priceLowHigh:"Price: low to high",priceHighLow:"Price: high to low",stockHighLow:"Stock: high to low",loadingCatalog:"Connecting to product catalog…",noProducts:"No products available",noMatches:"No matching products found",stockLabel:"Stock",buyNow:"Buy now",notAvailable:"Unavailable",submitting:"Submitting…",checking:"Checking product and balance…",delivered:"Purchase complete. Your code has been delivered.",insufficient:"Insufficient balance. Please contact support to top up.",catalogUpdated:"Product catalog updated.",catalogStale:"Inventory has not synced for over 30 minutes. Purchases are temporarily paused.",catalogEmpty:"No products available.",catalogFailed:"Could not connect to the catalog. Please try again.",temporaryError:"Network unavailable. Your session is saved; refresh the catalog to retry."}
+ zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",myAccount:"我的账户",shopping:"商品购买",allProducts:"全部商品",catalogHeading:"上架商品",productHeading:"商品购买",searchResults:"搜索结果",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品售价与库存以最新同步数据为准，下单时会再次核验商品状态。",tagStock:"库存核验",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品购买",refreshProducts:"刷新商品 ↻",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在连接商品目录…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogStale:"上游价格或库存超过3分钟未同步，商品已暂停购买。",catalogEmpty:"暂无上架商品。",catalogFailed:"目录连接失败，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请点击刷新目录重试。"},
+ en:{loggedIn:"Signed in",balanceLabel:"Account balance",accountInfo:"Account details",inviteRewards:"Referral rewards",orderHistory:"Order history",support:"Support",language:"Language",logout:"Sign out",home:"Home",myAccount:"My account",shopping:"Shop",allProducts:"All products",catalogHeading:"Available products",productHeading:"Shop products",searchResults:"Search results",heroEyebrow:"Qingtian Store · Digital goods",heroTitle:"Selected accounts and digital goods",heroSubtitle:"Shop securely · Instant delivery",heroCopy:"Prices and stock reflect the latest catalog sync. Product availability is checked again when ordering.",tagStock:"Stock verified",tagPrice:"Clear pricing",tagDelivery:"Online delivery",catalogEyebrow:"Shop products",refreshProducts:"Refresh ↻",searchPlaceholder:"Search products…",category:"Category",allCategories:"All categories",sort:"Sort products",defaultSort:"Default sort",priceLowHigh:"Price: low to high",priceHighLow:"Price: high to low",stockHighLow:"Stock: high to low",loadingCatalog:"Connecting to product catalog…",noProducts:"No products available",noMatches:"No matching products found",stockLabel:"Stock",buyNow:"Buy now",notAvailable:"Unavailable",submitting:"Submitting…",checking:"Checking product and balance…",delivered:"Purchase complete. Your code has been delivered.",insufficient:"Insufficient balance. Please contact support to top up.",catalogUpdated:"Product catalog updated.",catalogStale:"Upstream price or stock has not synced for 3 minutes. Purchases are paused.",catalogEmpty:"No products available.",catalogFailed:"Could not connect to the catalog. Please try again.",temporaryError:"Network unavailable. Your session is saved; refresh the catalog to retry."}
 };
 function currentShopLanguage(){return localStorage.getItem("qingtian_shop_language")==="en"?"en":"zh";}
 function updateShopHeading(){
@@ -323,6 +323,8 @@ async function loadUser() {
 }
 
 let allProducts = [];
+let catalogRefreshInFlight = false;
+let catalogAutoRefreshTimer = null;
 
 const PRODUCT_SOURCE_ICONS = {
   "shop-amazon-circle-fill": "amazon",
@@ -525,21 +527,41 @@ function renderProducts(items) {
   drawFilteredProducts();
 }
 
-async function loadProducts() {
+async function loadProducts(options = {}) {
+  if (catalogRefreshInFlight) return;
+  catalogRefreshInFlight = true;
+  const silent = options && options.silent === true;
   const grid = $("productGrid");
-  grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
+  if (!silent) grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
   try {
     const data = await api("/api/products");
     renderProducts(data.items || []);
     const t=SHOP_I18N[currentShopLanguage()];
     if (data.catalog_stale === true) message($("shopMessage"),t.catalogStale,"error");
-    else message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
+    else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
   } catch {
-    grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
-    message($("shopMessage"),SHOP_I18N[currentShopLanguage()].catalogFailed,"error");
+    const t=SHOP_I18N[currentShopLanguage()];
+    if (silent && allProducts.length) {
+      allProducts = allProducts.map(item => ({...item,purchasable:false}));
+      drawFilteredProducts();
+    } else {
+      grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后刷新。"));
+    }
+    message($("shopMessage"),t.catalogFailed,"error");
+  } finally {
+    catalogRefreshInFlight = false;
   }
 }
 
+function startCatalogAutoRefresh() {
+  if (catalogAutoRefreshTimer) return;
+  catalogAutoRefreshTimer = window.setInterval(() => {
+    if (!document.hidden && token()) loadProducts({silent:true});
+  }, 60000);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && token()) loadProducts({silent:true});
+  });
+}
 
 async function loadNodeProducts() {
   const grid=$("nodeProductGrid");
@@ -758,7 +780,7 @@ function initShop() {
     if(invalidSession){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;}
     message($("shopMessage"),SHOP_I18N[currentShopLanguage()].temporaryError,"error");
   }).finally(()=>{
-    if(token()){loadProducts();loadNodeProducts();}
+    if(token()){loadProducts();loadNodeProducts();startCatalogAutoRefresh();}
   });
 }
 
