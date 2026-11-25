@@ -424,11 +424,11 @@ function storefrontIconUrl(icon,name) {
   const title=String(name||"");
   const map={"shop-amazon-circle-fill":"amazon","shop-discord":"discord","shop-google-voice-logo":"googlevoice","shop-google":"google","shop-instagram":"instagram","shop-linkedin":"linkedin","shop-skype":"skype","shop-steam":"steam","shop-tiktok":"tiktok","shop-telegram":"telegram","shop-twitter-circle-fill":"x","shop-whatsapp":"whatsapp","shop-yahoo":"yahoo","shop-youtube":"youtube","shop-facebook":"facebook","shop-microsoft":"microsoft","shop-apple":"apple"};
   if(/ixbrowser/i.test(title)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
-  if(/aol\\.com/i.test(title)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
-  if(/gmx\\.(us|com)/i.test(title)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
+  if(/aol\.com/i.test(title)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
+  if(/gmx\.(us|com)/i.test(title)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
   if(/vfemail/i.test(title)) return "https://www.google.com/s2/favicons?domain=vfemail.net&sz=128";
   if(/firstmail/i.test(title)) return "https://www.google.com/s2/favicons?domain=firstmail.ltd&sz=128";
-  const slug=map[key]||(/snapchat/i.test(title)?"snapchat":/reddit/i.test(title)?"reddit":/proton\\s?mail|protonmail/i.test(title)?"protonmail":null);
+  const slug=map[key]||(/snapchat/i.test(title)?"snapchat":/reddit/i.test(title)?"reddit":/proton\s?mail|protonmail/i.test(title)?"protonmail":null);
   return slug?"https://cdn.simpleicons.org/"+slug:(/邮箱|mail|email/i.test(title)?"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg":"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg");
 }
 async function renderStorefront(res) {
