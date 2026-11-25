@@ -419,6 +419,18 @@ function storefrontDescription(value) {
   const detail=parts.length>1?parts.slice(1).filter(x=>!/^\[?货号/i.test(x)&&!/单次最多购买|最多购买\s*\d+/i.test(x)).join(" · "):"";
   return detail.length>76?detail.slice(0,73)+"…":detail;
 }
+function storefrontIconUrl(icon,name) {
+  const key=String(icon||"").toLowerCase();
+  const title=String(name||"");
+  const map={"shop-amazon-circle-fill":"amazon","shop-discord":"discord","shop-google-voice-logo":"googlevoice","shop-google":"google","shop-instagram":"instagram","shop-linkedin":"linkedin","shop-skype":"skype","shop-steam":"steam","shop-tiktok":"tiktok","shop-telegram":"telegram","shop-twitter-circle-fill":"x","shop-whatsapp":"whatsapp","shop-yahoo":"yahoo","shop-youtube":"youtube","shop-facebook":"facebook","shop-microsoft":"microsoft","shop-apple":"apple"};
+  if(/ixbrowser/i.test(title)) return "https://www.google.com/s2/favicons?domain=ixbrowser.com&sz=128";
+  if(/aol\\.com/i.test(title)) return "https://www.google.com/s2/favicons?domain=aol.com&sz=128";
+  if(/gmx\\.(us|com)/i.test(title)) return "https://www.google.com/s2/favicons?domain=gmx.com&sz=128";
+  if(/vfemail/i.test(title)) return "https://www.google.com/s2/favicons?domain=vfemail.net&sz=128";
+  if(/firstmail/i.test(title)) return "https://www.google.com/s2/favicons?domain=firstmail.ltd&sz=128";
+  const slug=map[key]||(/snapchat/i.test(title)?"snapchat":/reddit/i.test(title)?"reddit":/proton\\s?mail|protonmail/i.test(title)?"protonmail":null);
+  return slug?"https://cdn.simpleicons.org/"+slug:(/邮箱|mail|email/i.test(title)?"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/mail.svg":"https://cdn.jsdelivr.net/npm/lucide-static@0.468.0/icons/globe.svg");
+}
 async function renderStorefront(res) {
   const fileUrl = new URL("../shop.html", import.meta.url);
   let html = await readFile(fileUrl, "utf8");
@@ -434,6 +446,7 @@ async function renderStorefront(res) {
         price_cny:Number(row.price_cny),price_usdt:Number(row.price_usdt),stock:Number(row.stock||0),
         purchasable:Boolean(row.purchasable)&&(Boolean(row.is_local_inventory)||fresh),icon:String(source.Icon||""),
         image_url:String(source.ImageUrl||source.ImageURL||source.Image||source.image_url||""),
+        icon_url:storefrontIconUrl(source.Icon,row.name),
         description:String(source.Description||source.DescriptionZh||source.description||"")};
     });
     const cards=products.map(item=>{
@@ -441,7 +454,8 @@ async function renderStorefront(res) {
       const image=/^https:\/\//i.test(item.image_url)
         ? '<img class="product-cover-image" alt="'+escapeHtml(title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.image_url)+'">'
         : '<div class="product-cover-art"><span class="product-cover-kicker">'+escapeHtml(item.category)+'</span><strong>'+escapeHtml(title)+'</strong><small>QINGTIAN · DIGITAL STORE</small></div>';
-      return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap"><span class="product-icon-fallback" aria-hidden="true">'+escapeHtml(title.slice(0,1)||"数")+'</span></div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+(Number.isFinite(item.price_cny)?"¥"+item.price_cny.toFixed(2):"价格暂不可用")+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
+      const icon='<img class="product-icon-image" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.icon_url)+'">';
+      return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap">'+icon+'</div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+(Number.isFinite(item.price_cny)?"¥"+item.price_cny.toFixed(2):"价格暂不可用")+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
     }).join("");
     const placeholder='<div class="product-grid" id="productGrid" aria-live="polite">\n        <div class="loading-card" data-i18n="loadingCatalog">正在连接商品目录…</div>\n      </div>';
     html=html.replace(placeholder,'<div class="product-grid" id="productGrid" aria-live="polite">'+(cards||'<div class="empty-card">暂无上架商品</div>')+'</div>');
