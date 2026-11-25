@@ -698,3 +698,57 @@ body[data-page="shop"] .shop-nav-link.is-active{background:#edf3fc;color:#286bd4
  body[data-page="shop"] .hero-copy-card{background:linear-gradient(145deg,#f0f5fc,#fffefa);padding:24px 18px}
  body[data-page="shop"] .shop-hero{padding-top:18px}
 }
+
+
+/* 晴天号铺独立重构：奶白商业商城主题 */
+:root{
+ color-scheme:light;
+ --bg:#f7f5ef;--line:#e8e2d7;--text:#252b35;--muted:#817d73;
+ --accent:#3d78bd;--green:#26845d;--card-radius:18px;--card-blur:0px;
+ --card-surface:#fffefa;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+html,body{background:#f7f5ef!important;color:#252b35}
+body{background:linear-gradient(180deg,#fbfaf6 0%,#f5f2ea 100%)!important}
+.vidage,.screen-shade,.ambient{display:none!important}
+.topbar{background:rgba(255,254,250,.94);border:1px solid #ece7dd;border-top:0;border-radius:0 0 18px 18px;padding:0 22px;box-shadow:0 8px 28px rgba(45,42,34,.045);backdrop-filter:blur(14px)}
+.brand,.brand-title,.shop-nav-link{color:#343b45!important}
+.shop-nav-link{padding:10px 13px;border-radius:999px;font-weight:650}
+.shop-nav-link:hover,.shop-nav-link.is-active{background:#edf3f8;color:#2d6da9!important}
+.shop-main,main{color:#252b35}
+.shop-hero{padding:44px 0 28px}
+.hero-copy-card{padding:clamp(28px,5vw,58px);border:1px solid #ebe5da;border-radius:26px;background:linear-gradient(120deg,#fffefa 0%,#f4f0e7 100%);box-shadow:0 18px 48px rgba(55,48,35,.055)}
+.eyebrow,.section-kicker{color:#3977b7}
+h1{color:#252b35;font-size:clamp(36px,5vw,62px);line-height:1.14;letter-spacing:-.045em}
+h1 span{color:#3977b7;text-shadow:none}
+.hero-copy{color:#77776f;max-width:620px}
+.hero-tags span,.node-protocol-tag{background:#edf3f8;color:#47749d;border:1px solid #e0eaf1;border-radius:999px}
+.catalog-section{padding:26px 0 64px}
+.section-heading{align-items:center}
+h2{color:#292f38}
+.catalog-tools{padding:14px;border:1px solid #eae4d9;border-radius:16px;background:#fffefa}
+.search-box,.catalog-selects select{background:#fff;border:1px solid #e7e2d9;color:#343b45;border-radius:12px}
+.product-grid{gap:18px}
+.product-card,.node-catalog-section,.delivery-modal,.account-menu-card{background:#fffefa!important;border:1px solid #eae5dc!important;border-radius:18px!important;box-shadow:0 12px 32px rgba(55,48,35,.055)!important;color:#343b45}
+.product-card{padding:20px;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.product-card:hover{transform:translateY(-3px);border-color:#d7e3ed!important;box-shadow:0 18px 38px rgba(55,48,35,.09)!important}
+.product-name,.product-price,.account-card-identity strong{color:#292f38}
+.product-description,.node-catalog-desc,.modal-copy{color:#77776f}
+.primary-button,.nav-cta{background:#3977b7!important;color:white!important;border:1px solid #3977b7!important;border-radius:11px!important;box-shadow:0 6px 16px rgba(57,119,183,.16)!important}
+.secondary-button{background:#fffefa!important;color:#456b8d!important;border:1px solid #dfe6eb!important;border-radius:11px!important}
+.secondary-button:hover{background:#f1f5f8!important}
+.node-catalog-section{padding:24px}
+.node-plan-button{background:#f8f7f2!important;border-color:#e8e3d9!important;color:#46505c!important}
+.node-plan-button strong{color:#3977b7!important}
+.form-message{color:#77776f}
+.footer-note{color:#969187!important}
+.modal-backdrop{background:rgba(38,40,42,.38)!important;backdrop-filter:blur(5px)}
+.delivery-content{background:#f7f5ef!important;color:#343b45!important;border:1px solid #e8e2d7}
+.account-menu-card{box-shadow:0 18px 42px rgba(45,42,34,.12)!important}
+.account-card-link{color:#3977b7}
+@media(max-width:720px){
+ .topbar{width:calc(100% - 24px);height:auto;min-height:68px;padding:10px 14px;flex-wrap:wrap;gap:8px}
+ .shop-primary-nav{order:3;width:100%;display:flex;justify-content:center}
+ .shop-hero{padding:22px 0 14px}
+ .hero-copy-card{padding:26px 20px;border-radius:20px}
+ .catalog-section{padding-top:20px}
+}
