@@ -312,6 +312,7 @@ async function loadUser() {
 }
 
 let allProducts = [];
+let visibleProductLimit = 48;
 let catalogRefreshInFlight = false;
 let catalogAutoRefreshTimer = null;
 
@@ -495,15 +496,18 @@ function drawFilteredProducts() {
   if (sort === "price-desc") items.sort((a,b) => Number(b.price_cny ?? Number(b.price_usdt || 0) * 4) - Number(a.price_cny ?? Number(a.price_usdt || 0) * 4));
   if (sort === "stock-desc") items.sort((a,b) => Number(b.stock || 0) - Number(a.stock || 0));
   grid.replaceChildren();
+  const moreButton = $("loadMoreProducts");
+  if (moreButton) moreButton.hidden = true;
   if (!items.length) {
     const t=SHOP_I18N[currentShopLanguage()];grid.appendChild(safeText("div","empty-card",allProducts.length?t.noMatches:t.noProducts));
     return;
   }
   const fragment = document.createDocumentFragment();
+  const visibleItems = items.slice(0, visibleProductLimit);
   const categoryNames = currentShopLanguage()==="en"
     ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
     : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
-  for (const item of items) {
+  for (const item of visibleItems) {
     if (!item || typeof item !== "object") continue;
     const card = document.createElement("article");
     card.className = "product-card shop-product-card";
@@ -544,9 +548,16 @@ function drawFilteredProducts() {
   }
   if (!fragment.childElementCount) grid.appendChild(safeText("div", "empty-card", "暂无上架商品"));
   else grid.appendChild(fragment);
+  if (moreButton && items.length > visibleItems.length) {
+    moreButton.hidden = false;
+    moreButton.textContent = currentShopLanguage()==="en"
+      ? `Load more products (${items.length-visibleItems.length} left)`
+      : `加载更多商品（剩余 ${items.length-visibleItems.length} 件）`;
+  }
 }
 
 function renderProducts(items, options = {}) {
+  visibleProductLimit = 48;
   const verified = options.verified !== false;
   allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object").map(item => ({...item, catalog_verified: verified})) : [];
   const select = $("categoryFilter");
@@ -793,9 +804,10 @@ function initShop() {
   setShopView("home");
   const languageToggle=$("languageToggle");
   if(languageToggle)languageToggle.addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",currentShopLanguage()==="zh"?"en":"zh");applyShopLanguage();if(allProducts.length)drawFilteredProducts();});
-  $("productSearch").addEventListener("input", () => {drawFilteredProducts();updateShopHeading();});
-  $("categoryFilter").addEventListener("change", () => {drawFilteredProducts();updateShopHeading();});
-  $("sortProducts").addEventListener("change", drawFilteredProducts);
+  $("productSearch").addEventListener("input", () => {visibleProductLimit=48;drawFilteredProducts();updateShopHeading();});
+  $("categoryFilter").addEventListener("change", () => {visibleProductLimit=48;drawFilteredProducts();updateShopHeading();});
+  $("sortProducts").addEventListener("change", () => {visibleProductLimit=48;drawFilteredProducts();});
+  $("loadMoreProducts")?.addEventListener("click",()=>{visibleProductLimit+=48;drawFilteredProducts();});
   $("refreshProducts").addEventListener("click", loadProducts);
   $("refreshNodeProducts")?.addEventListener("click",loadNodeProducts);
   $("closeModal").addEventListener("click", () => { $("deliveryModal").hidden = true; });
