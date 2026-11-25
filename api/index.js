@@ -262,7 +262,6 @@ async function handleInternal(method, url, headers, rawBody, db) {
   if (catalogSync) {
     const state = await db.unsafe("SELECT COALESCE(MAX(updated_at),0) AS last FROM shop_catalog");
     const last = Number(state[0]?.last || 0), now = Math.floor(Date.now()/1000);
-    if (now - last < 600) return {status:200,body:{ok:true,skipped:true,last_updated:last}};
     const catalogKey = process.env.SHOP_BUY_API_KEY || "";
     if (!catalogKey) return {status:503,body:{ok:false,error:"supplier_not_configured"}};
     try {
@@ -419,6 +418,22 @@ function storefrontDescription(value) {
   const detail=parts.length>1?parts.slice(1).filter(x=>!/^\[?货号/i.test(x)&&!/单次最多购买|最多购买\s*\d+/i.test(x)).join(" · "):"";
   return detail.length>76?detail.slice(0,73)+"…":detail;
 }
+function storefrontPopularityScore(name,icon) {
+  const n=String(name||"").toLowerCase(), i=String(icon||"").toLowerCase();
+  const rules=[
+    [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
+    [/google|gmail|youtube|google voice/i,94],[/microsoft|office 365|office365|outlook|onedrive|teams/i,92],
+    [/apple|icloud/i,90],[/discord/i,88],[/telegram/i,86],[/whatsapp/i,84],
+    [/instagram/i,82],[/tiktok/i,80],[/facebook|meta/i,78],[/x\.com|twitter/i,76],
+    [/snapchat/i,74],[/reddit/i,72],[/steam/i,70],[/spotify/i,68],[/netflix/i,66],
+    [/amazon/i,64],[/linkedin/i,62],[/github/i,60],[/notion/i,58],[/canva/i,56],
+    [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
+  ];
+  const hit=rules.find(([pattern])=>pattern.test(n));
+  if(hit)return hit[1];
+  const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
+  return ranks[i]||0;
+}
 function storefrontIconUrl(icon,name) {
   const key=String(icon||"").toLowerCase();
   const title=String(name||"");
@@ -440,11 +455,12 @@ async function renderStorefront(res) {
     const freshness=await db.unsafe("SELECT MAX(updated_at) AS latest FROM shop_catalog WHERE is_local_inventory=false");
     const latest=Number(freshness[0]?.latest||0);
     const fresh=latest>0 && Math.floor(Date.now()/1000)-latest<=180;
-    const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source FROM shop_catalog WHERE is_on_sale=true AND stock>0 ORDER BY updated_at DESC, name ASC LIMIT 48");
-    const products=rows.map(row=>{
+    const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source,updated_at FROM shop_catalog WHERE is_on_sale=true AND stock>0");
+    rows.sort((a,b)=>storefrontPopularityScore(b.name,b.source?.Icon)-storefrontPopularityScore(a.name,a.source?.Icon) || Number(b.updated_at||0)-Number(a.updated_at||0) || String(a.name||"").localeCompare(String(b.name||"")));
+    const products=rows.slice(0,48).map(row=>{
       const source=row.source&&typeof row.source==="object"?row.source:{};
       return {product_id:String(row.product_id),name:String(row.name||""),category:String(row.category_name||"其他商品"),
-        price_cny:Number(row.price_cny),price_usdt:Number(row.price_usdt),stock:Number(row.stock||0),
+        price_cny:Number(row.price_cny),price_usdt:Number(row.price_usdt),price_verified:false,stock:Number(row.stock||0),
         purchasable:Boolean(row.purchasable)&&(Boolean(row.is_local_inventory)||fresh),icon:String(source.Icon||""),
         image_url:String(source.ImageUrl||source.ImageURL||source.Image||source.image_url||""),
         icon_url:storefrontIconUrl(source.Icon,row.name),
@@ -456,12 +472,12 @@ async function renderStorefront(res) {
         ? '<img class="product-cover-image" alt="'+escapeHtml(title)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.image_url)+'">'
         : '<div class="product-cover-art"><span class="product-cover-kicker">'+escapeHtml(item.category)+'</span><strong>'+escapeHtml(title)+'</strong><small>QINGTIAN · DIGITAL STORE</small></div>';
       const icon='<img class="product-icon-image" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer" src="'+escapeHtml(item.icon_url)+'">';
-      return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap">'+icon+'</div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+(Number.isFinite(item.price_cny)?"¥"+item.price_cny.toFixed(2):"价格暂不可用")+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
+      return '<article class="product-card shop-product-card"><div class="product-cover">'+image+'</div><div class="product-card-head"><div class="product-icon-wrap">'+icon+'</div><div class="product-title-wrap"><div class="product-category">'+escapeHtml(item.category)+'</div><h3 class="product-name">'+escapeHtml(title)+'</h3></div></div>'+(desc?'<p class="product-description">'+escapeHtml(desc)+'</p>':'')+'<div class="product-meta"><div class="product-price">'+"价格实时核验中"+'</div><div class="product-stock">库存 '+item.stock+'</div></div><div class="product-stock-track"><span style="width:'+Math.max(8,Math.min(100,item.stock*5))+'%"></span></div><button type="button" class="primary-button buy-button" disabled>核对价格中</button></article>';
     }).join("");
     const placeholder='<div class="product-grid" id="productGrid" aria-live="polite">\n        <div class="loading-card" data-i18n="loadingCatalog">正在连接商品目录…</div>\n      </div>';
     html=html.replace(placeholder,'<div class="product-grid" id="productGrid" aria-live="polite">'+(cards||'<div class="empty-card">暂无上架商品</div>')+'</div>');
     const payload=JSON.stringify(products).replace(/</g,"\\u003c").replace(/>/g,"\\u003e").replace(/&/g,"\\u0026");
-    html=html.replace('<script src="./script.js?v=catalog-cache-copy-20261125-v4" defer></script>',
+    html=html.replace('<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=popular-apps-live-price-20261125-v1" defer></script>',
       '<script>window.__QINGTIAN_INITIAL_PRODUCTS__='+payload+';</script><script src="./script.js?v=catalog-cache-copy-20261125-v4" defer></script>');
     res.statusCode=200;res.setHeader("Content-Type","text/html; charset=utf-8");
     res.setHeader("Cache-Control","public, s-maxage=20, stale-while-revalidate=40, stale-if-error=86400");
