@@ -462,7 +462,7 @@ function storefrontIconUrl(icon,name) {
     "shop-instagram":"https://cdn.simpleicons.org/instagram/E4405F",
     "shop-tiktok":"https://cdn.simpleicons.org/tiktok/000000",
     "shop-facebook":"https://cdn.simpleicons.org/facebook/0866FF",
-    "shop-twitter-circle-fill":"https://cdn.simpleicons.org/x/000000",
+    "shop-twitter-circle-fill":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.7.2/svgs/brands/twitter.svg",
     "shop-steam":"https://cdn.simpleicons.org/steam/000000",
     "shop-yahoo":"https://cdn.simpleicons.org/yahoo/6001D2",
     "shop-youtube":"https://cdn.simpleicons.org/youtube/FF0000",
