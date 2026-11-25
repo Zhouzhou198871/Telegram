@@ -425,10 +425,10 @@ function storefrontPopularityScore(name,icon) {
     [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
     [/google|gmail|youtube|google voice/i,94],[/microsoft|office 365|office365|outlook|onedrive|teams/i,92],
     [/apple|icloud/i,90],[/discord/i,88],[/telegram/i,86],[/whatsapp/i,84],
-    [/instagram/i,82],[/tiktok/i,80],[/facebook|meta/i,78],[/x\.com|twitter/i,76],
+    [/instagram/i,82],[/tiktok|tk账号/i,80],[/facebook|meta/i,78],[/x\.com|twitter/i,76],
     [/snapchat/i,74],[/reddit/i,72],[/steam/i,70],[/spotify/i,68],[/netflix/i,66],
     [/amazon/i,64],[/linkedin/i,62],[/github/i,60],[/notion/i,58],[/canva/i,56],
-    [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
+    [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/textnow/i,56],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
   ];
   const hit=rules.find(([pattern])=>pattern.test(n));
   if(hit)return hit[1];
