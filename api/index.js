@@ -435,8 +435,22 @@ function storefrontPopularityScore(name,icon) {
   return ranks[i]||0;
 }
 function storefrontIconUrl(icon,name) {
-  // The upstream catalog's Icon field is authoritative; never guess a logo from product text.
-  // Brand-colored SVGs are served by Simple Icons; generic categories use neutral utility icons.
+  // Prefer exact upstream identifiers; only inspect names inside generic buckets.
+  const key=String(icon||"").trim().toLowerCase();
+  const title=String(name||"").toLowerCase();
+  if(key==="shop-other") {
+    if(title.includes("ixbrowser")) return "https://d.ixbrowser.com/ixbrowser/image/logo/icon.png";
+    if(title.includes("deezer")) return "https://cdn.simpleicons.org/deezer/A238FF";
+    if(title.includes("snapchat")) return "https://cdn.simpleicons.org/snapchat/000000";
+    if(title.includes("reddit")) return "https://cdn.simpleicons.org/reddit/FF4500";
+    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/solid/box-open.svg";
+  }
+  if(key==="shop-mail") {
+    if(title.includes("proton mail") || title.includes("protonmail")) return "https://cdn.simpleicons.org/protonmail/6D4AFF";
+    if(title.includes("aol")) return "https://cdn.simpleicons.org/aol/3399FF";
+    if(title.includes("gmx")) return "https://cdn.simpleicons.org/gmx/5B2C83";
+    return "https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/regular/envelope.svg";
+  }
   const upstreamIcons={
     "shop-google":"https://cdn.simpleicons.org/google/4285F4",
     "shop-microsoft":"https://cdn.simpleicons.org/microsoft/5E5E5E",
@@ -452,11 +466,8 @@ function storefrontIconUrl(icon,name) {
     "shop-yahoo":"https://cdn.simpleicons.org/yahoo/6001D2",
     "shop-youtube":"https://cdn.simpleicons.org/youtube/FF0000",
     "shop-linkedin":"https://cdn.simpleicons.org/linkedin/0A66C2",
-    "shop-skype":"https://cdn.simpleicons.org/skype/00AFF0",
-    "shop-mail":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/regular/envelope.svg",
-    "shop-other":"https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/svgs/solid/box-open.svg"
+    "shop-skype":"https://cdn.simpleicons.org/skype/00AFF0"
   };
-  const key=String(icon||"").trim().toLowerCase();
   return upstreamIcons[key] || "";
 }
 
