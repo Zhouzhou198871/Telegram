@@ -1149,6 +1149,37 @@ async function adminNodeAccounts(request,env){
  await env.DB.prepare("UPDATE node_accounts SET status='revoked',updated_at=? WHERE account_id=?").bind(Math.floor(Date.now()/1000),id).run();
  return reply(request,env,{ok:true,account_id:id,status:"revoked"});
 }
+async function adminNodeOrders(request,env){
+ const auth=await adminAuthorize(request,env,request.method==="GET"?"nodes.read":"nodes.manage");if(auth.error)return auth.error;
+ if(request.method==="GET"){
+  const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
+  const rows=await env.DB.prepare("SELECT o.order_id,o.user_id,u.email,o.product_id,p.name AS product_name,p.protocol,p.server_ref,o.package_id,g.name AS package_name,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at FROM node_orders o LEFT JOIN users u ON u.id=o.user_id LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id ORDER BY o.created_at DESC LIMIT ?").bind(limit).all();
+  return reply(request,env,{ok:true,orders:(rows.results||[]).map(x=>({...x,amount_cny:(Number(x.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}))});
+ }
+ let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
+ const orderId=String(body.order_id||"").trim();
+ if(body.action!=="retry"||body.confirmed!==true||!orderId)return reply(request,env,{ok:false,error:"explicit_retry_confirmation_required"},400);
+ const row=await env.DB.prepare("SELECT o.order_id,o.user_id,o.product_id,o.package_id,o.status,g.duration_days,g.traffic_limit_bytes,p.protocol,p.server_ref FROM node_orders o JOIN node_products p ON p.product_id=o.product_id JOIN node_packages g ON g.package_id=o.package_id WHERE o.order_id=?").bind(orderId).first();
+ if(!row)return reply(request,env,{ok:false,error:"node_order_not_found"},404);
+ if(row.status!=="provisioning")return reply(request,env,{ok:false,error:"node_order_not_pending",status:row.status},409);
+ try{
+  const serverRef=String(row.server_ref||"us").toLowerCase();
+  const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:row.protocol,duration_days:Number(row.duration_days),server_ref:serverRef,traffic_limit_bytes:Number(row.traffic_limit_bytes||0)});
+  const account=provisioned?.account;
+  if(!provisioned?.ok||!account?.uri||!account?.client_ref)throw new Error("node_delivery_missing");
+  const delivery={protocol:row.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:row.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将连接链接导入支持该协议的客户端。"};
+  const encrypted=await encryptNodePayload(JSON.stringify(delivery),env),now=Math.floor(Date.now()/1000);
+  const existing=await env.DB.prepare("SELECT account_id FROM node_accounts WHERE client_ref=?").bind(account.client_ref).first();
+  const stmts=[env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,error_code=NULL,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,now,Number(account.expires_at),orderId)];
+  if(existing)stmts.push(env.DB.prepare("UPDATE node_accounts SET status='active',expires_at=?,traffic_limit_bytes=?,updated_at=? WHERE client_ref=?").bind(Number(account.expires_at),Number(row.traffic_limit_bytes||0),now,account.client_ref));
+  else stmts.push(env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),row.user_id,row.product_id,orderId,row.protocol,serverRef,account.client_ref,Number(account.expires_at),Number(row.traffic_limit_bytes||0),now,now));
+  await env.DB.batch(stmts);
+  return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery});
+ }catch(e){
+  await env.DB.prepare("UPDATE node_orders SET error_code='node_provision_result_uncertain',updated_at=? WHERE order_id=? AND status='provisioning'").bind(Math.floor(Date.now()/1000),orderId).run();
+  return reply(request,env,{ok:true,order_id:orderId,status:"provisioning",error_code:"node_provision_result_uncertain"},202);
+ }
+}
 async function adminNodeCatalog(request,env){
  const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
  const [products,packages]=await Promise.all([
@@ -1455,6 +1486,7 @@ export default {
       const supplierDeliveryMatch = url.pathname.match(/^\/api\/admin\/supplier-orders\/([a-f0-9-]{36})\/deliver$/i);
       if (supplierDeliveryMatch && request.method === "POST") return await adminSupplierOrders(request, env, supplierDeliveryMatch[1]);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
+      if (url.pathname === "/api/admin/node-orders" && ["GET","POST"].includes(request.method)) return await adminNodeOrders(request,env);
       if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
       if (url.pathname === "/api/admin/node-accounts" && ["GET","POST"].includes(request.method)) return await adminNodeAccounts(request,env);
       const nodeProductMatch=url.pathname.match(/^\/api\/admin\/node-products\/([a-z0-9][a-z0-9-]{1,63})$/i);
