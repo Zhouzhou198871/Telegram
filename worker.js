@@ -887,9 +887,9 @@ const ADMIN_ROOT_EMAIL = "chulingli1988@outlook.com";
 const ADMIN_ROLE_LABELS = { super_admin:"超级管理员", operations_admin:"运营管理员", support_admin:"客服管理员", viewer:"只读管理员" };
 const ADMIN_ROLE_PERMISSIONS = {
  super_admin:["*"],
- operations_admin:["overview.read","orders.read","orders.manage","users.read","products.read","products.manage","inventory.read","inventory.manage","email.read","email.manage","notices.read","notices.manage","payments.read","bots.read"],
+ operations_admin:["overview.read","orders.read","orders.manage","users.read","products.read","products.manage","inventory.read","inventory.manage","email.read","email.manage","notices.read","notices.manage","payments.read"],
  support_admin:["overview.read","users.read","support.read","support.manage"],
- viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","support.read","bots.read"]
+ viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","support.read"]
 };
 let adminAccountsSchemaReady=false;
 async function ensureAdminAccounts(env){
@@ -923,7 +923,6 @@ function legacyAdminPermission(path,method){
  if(path.includes("/stats/online"))return "users.read";
  if(path.includes("/upstream/overview"))return "products."+suffix;
  if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
- if(path.includes("/bots/matrix/")||path.includes("/bots/credentials"))return "bots."+suffix;
  if(path.includes("/users"))return "users."+suffix;
  if(path.includes("/orders")||path.includes("/shop/order/"))return "orders."+suffix;
  if(path.includes("/shop/products")||path.includes("/shop/product/")||path.endsWith("/products"))return "products."+suffix;
@@ -1117,56 +1116,9 @@ async function adminApiLogs(request,env){
  return reply(request,env,{ok:true,logs:(rows.results||[]).map(x=>({...x,status_code:Number(x.status_code||0),created_at:Number(x.created_at||0)}))});
 }
 
-async function adminBotProxy(request, env, method, path, payload, permission="bots.read") {
-  const auth=await adminAuthorize(request,env,permission);if(auth.error)return auth.error;
-  if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "bot_bridge_not_configured" }, 503);
-  const body = payload === undefined ? "" : JSON.stringify(payload);
-  const ts = String(Math.floor(Date.now() / 1000));
-  const nonce = crypto.randomUUID();
-  const signed = ts + "\n" + nonce + "\n" + method.toUpperCase() + "\n" + path + "\n" + body;
-  const signature = Array.from(await hmac(env.BOT_BRIDGE_SECRET, signed)).map(b => b.toString(16).padStart(2, "0")).join("");
-  let response;
-  try {
-    response = await fetch(new URL(path, "https://api.lynli.me"), {
-      method,
-      headers: { "Content-Type": "application/json", "X-Worker-Timestamp": ts, "X-Worker-Nonce": nonce, "X-Worker-Signature": signature },
-      body: method === "GET" ? undefined : body
-    });
-  } catch {
-    return reply(request, env, { ok: false, error: "bot_bridge_unreachable" }, 502);
-  }
-  let data = {};
-  try { data = await response.json(); } catch {}
-  return reply(request, env, data, response.status);
-}
-
-async function adminBots(request, env) {
-  const url = new URL(request.url);
-  if (request.method === "GET" && url.pathname === "/api/admin/bots") {
-    return await adminBotProxy(request, env, "GET", "/_internal/bots/status", undefined, "bots.read");
-  }
-  if (request.method === "GET" && url.pathname === "/api/admin/bots/logs") {
-    const bot = String(url.searchParams.get("bot") || "");
-    if (!["tg", "mivra"].includes(bot)) return reply(request, env, { ok: false, error: "invalid_bot" }, 400);
-    return await adminBotProxy(request, env, "GET", "/_internal/bots/logs?bot=" + encodeURIComponent(bot) + "&lines=100", undefined, "bots.read");
-  }
-  if (request.method === "POST" && url.pathname === "/api/admin/bots/action") {
-    let body;
-    try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
-    if (!["tg", "mivra"].includes(body.bot) || !["start", "stop", "restart"].includes(body.action)) {
-      return reply(request, env, { ok: false, error: "invalid_action" }, 400);
-    }
-    return await adminBotProxy(request, env, "POST", "/_internal/bots/action", { bot: body.bot, action: body.action }, "bots.manage");
-  }
-  return reply(request, env, { ok: false, error: "not_found" }, 404);
-}
-
 const LEGACY_ADMIN_EXACT = new Set([
   "/api/v1/admin/account_pool",
   "/api/v1/admin/account_pool/stats",
-  "/api/v1/admin/bots/matrix/stats",
-  "/api/v1/admin/bots/matrix/users",
-  "/api/v1/admin/bots/credentials",
   "/api/v1/admin/logs",
   "/api/v1/admin/stats/online",
   "/api/v1/admin/upload",
@@ -1189,8 +1141,6 @@ const LEGACY_ADMIN_EXACT = new Set([
 ]);
 const LEGACY_ADMIN_PREFIXES = [
   "/api/v1/admin/account_pool/",
-  "/api/v1/admin/bots/matrix/",
-  "/api/v1/admin/bots/credentials/",
   "/api/v1/admin/chat/",
   "/api/v1/admin/mail/",
   "/api/v1/admin/notices/",
@@ -1220,7 +1170,7 @@ async function adminLegacyProxy(request, env) {
   if (auth.error) return auth.error;
   const requiredPermission = legacyAdminPermission(apiPath, request.method);
   const permitted = apiPath === "/api/v1/admin/upload"
-    ? (hasAdminPermission(auth.admin, "support.manage") || hasAdminPermission(auth.admin, "bots.manage"))
+    ? hasAdminPermission(auth.admin, "support.manage")
     : hasAdminPermission(auth.admin, requiredPermission);
   if (!permitted) return reply(request, env, { ok: false, error: "admin_permission_denied", required: requiredPermission }, 403);
   if (!env.BOT_BRIDGE_SECRET) return reply(request, env, { ok: false, error: "admin_bridge_not_configured" }, 503);
@@ -1341,7 +1291,6 @@ export default {
       const apiKeyRevokeMatch=url.pathname.match(/^\/api\/admin\/api-keys\/([a-f0-9-]{36})\/revoke$/i);
       if (apiKeyRevokeMatch && request.method === "POST") return await adminRevokeApiKey(request,env,apiKeyRevokeMatch[1]);
       if (url.pathname === "/api/admin/api-logs" && request.method === "GET") return await adminApiLogs(request,env);
-      if (url.pathname.startsWith("/api/admin/bots")) return await adminBots(request, env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
     } catch {
