@@ -666,19 +666,27 @@ async function buyStatus(request, env, orderId) {
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
   const user = await findUserById(env, claims.sub);
   const purchase = await env.DB.prepare(
-    "SELECT * FROM web_purchases WHERE order_id=? AND user_id=?"
+    "SELECT p.*,c.name AS product_name FROM web_purchases p LEFT JOIN shop_catalog c ON c.product_id=p.product_id WHERE p.order_id=? AND p.user_id=?"
   ).bind(orderId, claims.sub).first();
   if (!purchase || !user) return reply(request, env, { ok: false, error: "order_not_found" }, 404);
-  if (purchase.status === "refunded") return reply(request, env, { ok: true, status: "refunded" });
+  const order = {
+    order_id: orderId,
+    product_id: String(purchase.product_id || ""),
+    product_name: String(purchase.product_name || purchase.product_id || "数字商品"),
+    amount_cny: (Number(purchase.amount_units || 0) / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
+    created_at: Number(purchase.created_at || 0),
+    updated_at: Number(purchase.updated_at || 0)
+  };
+  if (purchase.status === "refunded") return reply(request, env, { ok: true, ...order, status: "refunded" });
   if (purchase.status === "delivered" || purchase.status === "pending" || purchase.status === "reserved") {
     try {
       const data = await syncServerStatus(env, purchase, user);
-      return reply(request, env, { ok: true, order_id: orderId, status: data.status, content: data.content || null });
+      return reply(request, env, { ok: true, ...order, status: data.status, content: data.content || null });
     } catch {
-      return reply(request, env, { ok: true, order_id: orderId, status: "pending", message: "订单仍在核验，请稍后查询。" }, 202);
+      return reply(request, env, { ok: true, ...order, status: "pending", message: "订单仍在核验，请稍后查询。" }, 202);
     }
   }
-  return reply(request, env, { ok: true, status: purchase.status });
+  return reply(request, env, { ok: true, ...order, status: purchase.status });
 }
 
 
