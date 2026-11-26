@@ -703,7 +703,7 @@ export default async function handler(req, res) {
       const body = rawBody || Buffer.alloc(0);
       if (body.length > 5 * 1024 * 1024) return jsonResponse(res, 413, {ok:false,error:"payload_too_large"});
       const database = getSql();
-      const authorized = await verifyInternal(method, url, headers, body, database).catch(() => false);
+      const authorized = await verifyInternal(method, url, headers, body, database, process.env.NODE_STORE_SECRET || "").catch(() => false);
       if (!authorized) return jsonResponse(res, 401, {ok:false,error:"unauthorized"});
       let data;
       try { data = JSON.parse(body.toString("utf8") || "{}"); }
