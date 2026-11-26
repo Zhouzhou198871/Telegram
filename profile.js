@@ -56,7 +56,6 @@
     document.querySelectorAll("[data-service-panel]").forEach(panel => { panel.hidden=panel.dataset.servicePanel!==tab; });
     if (tab==="history") loadRechargeHistory();
     if (tab==="api") loadApiCenter();
-    if (tab==="nodes") loadNodeOrders();
   }
   async function loadRechargeHistory() {
     const body=$("rechargeHistoryBody"); body.replaceChildren();
@@ -150,45 +149,6 @@
       message("passwordMessage",msg,"error");
     } finally {button.disabled=false;}
   }
-  async function loadNodeOrders() {
-    const root=$("nodeOrderList");root.replaceChildren();
-    try {
-      const data=await api("/api/user/node-orders"),orders=data.orders||[],accounts=data.accounts||[];
-      const labels={trojan:"Trojan TLS",shadowsocks:"Shadowsocks",mtproto:"Telegram MTProto",vless:"VLESS Reality",vmess:"VMess WebSocket",hysteria2:"Hysteria2",tuic:"TUIC",anytls:"AnyTLS",ssr:"ShadowsocksR"};
-      const orderMap=new Map(orders.map(x=>[x.order_id,x]));
-      const bytes=n=>{n=Number(n||0);if(n<1073741824)return (n/1048576).toFixed(1)+" MB";return (n/1073741824).toFixed(2)+" GB";};
-      for(const account of accounts){
-        const card=document.createElement("article");card.className="node-order-card";
-        const title=document.createElement("h4");title.textContent=(labels[account.protocol]||String(account.protocol||"").toUpperCase())+" · "+(account.status==="active"?"使用中":account.status==="exhausted"?"流量已用尽":account.status==="expired"?"已到期":"已停用");card.append(title);
-        const limit=Number(account.traffic_limit_bytes||0),used=Number(account.traffic_used_bytes||0);
-        const trafficText=data.traffic_usage_available?"流量："+bytes(used)+" / "+(limit?bytes(limit):"不限"):"流量上限："+(limit?bytes(limit):"不限")+"\n已用流量：统计暂未同步";
-        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="节点："+(account.server_ref||"—")+"\n到期："+dateText(account.expires_at)+"\n"+trafficText;card.append(meta);
-        const order=orderMap.get(account.order_id),delivery=order?.delivery,actions=document.createElement("div");actions.className="node-order-actions";
-        const config=delivery?.clash_yaml||delivery?.uri;
-        if(config){const copy=document.createElement("button");copy.type="button";copy.textContent=delivery?.clash_yaml?"复制 Clash 配置":"复制连接配置";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(config);message("nodeOrderMessage","连接配置已复制。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);}
-        if(actions.childElementCount)card.append(actions);
-        root.append(card);
-      }
-      if(!orders.length&&!accounts.length){const empty=document.createElement("div");empty.className="node-order-empty";empty.textContent="暂无节点订单。可前往商城的「节点服务」选择线路套餐。";root.append(empty);return;}
-      const statuses={fulfilled:"已开通",provisioning:"正在开通",refunded:"已退款",failed:"开通失败"};
-      for(const order of orders){
-        const card=document.createElement("article");card.className="node-order-card";
-        const title=document.createElement("h4");title.textContent=(order.product_name||labels[order.protocol]||"节点服务")+" · "+(order.package_name||"套餐");card.append(title);
-        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="订单："+order.order_id+"\n金额："+money(order.amount_cny)+"\n创建："+dateText(order.created_at)+(order.delivery?.expires_at?"\n到期："+dateText(order.delivery.expires_at):"");card.append(meta);
-        const status=document.createElement("div");status.className="node-order-status";status.textContent=statuses[order.status]||order.status;card.append(status);
-        const actions=document.createElement("div");actions.className="node-order-actions";
-        if(order.delivery?.clash_yaml){
-          const copy=document.createElement("button");copy.type="button";copy.textContent="复制 Clash 配置";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(order.delivery.clash_yaml);message("nodeOrderMessage","配置已复制，可导入 Mihomo / Clash Meta。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);
-          const download=document.createElement("button");download.type="button";download.textContent="下载 YAML 文件";download.addEventListener("click",()=>{const blob=new Blob([order.delivery.clash_yaml],{type:"text/yaml;charset=utf-8"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="qingtian-node-"+order.order_id.slice(0,8)+".yaml";a.click();URL.revokeObjectURL(url);});actions.append(download);
-        }else if(order.delivery?.uri){
-          const open=document.createElement("a");open.href=order.delivery.uri;open.textContent="打开 Telegram 代理";actions.append(open);
-          const copy=document.createElement("button");copy.type="button";copy.textContent="复制代理链接";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(order.delivery.uri);message("nodeOrderMessage","Telegram 代理链接已复制。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);
-        }
-        if(actions.childElementCount)card.append(actions);
-        root.append(card);
-      }
-    } catch {message("nodeOrderMessage","节点订单读取失败，请稍后刷新。","error");}
-  }
   async function init() {
     if(!token()){location.replace("./auth.html");return;}
     try { await loadAccount(); }
@@ -210,7 +170,6 @@
     const deepLink=String(location.hash||"").toLowerCase();
     if(deepLink==="#accountcenter")openAccountCenter("api");
     else if(deepLink==="#recharge")openAccountCenter("recharge");
-    else if(deepLink==="#nodes")openAccountCenter("nodes");
     document.querySelectorAll("[data-service-tab]").forEach(button=>button.addEventListener("click",()=>setServiceTab(button.dataset.serviceTab)));
     document.querySelectorAll("[data-recharge-amount]").forEach(button=>button.addEventListener("click",()=>{$("rechargeAmount").value=button.dataset.rechargeAmount;document.querySelectorAll("[data-recharge-amount]").forEach(x=>x.setAttribute("aria-pressed",String(x===button)));}));
     $("createRechargeOrder").addEventListener("click",createRecharge);
