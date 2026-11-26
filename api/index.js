@@ -393,7 +393,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
       }
       const supplierOrderId = String(purchaseData.order_id || "");
       const content = String(purchaseData.card || "");
-      if (!supplierOrderId || !content) {
+      if (!content) {
         await db.unsafe("UPDATE shop_supplier_orders SET status='pending',error_code='supplier_delivery_pending',supplier_order_id=$2,updated_at=$3 WHERE order_id=$1",[orderId,supplierOrderId,Math.floor(Date.now()/1000)]);
         return {status:200,body:{ok:true,status:"pending",error_code:"supplier_delivery_pending"}};
       }
