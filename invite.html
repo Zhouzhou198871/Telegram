@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7f9fc">
 <title>邀请奖励 · 晴天号铺</title><link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=subpage-header-workbench-20261126-v1">
 <style>
+.account-subnav{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.account-subnav a{display:inline-flex;align-items:center;min-height:36px;padding:7px 10px;border:1px solid #e1e8f0;border-radius:8px;background:#fff;color:#4b82bf;text-decoration:none;font-size:12px;white-space:nowrap}.account-subnav a[aria-current="page"]{background:#edf5ff;border-color:#bfd8f5;color:#2468b5;font-weight:750}@media(max-width:620px){.account-subnav{width:100%;justify-content:flex-start;gap:5px}.account-subnav a{min-height:32px;padding:6px 8px;font-size:11px}}
 body[data-page="invite"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
 .invite-header{width:min(900px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
 .invite-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#3984d8;font-size:19px;font-weight:800}.invite-brand img{width:42px;height:42px;object-fit:cover;border-radius:12px}
@@ -25,7 +26,7 @@ body[data-page="invite"]{background:#f7f9fc!important;color:#243247!important;mi
 @media(max-width:480px){.invite-main h1{font-size:24px}.invite-hero{padding:18px}.invite-stats{gap:9px}.invite-stat{padding:15px}.invite-stat strong{font-size:21px}.invite-link-card,.invite-rules,.invite-history{padding:15px}.invite-link-row button{padding:0 11px}}
 </style></head>
 <body data-page="invite">
-<header class="invite-header"><a class="invite-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><div class="invite-actions"><a href="./shop.html" aria-label="返回首页">返回首页</a></div></header>
+<header class="invite-header"><a class="invite-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><nav class="account-subnav" aria-label="账户导航"><a href="./orders.html">订单详情</a><a href="./profile.html">个人中心</a><a href="./invite.html" aria-current="page">邀请奖励</a><a href="./workbench.html">工作台</a><a href="./profile.html#recharge">充值入口</a></nav></header>
 <main class="invite-main">
 <nav class="invite-breadcrumb" aria-label="当前位置"><a href="./shop.html" data-i18n="home">首页</a>　/　<a href="./shop.html#accountMenuWrap" data-i18n="myAccount">我的账户</a>　/　<span aria-current="page" data-i18n="inviteTitle">邀请奖励</span></nav>
 <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 data-i18n="inviteTitle">邀请奖励</h1></div><p class="invite-subtitle" data-i18n="subtitle">邀请好友加入晴天号铺，好友成功购买后，你将获得奖励。</p>
@@ -34,4 +35,4 @@ body[data-page="invite"]{background:#f7f9fc!important;color:#243247!important;mi
 <section class="invite-link-card"><label for="inviteLink" data-i18n="yourLink">你的专属邀请链接</label><div class="invite-link-row"><input id="inviteLink" readonly value=""><button id="copyInvite" type="button" data-i18n="copy">复制链接</button></div><p class="invite-message" id="inviteMessage" aria-live="polite"></p></section>
 <section class="invite-rules"><strong class="invite-section-title" data-i18n="rulesTitle">奖励规则</strong><p data-i18n="rule1">1. 好友通过专属链接注册后，邀请关系永久绑定，不可转移。</p><p data-i18n="rule2">2. 好友每笔成功支付并完成交付的订单，按订单金额的 5% 计入邀请奖励。</p><p data-i18n="rule3">3. 奖励自动计入账户余额，可用于商城购物；累计满 ¥10 可联系客服申请提现。</p></section>
 <section class="invite-history"><strong class="invite-section-title" data-i18n="historyTitle">奖励明细</strong><div class="invite-history-list" id="rewardList"><div class="invite-empty" data-i18n="loading">正在加载奖励记录…</div></div></section>
-</main><script src="./invite.js?v=zh-only-no-refresh-20261126-v1" defer></script></body></html>
+</main><footer class="footer-note" style="width:100%;margin:0 auto 18px;text-align:center;color:#a1aab8;font-size:10px;line-height:1.7">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer><script src="./invite.js?v=zh-only-no-refresh-20261126-v1" defer></script></body></html>
