@@ -75,7 +75,6 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 .api-key-once{display:grid;gap:10px;margin:12px 0;padding:13px;border:1px solid #f0d7a1;border-radius:10px;background:#fffaf0}.api-key-once strong{font-size:12px;color:#946200}.api-key-once code,.api-example{display:block;overflow-wrap:anywhere;white-space:pre-wrap;padding:10px;border-radius:8px;background:#f3f5f8;color:#334155;font-size:12px}.api-key-once button{justify-self:start;border:1px solid #dbe5f2;border-radius:8px;background:#fff;padding:8px 12px;color:#2466c5}
 .api-key-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid #edf1f6}.api-key-row div{min-width:0;display:grid;gap:4px}.api-key-row strong{font-size:13px;color:#334155}.api-key-row small{font-size:11px;color:#8491a3;overflow-wrap:anywhere}.api-key-row button{border:1px solid #f1caca;background:#fff;color:#c24141;border-radius:8px;padding:7px 10px;white-space:nowrap}
 @media(max-width:480px){.service-center{padding:15px}.service-tabs{grid-template-columns:repeat(2,1fr)}.service-tab{font-size:13px}.service-center-open{align-items:flex-start;flex-direction:column}.api-key-row{align-items:flex-start}.api-key-row button{font-size:12px}}
-.node-order-card{padding:15px 0;border-bottom:1px solid #edf1f6;display:grid;gap:8px}.node-order-card h4{margin:0;color:#334155;font-size:15px}.node-order-meta{font-size:12px;color:#8491a3;line-height:1.7;overflow-wrap:anywhere}.node-order-status{font-size:12px;font-weight:750;color:#16834a}.node-order-actions{display:flex;gap:8px;flex-wrap:wrap}.node-order-actions button,.node-order-actions a{border:1px solid #dbe5f2;border-radius:8px;background:#f8fbff;color:#2466c5;padding:8px 11px;font-size:12px;font-weight:700;text-decoration:none;cursor:pointer}.node-order-empty{padding:24px 10px;text-align:center;color:#94a0b1;font-size:13px}
 </style></head>
 <body data-page="profile">
 <header class="profile-header">
@@ -103,17 +102,16 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
     <button class="profile-save secondary-save" id="changePassword" type="button">修改密码</button>
     <p class="profile-message" id="passwordMessage" role="status" aria-live="polite"></p>
   </div>
-  <button class="service-center-open" id="openAccountCenter" type="button"><span><strong>账户服务中心</strong><small>充值中心 · 充值明细 · API 服务 · 我的节点</small></span><b>进入服务中心　›</b></button>
+  <button class="service-center-open" id="openAccountCenter" type="button"><span><strong>账户服务中心</strong><small>充值中心 · 充值明细 · API 服务</small></span><b>进入服务中心　›</b></button>
   <p class="profile-message" id="profileMessage" role="status" aria-live="polite"></p>
 </section>
 <section class="service-center" id="accountCenter" hidden>
-  <div class="service-center-heading"><div><h2>账户服务中心</h2><p>充值、API 调用与节点订单管理</p></div><button type="button" id="closeAccountCenter" aria-label="收起">收起</button></div>
+  <div class="service-center-heading"><div><h2>账户服务中心</h2><p>充值与 API 调用管理</p></div><button type="button" id="closeAccountCenter" aria-label="收起">收起</button></div>
   <div class="service-tabs" role="tablist" aria-label="账户服务">
     <button type="button" class="service-tab active" data-service-tab="recharge" role="tab" aria-selected="true">充值中心</button>
     <button type="button" class="service-tab" data-service-tab="history" role="tab" aria-selected="false">充值明细</button>
     <button type="button" class="service-tab" data-service-tab="api" role="tab" aria-selected="false">API 服务</button>
-    <button type="button" class="service-tab" data-service-tab="nodes" role="tab" aria-selected="false">我的节点</button>
-  </div>
+    </div>
   <section class="service-panel" data-service-panel="recharge">
     <h3>余额充值</h3><p class="profile-section-desc">选择金额创建充值订单。当前收款由客服核验后入账，请勿向旧地址付款。</p>
     <div class="recharge-presets" role="group" aria-label="充值金额">
@@ -143,11 +141,6 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
     <h4>API 调用说明</h4><p class="api-note">查询账户余额：GET https://shop.lynli.me/api/v1/account</p><pre class="api-example">Authorization: Bearer YOUR_API_KEY</pre>
     <h4>最近调用记录</h4><div class="history-table-wrap"><table class="recharge-table"><thead><tr><th>时间</th><th>接口</th><th>方法</th><th>状态码</th></tr></thead><tbody id="apiUsageBody"><tr><td colspan="4" class="recharge-empty">暂无调用记录</td></tr></tbody></table></div>
     <p class="profile-message" id="apiMessage" role="status" aria-live="polite"></p>
-  </section>
-  <section class="service-panel" data-service-panel="nodes" hidden>
-    <h3>我的订阅</h3><p class="profile-section-desc">集中查看已购买的机场协议、套餐期限与连接配置；可复制订阅配置或打开 Telegram 专用代理。</p>
-    <div id="nodeOrderList" class="node-order-list"><p class="recharge-empty">正在读取节点订单…</p></div>
-    <p class="profile-message" id="nodeOrderMessage" role="status" aria-live="polite"></p>
   </section>
 </section>
 </main>
