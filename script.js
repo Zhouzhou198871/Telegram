@@ -676,7 +676,7 @@ function showNodeDelivery(delivery){
   }
   $("deliveryTitle").textContent=delivery.protocol==="mtproto"?"Telegram 代理已开通":"节点已开通";
   $("deliveryContent").textContent=content;
-  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":delivery.http_uri?"复制 HTTP/HTTPS 配置":"复制 Clash 配置";
+  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":delivery.http_uri?"复制 HTTP/HTTPS 配置":delivery.clash_yaml?"复制 Clash 配置":"复制连接链接";
   const modalCopy=document.querySelector(".modal-copy");
   if(modalCopy)modalCopy.textContent=delivery.http_uri?"HTTP、HTTPS 与 Clash 配置已生成，请分别选择适合的客户端使用。":delivery.instructions||"请立即复制并保存节点配置。";
   $("deliveryModal").hidden=false;
