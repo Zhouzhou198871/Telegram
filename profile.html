@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f7f9fc"><title>账户信息 · 晴天号铺</title>
-<link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=subpage-header-workbench-20261126-v1">
+<link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=account-subpages-20261126-v2">
 <style>
 body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
 .profile-header{width:min(1120px,calc(100% - 48px));height:78px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
@@ -131,9 +131,9 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
     <p class="profile-message" id="historyMessage" role="status" aria-live="polite"></p>
   </section>
   <section class="service-panel" data-service-panel="api" hidden>
-    <h3>API 调用服务</h3><p class="profile-section-desc">账户可用余额达到 ¥200 后可申请 API 密钥。密钥仅展示一次，可随时撤销。</p>
+    <h3>API 调用服务</h3><p class="profile-section-desc">账户可用余额达到 ¥500 后可申请 API 密钥。¥500 为调用资格门槛，不会单独扣除；密钥仅展示一次，可随时撤销。</p>
     <div class="api-status locked" id="apiStatus"><span>当前 API 权限</span><strong id="apiStatusText">正在读取…</strong></div>
-    <p class="api-note" id="apiBalanceHint">开通门槛：账户可用余额不少于 ¥200.00。</p>
+    <p class="api-note" id="apiBalanceHint">开通门槛：账户可用余额不少于 ¥500.00。</p>
     <div class="api-key-actions"><input id="apiKeyLabel" maxlength="40" value="默认 API 密钥" aria-label="API 密钥名称"><button class="profile-save" id="createApiKey" type="button">申请 / 创建 API 密钥</button></div>
     <div class="api-key-once" id="apiKeyOnce" hidden><strong>请立即复制保存，离开此页后无法再次查看完整密钥</strong><code id="newApiKey"></code><button type="button" id="copyApiKey">复制密钥</button></div>
     <h4>我的 API 密钥</h4><div id="apiKeyList" class="api-key-list"><p class="recharge-empty">正在加载…</p></div>
@@ -143,5 +143,5 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
   </section>
 </section>
 </main>
-<script src="./profile.js?v=subpage-header-workbench-20261126-v1" defer></script>
+<script src="./profile.js?v=account-subpages-20261126-v2" defer></script>
 </body></html>
