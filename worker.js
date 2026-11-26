@@ -1306,7 +1306,7 @@ async function adminApiKeys(request, env) {
  if(!validEmail(email)||!label)return reply(request,env,{ok:false,error:"invalid_api_key_request"},400);
  const user=await env.DB.prepare("SELECT id,email,balance_units FROM users WHERE lower(email)=?").bind(email).first();
  if(!user)return reply(request,env,{ok:false,error:"user_not_found"},404);
- if(Number(user.balance_units||0)<500000)return reply(request,env,{ok:false,error:"api_balance_requirement",required_cny:200},403);
+ if(Number(user.balance_units||0)<API_MIN_BALANCE_UNITS)return reply(request,env,{ok:false,error:"api_balance_requirement",required_cny:API_MIN_BALANCE_CNY},403);
  const active=await env.DB.prepare("SELECT COUNT(*) AS total FROM user_api_keys WHERE user_id=? AND revoked_at IS NULL").bind(user.id).first();
  if(Number(active?.total||0)>=5)return reply(request,env,{ok:false,error:"api_key_limit"},409);
  const key="qt_live_"+hexBytes(crypto.getRandomValues(new Uint8Array(32)));
