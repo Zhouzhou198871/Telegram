@@ -472,11 +472,12 @@ function storefrontDescription(value) {
 }
 function storefrontPopularityScore(name,icon,source={}) {
   const n=String(name||"").toLowerCase(), i=String(icon||"").toLowerCase();
+  const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
   const rules=[
     [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
     [/google|gmail|youtube|google voice/i,94],[/microsoft|office 365|office365|outlook|onedrive|teams/i,92],
     [/apple|icloud/i,90],[/discord/i,88],[/telegram/i,86],[/whatsapp/i,84],
-    [/instagram/i,82],[/tiktok|tk账号/i,80],[/facebook|meta/i,78],[/x\.com|twitter/i,76],
+    [/instagram/i,82],[/tiktok|tk账号/i,80],[/facebook|meta/i,78],[/x\\.com|twitter/i,76],
     [/snapchat/i,74],[/reddit/i,72],[/steam/i,70],[/spotify/i,68],[/netflix/i,66],
     [/amazon/i,64],[/linkedin/i,62],[/github/i,60],[/notion/i,58],[/canva/i,56],
     [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/textnow/i,56],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
@@ -486,8 +487,6 @@ function storefrontPopularityScore(name,icon,source={}) {
   const hot=source?.IsHot===true || String(source?.IsHot||"").toLowerCase()==="true";
   const recommended=source?.IsRecommend===true || String(source?.IsRecommend||"").toLowerCase()==="true";
   return (hot?120:0)+(recommended?60:0)+base;
-  const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
-
 }
 async function renderStorefront(res) {
   const fileUrl = new URL("../shop.html", import.meta.url);
