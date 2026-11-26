@@ -468,14 +468,24 @@ async function products(request, env) {
 
 async function refund(env, order) {
   const now = Math.floor(Date.now() / 1000);
-  await env.DB.batch([
+  // A refund is allowed only for a confirmed failed purchase. If the supplier
+  // has accepted an order, returned an order ID, or delivered a card, the
+  // transaction is never refunded automatically; ambiguous cases stay pending.
+  const supplier = await env.DB.prepare(
+    "SELECT status,supplier_order_id,delivery_ciphertext FROM shop_supplier_orders WHERE order_id=?"
+  ).bind(order.order_id).first();
+  if (supplier && (supplier.status !== "failed" || supplier.supplier_order_id || supplier.delivery_ciphertext)) {
+    return false;
+  }
+  const results = await env.DB.batch([
     env.DB.prepare(
-      "UPDATE users SET balance_units=balance_units+?,balance=printf('%.4f',(balance_units+?)/10000.0),updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM web_purchases WHERE order_id=? AND status IN ('reserved','pending'))"
-    ).bind(order.amount_units, order.amount_units, now, order.user_id, order.order_id),
+      "UPDATE users SET balance_units=balance_units+?,balance=ROUND((balance_units+?)/10000.0,4),updated_at=? WHERE id=? AND EXISTS(SELECT 1 FROM web_purchases WHERE order_id=? AND status IN ('reserved','pending')) AND NOT EXISTS(SELECT 1 FROM shop_supplier_orders WHERE order_id=? AND (status<>'failed' OR supplier_order_id IS NOT NULL OR delivery_ciphertext IS NOT NULL))"
+    ).bind(order.amount_units, order.amount_units, now, order.user_id, order.order_id, order.order_id),
     env.DB.prepare(
-      "UPDATE web_purchases SET status='refunded',updated_at=?,error_code='purchase_failed' WHERE order_id=? AND status IN ('reserved','pending')"
-    ).bind(now, order.order_id)
+      "UPDATE web_purchases SET status='refunded',updated_at=?,error_code='purchase_failed' WHERE order_id=? AND status IN ('reserved','pending') AND NOT EXISTS(SELECT 1 FROM shop_supplier_orders WHERE order_id=? AND (status<>'failed' OR supplier_order_id IS NOT NULL OR delivery_ciphertext IS NOT NULL))"
+    ).bind(now, order.order_id, order.order_id)
   ]);
+  return Number(results[1]?.meta?.changes || 0) === 1;
 }
 
 async function creditReferralReward(env, purchase) {
@@ -500,8 +510,9 @@ async function syncServerStatus(env, purchase, user) {
     return { ...data, status: "delivered" };
   }
   if (data.status === "failed") {
-    await refund(env, purchase);
-    return { ...data, status: "refunded" };
+    const refunded = await refund(env, purchase);
+    if (refunded) return { ...data, status: "refunded" };
+    return { ...data, status: "pending", error_code: "refund_blocked_after_supplier_acceptance" };
   }
   return data;
 }
@@ -599,7 +610,12 @@ async function buy(request, env) {
     return reply(request, env, { ok: true, order_id: purchase.order_id, status: "delivered", content: result.content });
   }
   if (result.status === "failed") {
-    await refund(env, purchase);
+    const refunded = await refund(env, purchase);
+    if (!refunded) {
+      await env.DB.prepare("UPDATE web_purchases SET status='pending',updated_at=?,error_code='refund_blocked_after_supplier_acceptance' WHERE order_id=? AND status IN ('reserved','pending')")
+        .bind(Math.floor(Date.now()/1000), purchase.order_id).run();
+      return reply(request, env, { ok: true, order_id: purchase.order_id, status: "pending", error: "purchase_outcome_requires_reconciliation" }, 202);
+    }
     return reply(request, env, { ok: false, order_id: purchase.order_id, status: "refunded", error: result.error_code || "purchase_failed" }, 409);
   }
   await env.DB.prepare("UPDATE web_purchases SET status='pending',updated_at=?,error_code=? WHERE order_id=?")
@@ -640,7 +656,6 @@ async function buyStatus(request, env, orderId) {
   if (purchase.status === "delivered" || purchase.status === "pending" || purchase.status === "reserved") {
     try {
       const data = await syncServerStatus(env, purchase, user);
-      if (data.status === "failed") await refund(env, purchase);
       return reply(request, env, { ok: true, order_id: orderId, status: data.status, content: data.content || null });
     } catch {
       return reply(request, env, { ok: true, order_id: orderId, status: "pending", message: "订单仍在核验，请稍后查询。" }, 202);
