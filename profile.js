@@ -154,7 +154,7 @@
     const root=$("nodeOrderList");root.replaceChildren();
     try {
       const data=await api("/api/user/node-orders"),orders=data.orders||[],accounts=data.accounts||[];
-      const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto","http-connect":"HTTP / HTTPS",shadowsocks:"Shadowsocks","shadowsocks-2022":"Shadowsocks 2022",trojan:"Trojan"};
+      const labels={trojan:"Trojan TLS",shadowsocks:"Shadowsocks",mtproto:"Telegram MTProto",vless:"VLESS Reality",vmess:"VMess WebSocket",hysteria2:"Hysteria2",tuic:"TUIC",anytls:"AnyTLS",ssr:"ShadowsocksR"};
       const orderMap=new Map(orders.map(x=>[x.order_id,x]));
       const bytes=n=>{n=Number(n||0);if(n<1073741824)return (n/1048576).toFixed(1)+" MB";return (n/1073741824).toFixed(2)+" GB";};
       for(const account of accounts){
