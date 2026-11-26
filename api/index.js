@@ -149,7 +149,17 @@ async function handleInternal(method, url, headers, rawBody, db) {
     if (data.confirmed !== true || !content || content.length > 20000) {
       return {status:400,body:{ok:false,error:"explicit_supplier_confirmation_and_delivery_content_required"}};
     }
-    const rows = await db.unsafe("SELECT status,delivery_ciphertext FROM shop_supplier_orders WHERE order_id=$1",[orderId]);
+    let rows = await db.unsafe("SELECT status,delivery_ciphertext FROM shop_supplier_orders WHERE order_id=$1",[orderId]);
+    if (!rows.length) {
+      const purchases = await db.unsafe("SELECT user_id,status FROM web_purchases WHERE order_id=$1",[orderId]);
+      if (!purchases.length) return {status:404,body:{ok:false,error:"purchase_not_found"}};
+      if (!["pending","reserved"].includes(String(purchases[0].status))) {
+        return {status:409,body:{ok:false,error:"purchase_not_reconcilable",status:purchases[0].status}};
+      }
+      const now = Math.floor(Date.now()/1000);
+      await db.unsafe("INSERT INTO shop_supplier_orders(order_id,user_id,status,created_at,updated_at,error_code) VALUES($1,$2,'pending',$3,$3,'manual_reconciliation_record_created') ON CONFLICT(order_id) DO NOTHING",[orderId,purchases[0].user_id,now]);
+      rows = await db.unsafe("SELECT status,delivery_ciphertext FROM shop_supplier_orders WHERE order_id=$1",[orderId]);
+    }
     if (!rows.length) return {status:404,body:{ok:false,error:"supplier_order_not_found"}};
     if (rows[0].status === "delivered" && rows[0].delivery_ciphertext) {
       return {status:200,body:{ok:true,status:"delivered",already_delivered:true}};
