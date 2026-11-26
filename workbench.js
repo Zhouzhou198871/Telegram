@@ -1,37 +1,62 @@
 (() => {
- const TOKEN_KEY="qingtian_shop_token";
- const $=id=>document.getElementById(id);
+ const TOKEN_KEY="qingtian_shop_token", $=id=>document.getElementById(id);
  const money=v=>"¥"+Number(v||0).toFixed(2);
  const date=v=>v?new Date(Number(v)*1000).toLocaleString("zh-CN",{hour12:false}):"—";
- async function api(path){
-  const r=await fetch(path,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")}});
+ const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+ async function api(path,options={}){
+  const r=await fetch(path,{...options,cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||""),...(options.headers||{})}});
   const d=await r.json().catch(()=>({}));
-  if(r.status===401||["invalid_token","token_expired","token_revoked"].includes(d.error)){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("auth");}
-  if(!r.ok)throw new Error(d.error||"request_failed");return d;
+  if(r.status===401&&["invalid_token","token_expired","token_revoked","auth_required"].includes(d.error)){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("登录状态已失效");}
+  if(!r.ok)throw new Error(d.message||d.error||"request_failed");return d;
  }
- function row(order,type){
-  const wrap=document.createElement("div");wrap.className="wb-order";
-  const info=document.createElement("div"),name=document.createElement("strong"),meta=document.createElement("small"),amount=document.createElement("b");
-  name.textContent=type==="goods"?(order.product_name||order.product_id||"账号商品"):"账户充值";
-  meta.textContent=(order.order_id||"")+" · "+date(order.created_at);
-  amount.textContent=money(order.amount_cny);
-  info.append(name,meta);wrap.append(info,amount);return wrap;
+ function table(headers,rows,empty){
+  if(!rows.length)return '<div class="wb-empty">'+esc(empty)+'</div>';
+  return '<table><thead><tr>'+headers.map(x=>'<th>'+esc(x)+'</th>').join("")+'</tr></thead><tbody>'+rows.map(r=>'<tr>'+r.map(x=>'<td>'+x+'</td>').join("")+'</tr>').join("")+'</tbody></table>';
  }
- async function init(){
-  if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
-  const box=$("wbRecentOrders");
-  const results=await Promise.allSettled([api("/api/user/info"),api("/api/user/orders"),api("/api/user/recharge-orders")]);
-  if(results[0].status==="fulfilled")$("wbBalance").textContent=money(results[0].value.user?.balance_cny);
-  else $("wbBalance").textContent="暂不可用";
-  const goods=results[1].status==="fulfilled"?(results[1].value.orders||[]):[];
-  const recharge=results[2].status==="fulfilled"?(results[2].value.orders||[]):[];
-  $("wbGoodsCount").textContent=String(goods.length);
-  $("wbRechargeCount").textContent=String(recharge.length);
-  const all=[...goods.map(x=>({...x,_type:"goods"})),...recharge.map(x=>({...x,_type:"recharge"}))].sort((a,b)=>Number(b.created_at||0)-Number(a.created_at||0)).slice(0,6);
-  box.replaceChildren();
-  if(!all.length){box.textContent=results.slice(1).every(x=>x.status==="fulfilled")?"暂时没有订单记录。":"订单数据暂时无法读取，请稍后重试。";box.className="wb-state";return;}
-  box.className="";
-  all.forEach(x=>box.append(row(x,x._type)));
+ async function load(){
+  const [info,keys,usage,billing]=await Promise.allSettled([api("/api/user/info"),api("/api/user/api-keys"),api("/api/user/api-usage"),api("/api/user/api-billing")]);
+  const user=info.status==="fulfilled"?(info.value.user||{}):{};
+  const balance=Number(user.balance_cny||0),eligible=keys.status==="fulfilled"&&!!keys.value.eligible;
+  $("wbBalance").textContent=money(balance);$("wbEligibility").textContent=eligible?"已达标":"未达标";
+  $("wbEligibilityNote").className="wb-status "+(eligible?"good":"warn");
+  $("wbEligibilityNote").textContent=eligible?"当前余额满足 API 调用条件（¥500）。":"当前余额未达到 ¥500，API 密钥创建与调用暂不可用。当前余额："+money(balance);
+  $("wbCreateKey").disabled=!eligible;
+  const logs=usage.status==="fulfilled"?(usage.value.logs||[]):[];
+  $("wbCallCount").textContent=String(logs.length);
+  const keysBox=$("wbKeys");keysBox.replaceChildren();
+  const keyItems=keys.status==="fulfilled"?(keys.value.keys||[]):[];
+  if(!keyItems.length)keysBox.innerHTML='<div class="wb-empty">暂无 API 密钥。</div>';
+  keyItems.forEach(k=>{
+   const el=document.createElement("div");el.className="wb-key";
+   const info=document.createElement("div"),strong=document.createElement("strong"),small=document.createElement("small"),btn=document.createElement("button");
+   strong.textContent=(k.key_prefix||"qt_live_")+"••••••";small.textContent=(k.label||"API Key")+" · "+(k.revoked?"已撤销":"有效")+" · 创建于 "+date(k.created_at);
+   info.append(strong,small);btn.className="wb-btn danger";btn.textContent=k.revoked?"已撤销":"撤销密钥";btn.disabled=!!k.revoked;
+   btn.addEventListener("click",async()=>{if(!confirm("确定撤销此 API 密钥？撤销后不可恢复。"))return;try{await api("/api/user/api-keys/"+encodeURIComponent(k.id),{method:"DELETE"});await load();}catch(e){alert(e.message);}});
+   el.append(info,btn);keysBox.append(el);
+  });
+  $("wbUsage").innerHTML=table(["时间","接口","方法","HTTP 状态"],logs.map(x=>[esc(date(x.created_at)),esc(x.endpoint),esc(x.method),esc(x.status_code)]),"暂无 API 调用记录。");
+  const entries=billing.status==="fulfilled"?(billing.value.entries||[]):[];
+  $("wbBilling").innerHTML=table(["时间","订单号","商品 ID","类型","金额","余额"],entries.map(x=>[esc(date(x.created_at)),esc(x.order_id),esc(x.product_id),x.action==="refund"?"退款":"扣费",(x.action==="refund"?"+":"−")+money(x.amount_cny),money(x.balance_after_cny)]),"暂无 API 扣费或退款记录。");
  }
- if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+ $("wbCreateKey").addEventListener("click",async()=>{
+  const label=prompt("为 API 密钥设置名称","默认 API 密钥");if(label===null)return;
+  try{const d=await api("/api/user/api-keys",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({label})});$("wbNewKey").hidden=false;$("wbNewKeyValue").value=d.key.key;await load();}
+  catch(e){alert(e.message);}
+ });
+ $("wbCopyNewKey").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("wbNewKeyValue").value);alert("已复制");}catch{ $("wbNewKeyValue").select();document.execCommand("copy");}});
+ $("wbTestProducts").addEventListener("click",async()=>{
+  const key=$("wbTestKey").value.trim(),box=$("wbProducts");if(!key){box.innerHTML='<div class="wb-empty">请先输入 API Key。</div>';return;}
+  box.innerHTML='<div class="wb-empty">正在查询上游同步商品目录…</div>';
+  try{
+   const r=await fetch("/api/v1/products",{headers:{Authorization:"Bearer "+key},cache:"no-store"}),d=await r.json();
+   if(!r.ok)throw new Error(d.message||d.error||"商品查询失败");
+   const items=d.items||[];
+   box.innerHTML=table(["商品","商品 ID","人民币售价","库存","可购买","价格核验"],items.slice(0,50).map(x=>[
+    '<span style="display:inline-flex;align-items:center;gap:7px">'+(x.icon_url?'<img src="'+esc(x.icon_url)+'" alt="" width="24" height="24" style="object-fit:contain">':"")+'<span>'+esc(x.name)+'</span></span>',
+    esc(x.product_id),money(x.price_cny),esc(x.stock),x.purchasable?"是":"否",x.price_verified?"已核验":"待同步"
+   ]),"没有可展示的商品。");
+  }catch(e){box.innerHTML='<div class="wb-status warn">'+esc(e.message)+'</div>';}
+ });
+ if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
+ load().catch(e=>{$("wbEligibilityNote").textContent=e.message;$("wbEligibilityNote").className="wb-status warn";});
 })();
