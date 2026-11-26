@@ -575,8 +575,8 @@ async function qingtianShopApi(method, url, headers, rawBody, res) {
   }
   if (authLogin || authRegister) {
     const email=String(body.email||"").trim().toLowerCase(), password=String(body.password||"");
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length>254) return send(400,{message:"邮箱格式不正确",data:null});
-    if (password.length<8 || password.length>20 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) return send(400,{message:"密码须为8-20位，且同时包含字母和数字",data:null});
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length>254) return send(400,{message:"邮箱格式不正确",data:null});
+    if (password.length<8 || password.length>20 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) return send(400,{message:"密码须为8-20位，且同时包含字母和数字",data:null});
     if (authRegister) {
       const token=issueToken(), uuid=crypto.randomUUID(), subToken=issueToken();
       const exists=await db.unsafe("SELECT id FROM qingtian_shop.users WHERE lower(email)=lower($1) LIMIT 1",[email]);
