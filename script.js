@@ -544,7 +544,7 @@ function renderProducts(items, options = {}) {
     const label = categoryNames[category.toLowerCase()] || categoryNames[category] || category;
     select.add(new Option(label, category));
   }
-  if (categories.includes(current) || current.startsWith("protocol:")) select.value = current;
+  if (categories.includes(current)) select.value = current;
   drawFilteredProducts();
 }
 
