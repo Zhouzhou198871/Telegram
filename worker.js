@@ -1010,6 +1010,48 @@ async function adminListOrders(request, env) {
   return reply(request, env, { ok: true, orders, total_returned: orders.length, limit });
 }
 
+async function adminSupplierOrders(request, env, orderId = "") {
+  const permission = request.method === "GET" ? "orders.read" : "orders.manage";
+  const auth = await adminAuthorize(request, env, permission);
+  if (auth.error) return auth.error;
+  if (request.method === "GET") {
+    const url = new URL(request.url);
+    const status = String(url.searchParams.get("status") || "pending").trim().slice(0, 24);
+    const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50));
+    const rows = await env.DB.prepare(
+      "SELECT s.order_id,s.user_id,u.email,w.product_id,c.name AS product_name,s.status AS supplier_status,s.supplier_order_id,s.error_code,s.created_at,s.updated_at,w.status AS payment_order_status,w.amount::text AS amount FROM shop_supplier_orders s LEFT JOIN web_purchases w ON w.order_id=s.order_id LEFT JOIN users u ON u.id=s.user_id LEFT JOIN shop_catalog c ON c.product_id=w.product_id WHERE (?='' OR s.status=?) ORDER BY CASE WHEN s.status='pending' THEN 0 WHEN s.status='processing' THEN 1 ELSE 2 END,s.updated_at ASC LIMIT ?"
+    ).bind(status === "all" ? "" : status, status === "all" ? "" : status, limit).all();
+    return reply(request, env, { ok: true, orders: rows.results || [], total_returned: (rows.results || []).length, status });
+  }
+  if (request.method !== "POST" || !orderId) return reply(request, env, {ok:false,error:"method_not_allowed"},405);
+  let body;
+  try { body = await request.json(); } catch { return reply(request, env, {ok:false,error:"invalid_json"},400); }
+  const content = typeof body.content === "string" ? body.content.trim() : "";
+  const supplierOrderId = String(body.supplier_order_id || "").trim().slice(0,128);
+  if (body.confirmed !== true || !content || content.length > 20000) {
+    return reply(request, env, {ok:false,error:"explicit_supplier_confirmation_and_delivery_content_required"},400);
+  }
+  const purchase = await env.DB.prepare("SELECT order_id,user_id,amount_units,status FROM web_purchases WHERE order_id=?").bind(orderId).first();
+  if (!purchase) return reply(request, env, {ok:false,error:"purchase_not_found"},404);
+  if (!["pending","reserved","delivered"].includes(String(purchase.status))) {
+    return reply(request, env, {ok:false,error:"purchase_not_reconcilable",status:purchase.status},409);
+  }
+  let result;
+  try {
+    result = await originRequest(env,"POST","/api/internal/supplier-deliver/"+encodeURIComponent(orderId),{
+      confirmed:true,content,supplier_order_id:supplierOrderId
+    });
+  } catch (error) {
+    return reply(request, env, {ok:false,error:error.data?.error || "supplier_delivery_save_failed"}, error.status || 502);
+  }
+  if (result.status !== "delivered") return reply(request,env,{ok:false,error:"supplier_delivery_not_confirmed"},409);
+  const now = Math.floor(Date.now()/1000);
+  await env.DB.prepare("UPDATE web_purchases SET status='delivered',server_order_id=?,error_code=NULL,updated_at=? WHERE order_id=? AND status IN ('pending','reserved','delivered')")
+    .bind(orderId,now,orderId).run();
+  await creditReferralReward(env,purchase);
+  return reply(request,env,{ok:true,status:"delivered",order_id:orderId,already_delivered:!!result.already_delivered});
+}
+
 async function adminListProducts(request, env) {
   const auth = await adminAuthorize(request, env, "products.read");
   if (auth.error) return auth.error;
@@ -1392,6 +1434,9 @@ export default {
       if (url.pathname === "/api/admin/overview" && request.method === "GET") return await adminOverview(request, env);
       if (url.pathname === "/api/admin/users" && request.method === "GET") return await adminListUsers(request, env);
       if (url.pathname === "/api/admin/orders" && request.method === "GET") return await adminListOrders(request, env);
+      if (url.pathname === "/api/admin/supplier-orders" && request.method === "GET") return await adminSupplierOrders(request, env);
+      const supplierDeliveryMatch = url.pathname.match(/^\/api\/admin\/supplier-orders\/([a-f0-9-]{36})\/deliver$/i);
+      if (supplierDeliveryMatch && request.method === "POST") return await adminSupplierOrders(request, env, supplierDeliveryMatch[1]);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
       if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
       if (url.pathname === "/api/admin/node-accounts" && ["GET","POST"].includes(request.method)) return await adminNodeAccounts(request,env);
