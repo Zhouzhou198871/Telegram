@@ -697,6 +697,81 @@ export default async function handler(req, res) {
       for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
+
+    if (url.pathname === "/api/internal/legacy-shop-migration") {
+      if (method !== "POST") return jsonResponse(res, 405, {ok:false,error:"method_not_allowed"});
+      const body = rawBody || Buffer.alloc(0);
+      if (body.length > 5 * 1024 * 1024) return jsonResponse(res, 413, {ok:false,error:"payload_too_large"});
+      const database = getSql();
+      const authorized = await verifyInternal(method, url, headers, body, database).catch(() => false);
+      if (!authorized) return jsonResponse(res, 401, {ok:false,error:"unauthorized"});
+      let data;
+      try { data = JSON.parse(body.toString("utf8") || "{}"); }
+      catch { return jsonResponse(res, 400, {ok:false,error:"invalid_json"}); }
+      const orders = Array.isArray(data.orders) ? data.orders : [];
+      const items = Array.isArray(data.items) ? data.items : [];
+      const deliveries = Array.isArray(data.deliveries) ? data.deliveries : [];
+      const addresses = Array.isArray(data.addresses) ? data.addresses : [];
+      if (orders.length > 100 || items.length > 500 || deliveries.length > 500 || addresses.length > 500 ||
+          !orders.length || orders.some(x => !Number.isSafeInteger(Number(x.id)) || !x.trade_no || !Number.isSafeInteger(Number(x.user_id)))) {
+        return jsonResponse(res, 400, {ok:false,error:"payload_validation_failed"});
+      }
+      if (items.some(x => !Number.isSafeInteger(Number(x.id)) || !x.trade_no) ||
+          deliveries.some(x => !Number.isSafeInteger(Number(x.id)) || !x.trade_no) ||
+          addresses.some(x => !Number.isSafeInteger(Number(x.id)) || !Number.isSafeInteger(Number(x.user_id)))) {
+        return jsonResponse(res, 400, {ok:false,error:"child_payload_validation_failed"});
+      }
+      const orderByTrade = new Map(orders.map(x => [String(x.trade_no), Number(x.id)]));
+      if (orderByTrade.size !== orders.length ||
+          [...items, ...deliveries].some(x => !orderByTrade.has(String(x.trade_no)))) {
+        return jsonResponse(res, 400, {ok:false,error:"orphan_or_duplicate_trade_no"});
+      }
+      if (!process.env.DELIVERY_ENCRYPTION_KEY || Buffer.from(process.env.DELIVERY_ENCRYPTION_KEY,"hex").length !== 32) {
+        return jsonResponse(res, 503, {ok:false,error:"delivery_encryption_not_configured"});
+      }
+      try {
+        const result = await database.begin(async tx => {
+          const userMap = new Map();
+          for (const sourceUserId of [...new Set([...orders.map(x=>Number(x.user_id)), ...addresses.map(x=>Number(x.user_id))])]) {
+            const mapped = await tx.unsafe("SELECT public_user_id FROM qingtian_shop.account_identity_map WHERE qingtian_user_id=$1 AND mapping_method='exact_email' LIMIT 1",[sourceUserId]);
+            if (!mapped.length) throw new Error("unmapped_source_user:" + sourceUserId);
+            userMap.set(sourceUserId, String(mapped[0].public_user_id));
+          }
+          let orderCount=0, itemCount=0, deliveryCount=0, addressCount=0;
+          for (const row of orders) {
+            const publicUserId=userMap.get(Number(row.user_id));
+            await tx.unsafe("INSERT INTO qingtian_shop.legacy_shop_orders(source_id,trade_no,source_user_id,public_user_id,total_amount,cost_amount,status,created_at,paid_at,shipped_at,finished_at,source_payload) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) ON CONFLICT(source_id) DO UPDATE SET trade_no=EXCLUDED.trade_no,source_user_id=EXCLUDED.source_user_id,public_user_id=EXCLUDED.public_user_id,total_amount=EXCLUDED.total_amount,cost_amount=EXCLUDED.cost_amount,status=EXCLUDED.status,created_at=EXCLUDED.created_at,paid_at=EXCLUDED.paid_at,shipped_at=EXCLUDED.shipped_at,finished_at=EXCLUDED.finished_at,source_payload=EXCLUDED.source_payload",
+              [Number(row.id),String(row.trade_no),Number(row.user_id),publicUserId,row.total_amount??null,row.cost_amount??null,row.status??null,row.created_at??null,row.paid_at??null,row.shipped_at??null,row.finished_at??null,JSON.stringify(row)]);
+            orderCount++;
+          }
+          for (const row of items) {
+            const clean={...row}; delete clean.delivery_content;
+            const cipher=Buffer.from(encryptDelivery(JSON.stringify(row)),"base64");
+            await tx.unsafe("INSERT INTO qingtian_shop.legacy_shop_order_items(source_id,trade_no,source_order_id,source_payload,encrypted_payload) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT(source_id) DO UPDATE SET trade_no=EXCLUDED.trade_no,source_order_id=EXCLUDED.source_order_id,source_payload=EXCLUDED.source_payload,encrypted_payload=EXCLUDED.encrypted_payload",
+              [Number(row.id),String(row.trade_no),orderByTrade.get(String(row.trade_no)),JSON.stringify(clean),cipher]);
+            itemCount++;
+          }
+          for (const row of deliveries) {
+            const cipher=Buffer.from(encryptDelivery(JSON.stringify(row)),"base64");
+            await tx.unsafe("INSERT INTO qingtian_shop.legacy_order_deliveries(source_id,trade_no,source_order_id,encrypted_payload) VALUES($1,$2,$3,$4) ON CONFLICT(source_id) DO UPDATE SET trade_no=EXCLUDED.trade_no,source_order_id=EXCLUDED.source_order_id,encrypted_payload=EXCLUDED.encrypted_payload",
+              [Number(row.id),String(row.trade_no),orderByTrade.get(String(row.trade_no)),cipher]);
+            deliveryCount++;
+          }
+          for (const row of addresses) {
+            const clean={...row};
+            await tx.unsafe("INSERT INTO qingtian_shop.legacy_shop_addresses(source_id,source_user_id,public_user_id,source_payload) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(source_id) DO UPDATE SET source_user_id=EXCLUDED.source_user_id,public_user_id=EXCLUDED.public_user_id,source_payload=EXCLUDED.source_payload",
+              [Number(row.id),Number(row.user_id),userMap.get(Number(row.user_id)),JSON.stringify(clean)]);
+            addressCount++;
+          }
+          return {orders:orderCount,items:itemCount,deliveries:deliveryCount,addresses:addressCount};
+        });
+        return jsonResponse(res,200,{ok:true,migrated:result});
+      } catch (error) {
+        const message=String(error?.message||"migration_failed");
+        return jsonResponse(res,409,{ok:false,error:message.startsWith("unmapped_source_user:")?message:"migration_transaction_failed"});
+      }
+    }
+
     if (url.pathname === "/api/storefront" && (method === "GET" || method === "HEAD")) return await renderStorefront(res);
     if (await qingtianShopApi(method, url, headers, rawBody, res)) return;
     if (url.pathname === "/api/internal/catalog_snapshot_sync" && method === "POST") {
