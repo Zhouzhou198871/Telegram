@@ -758,9 +758,10 @@ export default async function handler(req, res) {
             deliveryCount++;
           }
           for (const row of addresses) {
-            const clean={...row};
-            await tx.unsafe("INSERT INTO qingtian_shop.legacy_shop_addresses(source_id,source_user_id,public_user_id,source_payload) VALUES($1,$2,$3,$4::jsonb) ON CONFLICT(source_id) DO UPDATE SET source_user_id=EXCLUDED.source_user_id,public_user_id=EXCLUDED.public_user_id,source_payload=EXCLUDED.source_payload",
-              [Number(row.id),Number(row.user_id),userMap.get(Number(row.user_id)),JSON.stringify(clean)]);
+            // Addresses contain personal contact/location data: encrypt the complete source row.
+            const cipher=Buffer.from(encryptDelivery(JSON.stringify(row)),"base64");
+            await tx.unsafe("INSERT INTO qingtian_shop.legacy_shop_addresses(source_id,source_user_id,public_user_id,source_payload,encrypted_payload) VALUES($1,$2,$3,$4::jsonb,$5) ON CONFLICT(source_id) DO UPDATE SET source_user_id=EXCLUDED.source_user_id,public_user_id=EXCLUDED.public_user_id,source_payload=EXCLUDED.source_payload,encrypted_payload=EXCLUDED.encrypted_payload",
+              [Number(row.id),Number(row.user_id),userMap.get(Number(row.user_id)),JSON.stringify({encrypted:true,encryption_alg:"AES-256-GCM"}),cipher]);
             addressCount++;
           }
           return {orders:orderCount,items:itemCount,deliveries:deliveryCount,addresses:addressCount};
