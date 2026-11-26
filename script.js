@@ -601,7 +601,6 @@ async function purchase(item, button) {
   if (button.disabled) return;
   button.disabled = true;
   button.textContent=SHOP_I18N[currentShopLanguage()].submitting;
-  message($("shopMessage"),SHOP_I18N[currentShopLanguage()].checking);
   const idempotencyKey = crypto.randomUUID();
   try {
     const result = await api("/api/buy", {
