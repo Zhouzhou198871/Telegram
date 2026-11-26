@@ -5,6 +5,7 @@
 <meta name="theme-color" content="#f7f9fc"><title>账户信息 · 晴天号铺</title>
 <link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=account-subpages-20261126-v2">
 <style>
+.account-subnav{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.account-subnav a{display:inline-flex;align-items:center;min-height:36px;padding:7px 10px;border:1px solid #e1e8f0;border-radius:8px;background:#fff;color:#4b82bf;text-decoration:none;font-size:12px;white-space:nowrap}.account-subnav a[aria-current="page"]{background:#edf5ff;border-color:#bfd8f5;color:#2468b5;font-weight:750}@media(max-width:620px){.account-subnav{width:100%;justify-content:flex-start;gap:5px}.account-subnav a{min-height:32px;padding:6px 8px;font-size:11px}}
 body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;min-height:100vh}
 .profile-header{width:min(1120px,calc(100% - 48px));height:78px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
 .profile-brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:#243247;font-size:17px;font-weight:800;letter-spacing:.01em}
@@ -79,7 +80,7 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
 <body data-page="profile">
 <header class="profile-header">
 <a class="profile-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a>
-<div class="profile-actions"><a href="./shop.html" aria-label="返回首页">返回首页</a></div></header>
+<nav class="account-subnav" aria-label="账户导航"><a href="./orders.html">订单详情</a><a href="./profile.html" aria-current="page">个人中心</a><a href="./invite.html">邀请奖励</a><a href="./workbench.html">工作台</a><a href="./profile.html#recharge">充值入口</a></nav></header>
 <main class="profile-main">
 <nav class="profile-breadcrumb" aria-label="当前位置"><strong>当前位置：</strong><a href="./shop.html">首页</a><span aria-hidden="true"> / </span><span aria-current="page">账户信息</span></nav>
 <h1>账户信息</h1><p class="profile-subtitle">管理账户资料、安全设置与账户服务。</p>
@@ -143,5 +144,6 @@ body[data-page="profile"]{background:#f7f9fc!important;color:#243247!important;m
   </section>
 </section>
 </main>
+<footer class="footer-note" style="width:100%;margin:0 auto 18px;text-align:center;color:#a1aab8;font-size:10px;line-height:1.7">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
 <script src="./profile.js?v=neon-account-center-20261126-v2" defer></script>
 </body></html>
