@@ -420,21 +420,11 @@ function drawFilteredProducts() {
   let items = allProducts.filter(item => {
     const name = String(item.name || "").toLowerCase();
     const rawCategory = String(item.category || "").trim();
-    const protocol = category.startsWith("protocol:") ? category.slice(9) : "";
-    const protocolMatchers = {
-      "MTProto": /mtproto|telegram专属代理/i,
-      "SOCKS5": /socks\s*5/i,
-      "HTTP/HTTPS": /https?/i,
-      "Shadowsocks": /shadowsocks(?!\s*2022)|\bss\b/i,
-      "Shadowsocks 2022": /shadowsocks\s*2022|ss\s*2022/i,
-      "VMess": /vmess/i,
-      "VLESS": /vless/i,
-      "Trojan": /trojan/i,
-      "Hysteria2": /hysteria\s*2|hysteria2/i
-    };
-    const protocolText = [item.protocol,item.name,item.category,item.description,item.description_zh].filter(Boolean).join(" ");
-    return (!query || name.includes(query) || rawCategory.toLowerCase().includes(query)) &&
-      (!category || (protocol ? protocolMatchers[protocol]?.test(protocolText) : rawCategory === category));
+    const searchable = [
+      item.name, item.category, item.product_id, item.supplier_product_id, item.icon
+    ].filter(Boolean).join(" ").toLowerCase();
+    return (!query || searchable.includes(query)) &&
+      (!category || rawCategory === category);
   });
   if (sort === "default") {
     const popularity = item => {
@@ -526,11 +516,6 @@ function renderCatalogCategoryStrip(categories, selectedCategory = "") {
   strip.replaceChildren();
   const labels = currentShopLanguage()==="en" ? {"digital":"Digital goods","account":"Accounts","accounts":"Accounts","discord":"Discord","game":"Game accounts","software":"Software","subscription":"Protocols","其他":"Other"} : {"digital":"数字商品","account":"账号类","accounts":"账号类","discord":"Discord账号","game":"游戏账号","software":"软件服务","subscription":"协议服务","其他":"其他商品"};
   const icons = {"digital":"✦","account":"👤","accounts":"👤","discord":"◉","game":"🎮","software":"▣","subscription":"⌁"};
-  const protocols = [
-    ["MTProto","MTProto","✈"],["SOCKS5","SOCKS5","◈"],["HTTP/HTTPS","HTTP/HTTPS","⇄"],
-    ["Shadowsocks","Shadowsocks","◉"],["Shadowsocks 2022","SS 2022","◉"],["VMess","VMess","◇"],
-    ["VLESS","VLESS","◆"],["Trojan","Trojan","⚡"],["Hysteria2","Hysteria2","➤"]
-  ];
   const addChip = (value,label,item,iconOverride) => {
     const button=document.createElement("button"); button.type="button"; button.className="catalog-category-chip"; button.setAttribute("aria-pressed",String(value===selectedCategory));
     if(iconOverride) button.appendChild(safeText("span","category-chip-fallback",iconOverride));
@@ -541,11 +526,10 @@ function renderCatalogCategoryStrip(categories, selectedCategory = "") {
     strip.appendChild(button);
   };
   addChip("",currentShopLanguage()==="en"?"All products":"全部商品",allProducts[0]);
-  for(const [value,label,icon] of protocols) addChip("protocol:"+value,label,null,icon);
   for(const category of categories){const first=allProducts.find(item=>String(item.category||"").trim()===category);addChip(category,labels[category.toLowerCase()]||category,first);}
 }
 function renderProducts(items, options = {}) {
-  visibleProductLimit = 48;
+  // Keep the user's current "load more" position during background catalog refreshes.
   const verified = options.verified !== false;
   allProducts = Array.isArray(items) ? items.filter(item => item && typeof item === "object").map(item => ({...item, catalog_verified: verified})) : [];
   const select = $("categoryFilter");
@@ -556,9 +540,6 @@ function renderProducts(items, options = {}) {
   const categoryNames = currentShopLanguage()==="en"
     ? {"digital":"Digital goods","account":"Account products","accounts":"Account products","discord":"Discord accounts","game":"Game accounts","software":"Software services","subscription":"Subscriptions","其他":"Other products","其他商品":"Other products","数字商品":"Digital goods","账号商品":"Account products","Discord 账号":"Discord accounts","游戏账号":"Game accounts","软件服务":"Software services","订阅服务":"Subscriptions"}
     : {"digital":"数字商品","account":"账号商品","accounts":"账号商品","discord":"Discord 账号","game":"游戏账号","software":"软件服务","subscription":"订阅服务","其他":"其他商品"};
-  for (const [value,label] of [["MTProto","MTProto"],["SOCKS5","SOCKS5"],["HTTP/HTTPS","HTTP/HTTPS"],["Shadowsocks","Shadowsocks"],["Shadowsocks 2022","Shadowsocks 2022"],["VMess","VMess"],["VLESS","VLESS"],["Trojan","Trojan"],["Hysteria2","Hysteria2"]]) {
-    select.add(new Option(label, "protocol:"+value));
-  }
   for (const category of categories) {
     const label = categoryNames[category.toLowerCase()] || categoryNames[category] || category;
     select.add(new Option(label, category));
