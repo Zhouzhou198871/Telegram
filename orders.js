@@ -17,7 +17,7 @@ function status(o){return labels[String(o.status||"").toLowerCase()]||"状态待
 function render(){
  const root=$("ordersList");root.replaceChildren();
  $("ordersCount").textContent=String(state.total);
- if(!state.rows.length){root.append(node("div","orders-state","当前 Neon 账户暂无商品订单"));$("ordersPagination").replaceChildren();return;}
+ if(!state.rows.length){root.append(node("div","orders-state","暂无订单记录"));$("ordersPagination").replaceChildren();return;}
  for(const o of state.rows){
   const card=node("article","order-card"),head=node("div","order-card-head");
   const title=node("a","order-product-title",o.product_name||"数字商品");
@@ -46,7 +46,7 @@ function renderPagination(){
 async function load(){
  if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
  if(state.loading)return;state.loading=true;
- $("ordersList").replaceChildren(node("div","orders-state","正在读取 Neon 订单…"));
+ $("ordersList").replaceChildren(node("div","orders-state","正在加载订单…"));
  try{
   const d=await api("/api/user/orders?page="+state.page+"&limit="+state.pageSize);
   state.rows=Array.isArray(d.orders)?d.orders:[];state.total=Number(d.total??d.count??state.rows.length);render();
