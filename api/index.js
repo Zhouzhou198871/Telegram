@@ -450,7 +450,37 @@ async function handleInternal(method, url, headers, rawBody, db) {
     const orderId = buyStatusMatch[1], userId = String(url.searchParams.get("user_id") || "");
     const rows = await db.unsafe("SELECT * FROM shop_supplier_orders WHERE order_id=$1 AND user_id=$2",[orderId,userId]);
     if (!rows.length) return {status:200,body:{ok:true,status:"pending"}};
-    const row=rows[0];
+    let row=rows[0];
+    // Reconcile pending deliveries against the supplier's read-only order endpoint.
+    // This GET never creates another purchase; only a confirmed content payload is saved.
+    if (row.status === "pending" && row.supplier_order_id) {
+      const apiKey = process.env.SHOP_BUY_API_KEY || "";
+      if (apiKey) {
+        try {
+          const upstream = await fetch("http://167.253.96.220:8001/api/order/" + encodeURIComponent(String(row.supplier_order_id)), {
+            method:"GET", headers:{"x-api-key":apiKey}, signal:AbortSignal.timeout(15000)
+          });
+          if (upstream.ok) {
+            const result = await upstream.json().catch(()=>({}));
+            const content = result && result.success === true ? String(result.content || result.card || "").trim() : "";
+            if (content) {
+              const ciphertext = encryptDelivery(content);
+              const updated = await db.unsafe(
+                "UPDATE shop_supplier_orders SET status='delivered',delivery_ciphertext=$2,error_code=NULL,updated_at=$3 WHERE order_id=$1 AND status='pending' AND delivery_ciphertext IS NULL RETURNING *",
+                [orderId,ciphertext,Math.floor(Date.now()/1000)]
+              );
+              if (updated.length) row = updated[0];
+              else {
+                const latest = await db.unsafe("SELECT * FROM shop_supplier_orders WHERE order_id=$1 AND user_id=$2",[orderId,userId]);
+                if (latest.length) row = latest[0];
+              }
+            }
+          }
+        } catch {
+          // A temporary lookup failure leaves the order pending for the next poll.
+        }
+      }
+    }
     return {status:200,body:{ok:true,status:row.status,order_id:orderId,content:row.delivery_ciphertext ? decryptDelivery(row.delivery_ciphertext) : null,error_code:row.error_code,supplier_order_id:row.supplier_order_id}};
   }
   return {status:405,body:{ok:false,error:"method_not_allowed"}};
