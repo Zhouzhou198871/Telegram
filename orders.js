@@ -4,125 +4,168 @@ const $ = id => document.getElementById(id);
 const state = { all: [], filter: "all", loading: false };
 const I18N = {
  zh: {
-  title:"订单详情", subtitle:"集中查看账号商品购买和账户充值订单。订单状态与交付信息来自你的账户记录。",
-  backShop:"返回商城", home:"首页", myAccount:"我的账户", loading:"正在读取订单…", empty:"当前账户暂无订单记录。",
-  loadFailed:"订单读取失败，请刷新重试。", partial:"部分订单暂时无法读取，已展示成功读取的记录。",
-  all:"全部", goods:"商品订单", recharge:"充值订单", refresh:"刷新订单",
-  goodsType:"商品订单", rechargeType:"充值订单", orderNo:"订单号", created:"创建时间", updated:"更新时间",
-  amount:"订单金额", product:"商品", package:"套餐", method:"支付方式", paidAt:"入账时间",
-  pending:"处理中", reserved:"处理中", delivered:"已交付", refunded:"已退款", failed:"失败", paid:"已入账", unknown:"状态待核实",
-  details:"订单详情", hide:"收起详情", checkDelivery:"查询交付状态", checking:"正在查询…", delivery:"交付信息",
-  noDelivery:"暂未返回交付内容；订单可能仍在处理中。", deliveryError:"交付状态查询失败，请稍后重试。",
-  protocol:"协议", connection:"连接链接", clash:"Clash 配置", instructions:"使用说明", copy:"复制", copied:"已复制",
-  paymentPending:"充值订单尚未入账。请联系官方客服获取当前有效收款方式，并提交订单号核验。", paymentPaid:"该充值订单已入账。",
-  paymentMethodUsdt:"USDT（TRC20）", typeLabel:"订单类型", loadTime:"最近更新",
-  unauthorized:"登录状态已失效，请重新登录。"
+  title:"订单详情", subtitle:"查看你的商品订单、付款状态、发货进度与已交付卡密。",
+  home:"首页", myAccount:"我的账户", loading:"正在读取订单…", empty:"当前账户暂无商品订单。",
+  loadFailed:"订单读取失败，请刷新重试。", partial:"订单列表暂时不完整，请刷新后重试。",
+  all:"全部订单", goods:"商品订单", refresh:"刷新订单",
+  goodsType:"商品订单", orderNo:"订单号", created:"创建时间", updated:"更新时间",
+  amount:"订单金额", product:"商品", quantity:"数量", unitPrice:"单价", method:"支付方式",
+  paidAt:"付款时间", shippedAt:"发货时间", tracking:"物流单号", carrier:"物流公司",
+  receiver:"收件人", phone:"联系电话", address:"收货地址", remark:"订单备注",
+  pending:"待付款", paid:"已付款·待发货", shipped:"已发货", completed:"已完成",
+  closed:"已退款", cancelled:"已取消", unknown:"状态待核实",
+  details:"查看订单详情", hide:"收起详情", loadingDetail:"正在读取订单详情…",
+  delivery:"商品交付内容", noDeliveryPending:"付款已确认，正在等待发货。交付内容将在发货后显示。",
+  noDelivery:"该订单尚无交付内容，请联系官方客服核实订单状态。",
+  deliveryError:"订单详情读取失败，请稍后刷新重试。",
+  copy:"复制全部交付内容", copied:"已复制", copyFailed:"复制失败，请手动选择复制。",
+  paymentMethodAlipay:"支付宝", paymentMethodWechat:"微信支付", paymentMethodUsdt:"USDT",
+  typeLabel:"订单类型", notAvailable:"—", unauthorized:"登录状态已失效，请重新登录。"
  },
  en: {
-  title:"Order details", subtitle:"View account product purchases and account top-ups in one place.",
-  backShop:"Back to store", home:"Home", myAccount:"My account", loading:"Loading orders…", empty:"No orders found for this account.",
-  loadFailed:"Could not load orders. Refresh and try again.", partial:"Some order records could not be loaded. Successfully retrieved records are shown.",
-  all:"All", goods:"Products", recharge:"Top-ups", refresh:"Refresh",
-  goodsType:"Product order", rechargeType:"Top-up order", orderNo:"Order ID", created:"Created", updated:"Updated",
-  amount:"Amount", product:"Product", package:"Plan", method:"Payment method", paidAt:"Credited at",
-  pending:"Processing", reserved:"Processing", delivered:"Delivered", refunded:"Refunded", failed:"Failed", paid:"Credited", unknown:"Status unavailable",
-  details:"Order details", hide:"Hide details", checkDelivery:"Check delivery", checking:"Checking…", delivery:"Delivery",
-  noDelivery:"Delivery content is not available yet. The order may still be processing.", deliveryError:"Could not check delivery status. Try again later.",
-  protocol:"Protocol", connection:"Connection link", clash:"Clash config", instructions:"Instructions", copy:"Copy", copied:"Copied",
-  paymentPending:"This top-up has not been credited. Contact official support for the current payment instructions and provide the order ID.",
-  paymentPaid:"This top-up has been credited.", paymentMethodUsdt:"USDT (TRC20)", typeLabel:"Order type", loadTime:"Last updated",
-  unauthorized:"Your session has expired. Please sign in again."
+  title:"Order details", subtitle:"View product orders, payment status, fulfillment progress and delivered credentials.",
+  home:"Home", myAccount:"My account", loading:"Loading orders…", empty:"No product orders found.",
+  loadFailed:"Could not load orders. Refresh and try again.", partial:"The order list is incomplete. Please refresh.",
+  all:"All orders", goods:"Product orders", refresh:"Refresh",
+  goodsType:"Product order", orderNo:"Order ID", created:"Created", updated:"Updated",
+  amount:"Amount", product:"Product", quantity:"Quantity", unitPrice:"Unit price", method:"Payment method",
+  paidAt:"Paid at", shippedAt:"Shipped at", tracking:"Tracking number", carrier:"Carrier",
+  receiver:"Recipient", phone:"Phone", address:"Shipping address", remark:"Order note",
+  pending:"Awaiting payment", paid:"Paid · awaiting shipment", shipped:"Shipped", completed:"Completed",
+  closed:"Refunded", cancelled:"Cancelled", unknown:"Status unavailable",
+  details:"View order details", hide:"Hide details", loadingDetail:"Loading order details…",
+  delivery:"Delivered content", noDeliveryPending:"Payment confirmed. Waiting for fulfillment. Credentials appear after shipment.",
+  noDelivery:"No delivery content is available for this order. Contact official support to verify its status.",
+  deliveryError:"Could not load order details. Please refresh later.",
+  copy:"Copy delivered content", copied:"Copied", copyFailed:"Copy failed. Please select and copy manually.",
+  paymentMethodAlipay:"Alipay", paymentMethodWechat:"WeChat Pay", paymentMethodUsdt:"USDT",
+  typeLabel:"Order type", notAvailable:"—", unauthorized:"Your session has expired. Please sign in again."
  }
 };
 const lang = () => localStorage.getItem("qingtian_shop_language") === "en" ? "en" : "zh";
 const t = key => I18N[lang()][key] || key;
 const money = value => "¥" + (Number(value || 0)).toFixed(2);
-const date = value => value ? new Date(Number(value) * 1000).toLocaleString(lang()==="zh"?"zh-CN":"en-US") : "—";
+const date = value => value ? new Date(Number(value) * 1000).toLocaleString(lang()==="zh"?"zh-CN":"en-US",{hour12:false}) : t("notAvailable");
 async function api(path) {
- const response = await fetch(path, { headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")}, cache:"no-store" });
+ const response = await fetch(path, {
+  headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")},
+  cache:"no-store"
+ });
  let data={}; try { data=await response.json(); } catch {}
- if(response.status===401){ localStorage.removeItem(TOKEN_KEY); location.replace("./auth.html"); throw new Error("unauthorized"); }
- if(!response.ok) throw new Error(data.error || "request_failed");
+ if(response.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("unauthorized");}
+ if(!response.ok || data.status==="fail" || data.code===0) throw new Error(data.message||data.msg||"request_failed");
  return data;
-}
-function statusLabel(status) {
- const value=String(status||"unknown").toLowerCase();
- return t(value in I18N[lang()] ? value : "unknown");
 }
 function make(tag, cls, value) {
  const el=document.createElement(tag); if(cls)el.className=cls;
  if(value!==undefined)el.textContent=String(value); return el;
 }
-function normalize(kind, order) {
- return {...order, kind, id:String(order.order_id||""), created_at:Number(order.created_at||0), updated_at:Number(order.updated_at||order.created_at||0)};
-}
-async function load() {
- if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
- state.loading=true; $("ordersList").replaceChildren(make("div","orders-state",t("loading")));
- const requests=await Promise.allSettled([api("/api/user/orders"), api("/api/user/recharge-orders")]);
- const failed=requests.filter(x=>x.status==="rejected");
- const goods=requests[0].status==="fulfilled"?(requests[0].value.orders||[]).map(x=>normalize("goods",x)):[];
-  const recharges=requests[1].status==="fulfilled"?(requests[1].value.orders||[]).map(x=>normalize("recharge",x)):[];
-  state.all=[...goods,...recharges].sort((a,b)=>b.created_at-a.created_at);
-  state.loading=false; render();
- if(failed.length===2){$("ordersList").replaceChildren(make("div","orders-state",t("loadFailed")));return;}
- if(failed.length){const note=make("p","orders-notice",t("partial"));$("ordersList").prepend(note);}
-}
 function addInfo(parent,label,value) {
- const row=make("div","order-detail-row");row.append(make("span","order-detail-label",label),make("span","order-detail-value",value||"—"));parent.append(row);
+ const row=make("div","order-detail-row");
+ row.append(make("span","order-detail-label",label),make("span","order-detail-value",value||t("notAvailable")));
+ parent.append(row);
 }
-function addCopy(parent,label,value) {
- if(!value)return;
- const row=make("div","order-copy-row");const code=make("code","",value);const btn=make("button","copy-button",t("copy"));
- btn.type="button";btn.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(value);btn.textContent=t("copied");setTimeout(()=>btn.textContent=t("copy"),1500);}catch{btn.textContent=value;}});
- row.append(make("span","order-detail-label",label),code,btn);parent.append(row);
+function statusLabel(order) {
+ const status=String(order.status||"unknown").toLowerCase();
+ return t(status in I18N[lang()] ? status : "unknown");
 }
-function renderDelivery(parent, delivery) {
- if(!delivery){parent.append(make("p","order-detail-muted",t("noDelivery")));return;}
- if(typeof delivery==="string"){parent.append(make("pre","order-delivery-content",delivery));return;}
- if(delivery.protocol)addInfo(parent,t("protocol"),delivery.protocol);
- if(delivery.uri)addCopy(parent,t("connection"),delivery.uri);
- if(delivery.http_uri)addCopy(parent,"HTTP",delivery.http_uri);
- if(delivery.clash_yaml)addCopy(parent,t("clash"),delivery.clash_yaml);
- if(delivery.instructions)addInfo(parent,t("instructions"),delivery.instructions);
- if(!delivery.uri&&!delivery.http_uri&&!delivery.clash_yaml)parent.append(make("pre","order-delivery-content",JSON.stringify(delivery,null,2)));
+function paymentMethod(value) {
+ const map={alipay:t("paymentMethodAlipay"),wechat:t("paymentMethodWechat"),usdt:t("paymentMethodUsdt"),USDT_TRC20:t("paymentMethodUsdt")};
+ return map[value]||value||t("notAvailable");
+}
+function deliveryPanel(parent,order) {
+ const section=make("section","order-delivery-section");
+ section.append(make("strong","order-detail-section-title",t("delivery")));
+ const content=String(order.delivery_content||"").trim();
+ if(order.delivery_available && content) {
+  const pre=make("pre","order-delivery-content",content);
+  const button=make("button","detail-action",t("copy"));button.type="button";
+  button.addEventListener("click",async()=>{
+   try{await navigator.clipboard.writeText(content);button.textContent=t("copied");}
+   catch{button.textContent=t("copyFailed");}
+  });
+  section.append(pre,button);
+ } else {
+  const msg=order.status==="paid"?t("noDeliveryPending"):t("noDelivery");
+  section.append(make("p","order-detail-muted",msg));
+ }
+ parent.append(section);
 }
 function detailPanel(order) {
  const panel=make("section","order-detail-panel");
- addInfo(panel,t("typeLabel"),order.kind==="goods"?t("goodsType"):t("rechargeType"));
- addInfo(panel,t("orderNo"),order.id);
+ panel.append(make("p","order-detail-muted",t("loadingDetail")));
+ return panel;
+}
+function renderDetail(panel,order) {
+ panel.replaceChildren();
+ addInfo(panel,t("typeLabel"),t("goodsType"));
+ addInfo(panel,t("orderNo"),order.trade_no);
  addInfo(panel,t("created"),date(order.created_at));
  addInfo(panel,t("updated"),date(order.updated_at));
- addInfo(panel,t("amount"),money(order.amount_cny));
- if(order.kind==="goods") {
-  addInfo(panel,t("product"),order.product_name||order.product_id);
-  const deliveryBox=make("div","order-delivery-section");deliveryBox.append(make("strong","order-detail-section-title",t("delivery")));
-  const delivery=make("div","order-delivery-content");
-  const refresh=make("button","detail-action",t("checkDelivery"));refresh.type="button";
-  refresh.addEventListener("click",async()=>{refresh.disabled=true;refresh.textContent=t("checking");delivery.replaceChildren(make("p","order-detail-muted",t("loading")));try{const result=await api("/api/buy/"+encodeURIComponent(order.id));delivery.replaceChildren();if(result.content)renderDelivery(delivery,result.content);else delivery.append(make("p","order-detail-muted",result.message||t("noDelivery")));}catch{delivery.replaceChildren(make("p","order-detail-muted",t("deliveryError")));}finally{refresh.disabled=false;refresh.textContent=t("checkDelivery");}});
-  deliveryBox.append(refresh,delivery);panel.append(deliveryBox);
-  } else {
-  addInfo(panel,t("method"),order.payment_method==="USDT_TRC20"?t("paymentMethodUsdt"):order.payment_method);
-  if(order.paid_at)addInfo(panel,t("paidAt"),date(order.paid_at));
-  panel.append(make("p","order-detail-muted",order.status==="paid"?t("paymentPaid"):t("paymentPending")));
+ addInfo(panel,t("amount"),money(order.total_amount??order.amount));
+ addInfo(panel,t("method"),paymentMethod(order.pay_method));
+ if(order.paid_at)addInfo(panel,t("paidAt"),date(order.paid_at));
+ if(order.shipped_at)addInfo(panel,t("shippedAt"),date(order.shipped_at));
+ const items=Array.isArray(order.items)?order.items:[];
+ items.forEach(item=>{
+  addInfo(panel,t("product"),item.title||order.product_name||"");
+  addInfo(panel,t("quantity"),String(item.qty||1));
+  addInfo(panel,t("unitPrice"),money(item.price));
+ });
+ if(order.receiver)addInfo(panel,t("receiver"),order.receiver);
+ if(order.phone)addInfo(panel,t("phone"),order.phone);
+ if(order.address)addInfo(panel,t("address"),order.address);
+ if(order.tracking_company)addInfo(panel,t("carrier"),order.tracking_company);
+ if(order.tracking_no)addInfo(panel,t("tracking"),order.tracking_no);
+ if(order.remark)addInfo(panel,t("remark"),order.remark);
+ deliveryPanel(panel,order);
+}
+async function load() {
+ if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
+ state.loading=true;
+ $("ordersList").replaceChildren(make("div","orders-state",t("loading")));
+ try {
+  const result=await api("/api/v1/user/orders?page=1&limit=100");
+  const rows=Array.isArray(result.data)?result.data:[];
+  state.all=rows.map(order=>({...order,kind:"goods",id:String(order.trade_no||order.id||"")}));
+  state.loading=false;
+  render();
+ } catch(error) {
+  state.loading=false;
+  $("ordersList").replaceChildren(make("div","orders-state",error.message==="unauthorized"?t("unauthorized"):t("loadFailed")));
  }
- return panel;
 }
 function render() {
  const root=$("ordersList");root.replaceChildren();
- const list=state.all.filter(o=>state.filter==="all"||o.kind===state.filter);
+ const list=state.all.filter(order=>state.filter==="all"||order.kind===state.filter);
  $("ordersCount").textContent=String(list.length);
  if(!list.length){root.append(make("div","orders-state",t("empty")));return;}
  for(const order of list) {
   const card=make("article","order-card");
   const top=make("div","order-top");
-  const left=make("div","order-heading");left.append(make("span","order-kind",order.kind==="goods"?t("goodsType"):t("rechargeType")),make("h2","order-name",order.kind==="goods"?(order.product_name||order.product_id):t("rechargeType")));
-  const st=statusLabel(order.status);const badge=make("span","order-status status-"+String(order.status||"unknown"),st);top.append(left,badge);
-  const meta=make("div","order-meta",t("orderNo")+"："+order.id+"\n"+t("created")+"："+date(order.created_at));
-  const bottom=make("div","order-bottom");bottom.append(make("strong","order-price",money(order.amount_cny)));
+  const left=make("div","order-heading");
+  left.append(make("span","order-kind",t("goodsType")),make("h2","order-name",order.product_name||order.title||t("goodsType")));
+  const status=String(order.status||"unknown").toLowerCase();
+  top.append(left,make("span","order-status status-"+status,statusLabel(order)));
+  const meta=make("div","order-meta",t("orderNo")+"："+(order.trade_no||"—")+"\n"+t("created")+"："+date(order.created_at));
+  const bottom=make("div","order-bottom");
+  bottom.append(make("strong","order-price",money(order.total_amount??order.amount)));
   const toggle=make("button","detail-toggle",t("details"));toggle.type="button";
   const panel=detailPanel(order);panel.hidden=true;
-  toggle.addEventListener("click",()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?t("details"):t("hide");});
+  toggle.addEventListener("click",async()=>{
+   const opening=panel.hidden;panel.hidden=!opening;
+   toggle.textContent=opening?t("hide"):t("details");
+   if(opening&&!panel.dataset.loaded) {
+    toggle.disabled=true;
+    try {
+     const result=await api("/api/v1/user/orders/detail?trade_no="+encodeURIComponent(order.trade_no));
+     if(!result.data)throw new Error("not_found");
+     renderDetail(panel,result.data);panel.dataset.loaded="1";
+    } catch(error) {
+     panel.replaceChildren(make("p","order-detail-muted",error.message==="unauthorized"?t("unauthorized"):t("deliveryError")));
+    } finally {toggle.disabled=false;}
+   }
+  });
   bottom.append(toggle);card.append(top,meta,bottom,panel);root.append(card);
  }
 }
@@ -132,6 +175,7 @@ function applyLanguage() {
  $("languageToggle").textContent=lang()==="zh"?"English":"中文";
  document.querySelectorAll("[data-filter]").forEach(btn=>{btn.textContent=t(btn.dataset.filter==="all"?"all":btn.dataset.filter);btn.classList.toggle("active",btn.dataset.filter===state.filter);});
  $("ordersTitle").textContent=t("title");$("ordersSubtitle").textContent=t("subtitle");
+ $("refreshOrders").textContent=t("refresh");
 }
 document.querySelectorAll("[data-filter]").forEach(btn=>btn.addEventListener("click",()=>{state.filter=btn.dataset.filter;applyLanguage();render();}));
 $("languageToggle").addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",lang()==="zh"?"en":"zh");applyLanguage();render();});
