@@ -26,8 +26,10 @@ jobs:
           node --check login.js
           node --check orders.js
           node --check invite.js
+          node --check workbench.js
           node --check api/index.js
           node --check worker.js
+          node --check product-icons.js
           node --check product-icons.js
       - name: Verify Vercel configuration
         run: |
