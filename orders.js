@@ -17,6 +17,8 @@ const TEXT = {
  details:"查看订单详情", hide:"收起详情", loadingDetail:"正在读取订单详情…",
  delivery:"交付内容", copy:"复制", copied:"已复制", deliveryEmpty:"暂无可展示的交付内容。",
  deliveryError:"订单详情读取失败，请稍后重试。", unauthorized:"登录状态已失效，请重新登录。",
+ paymentMethodAlipay:"支付宝", paymentMethodWechat:"微信支付", paymentMethodUsdt:"USDT",
+ copyFailed:"复制失败，请手动复制。", noDeliveryPending:"订单已付款，等待发货。", noDelivery:"暂无交付内容。", typeLabel:"订单类型",
  notAvailable:"—"
 };
 const t = key => TEXT[key] || key;
