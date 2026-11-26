@@ -546,7 +546,7 @@ async function qingtianShopApi(method, url, headers, rawBody, res) {
   if (!(publicList || publicDetail || authLogin || authRegister || adminList || adminSave || adminDelete || adminStatus)) return false;
   const db = getSql();
   const body = rawBody?.length ? JSON.parse(rawBody.toString("utf8")) : {};
-  const send = (status, payload) => jsonResponse(res, status, payload);
+  const send = (status, payload) => { jsonResponse(res, status, payload); return true; };
   const passwordHash = value => createHash("sha256").update("lynli$" + value, "utf8").digest("hex");
   const issueToken = () => crypto.randomUUID().replace(/-/g, "");
   const money = value => Math.round((Number(value) || 0) * 100) / 100;
