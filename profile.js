@@ -69,7 +69,7 @@
         [dateText(order.created_at),order.order_id,money(order.amount_cny),order.payment_method==="USDT_TRC20"?"USDT（TRC20）":order.payment_method,statusMap[order.status]||order.status].forEach(value=>{const td=document.createElement("td");td.textContent=value;tr.append(td);});
         body.append(tr);
       });
-    } catch (error) { const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="recharge-empty";td.textContent=error.message==="auth_required"?"登录状态已失效，请重新登录。":"充值记录读取失败，请稍后刷新。";tr.append(td);body.append(tr); }
+    } catch (error) { const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="recharge-empty";td.textContent=error.message==="auth_required"?"登录状态已失效，请重新登录。":"充值记录读取失败，请稍后重试。";tr.append(td);body.append(tr); }
   }
   async function createRecharge() {
     const amount=String($("rechargeAmount").value || "").trim();
@@ -152,7 +152,7 @@
   async function init() {
     if(!token()){location.replace("./auth.html");return;}
     try { await loadAccount(); }
-    catch(error) { if(["auth_required","invalid_token","token_expired","token_revoked"].includes(error.message)){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;} message("profileMessage","账户资料读取失败，请刷新重试。","error"); }
+    catch(error) { if(["auth_required","invalid_token","token_expired","token_revoked"].includes(error.message)){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;} message("profileMessage","账户资料读取失败，请稍后重试。","error"); }
     $("languageToggle")?.remove();
     $("chooseAvatar").addEventListener("click",()=>$("avatarFile").click());
     $("avatarFile").addEventListener("change",async()=>{const file=$("avatarFile").files?.[0];if(!file)return;try{avatarData=await compressAvatar(file);setAvatar(avatarData,$("nickname").value);}catch{message("profileMessage","头像处理失败，请更换图片。","error");}});
