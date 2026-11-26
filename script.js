@@ -211,25 +211,6 @@ function initPolicyModal(){
  });
 }
 
-async function syncRegisteredUserToNeon(email, password) {
- const payload = { email, password };
- try {
-  let result;
-  try {
-   result = await api("/api/v1/passport/auth/register", { method: "POST", body: JSON.stringify(payload) });
-  } catch {
-   result = await api("/api/v1/passport/auth/login", { method: "POST", body: JSON.stringify(payload) });
-  }
-  const neonToken = result?.data?.token;
-  if (!neonToken) throw new Error("neon_auth_sync_failed");
-  localStorage.setItem("qingtian_neon_token", neonToken);
-  return true;
- } catch (error) {
-  console.error("[auth] Neon account sync failed:", error);
-  return false;
- }
-}
-
 function initAuth(){
  if(token()){localStorage.removeItem("qingtian_referral_code");location.replace("./shop.html");return;}
  const form=$("authForm"),send=$("sendCode"),msg=$("authMessage"),login=$("loginButton"),email=$("email"),code=$("code");
@@ -279,9 +260,6 @@ function initAuth(){
    const normalizedEmail=email.value.trim().toLowerCase();
    const result=await api("/api/auth/login",{method:"POST",body:JSON.stringify({email:normalizedEmail,code:code.value.trim(),password:passwordValue})});
    if(!result.token)throw new Error(result.error||"login_failed");
-   // Email code validation succeeds before the same account is synced to Neon.
-   const neonSynced=await syncRegisteredUserToNeon(normalizedEmail,passwordValue);
-   if(!neonSynced) console.warn("[auth] Neon account sync needs retry.");
    localStorage.setItem(TOKEN_KEY,result.token);
    localStorage.removeItem("qingtian_referral_code");
    window.location.replace("/shop.html");
