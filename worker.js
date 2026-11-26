@@ -637,9 +637,15 @@ async function userOrders(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
-  const result = await env.DB.prepare(
-    "SELECT p.order_id,p.product_id,p.amount_units,p.status,p.error_code,p.created_at,p.updated_at,c.name AS product_name FROM web_purchases p LEFT JOIN shop_catalog c ON c.product_id=p.product_id WHERE p.user_id=? ORDER BY p.created_at DESC LIMIT 100"
-  ).bind(claims.sub).all();
+  const url = new URL(request.url);
+  const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
+  const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "20", 10) || 20));
+  const [count, result] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS total FROM web_purchases WHERE user_id=?").bind(claims.sub).first(),
+    env.DB.prepare(
+      "SELECT p.order_id,p.product_id,p.amount_units,p.status,p.error_code,p.created_at,p.updated_at,c.name AS product_name FROM web_purchases p LEFT JOIN shop_catalog c ON c.product_id=p.product_id WHERE p.user_id=? ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+    ).bind(claims.sub, limit, (page - 1) * limit).all()
+  ]);
   const orders = (result.results || []).map(row => ({
     order_id: String(row.order_id),
     product_id: String(row.product_id || ""),
@@ -647,10 +653,11 @@ async function userOrders(request, env) {
     amount_cny: (Number(row.amount_units || 0) / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2),
     currency: "CNY",
     status: String(row.status || "pending"),
+    error_code: row.error_code || null,
     created_at: Number(row.created_at || 0),
     updated_at: Number(row.updated_at || 0)
   }));
-  return reply(request, env, { ok: true, count: orders.length, orders });
+  return reply(request, env, { ok: true, count: Number(count?.total || 0), total: Number(count?.total || 0), page, limit, orders });
 }
 
 async function buyStatus(request, env, orderId) {
