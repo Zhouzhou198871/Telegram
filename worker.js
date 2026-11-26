@@ -434,7 +434,7 @@ async function products(request, env) {
     const catalogUpdatedAt = Number(state?.catalog_updated_at || 0);
     const catalogStale = !catalogUpdatedAt || Math.floor(Date.now()/1000) - catalogUpdatedAt > 180;
     const result = await env.DB.prepare(
-      "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
+      "SELECT product_id,supplier_product_id,name,category_name,source->>'Icon' AS icon,source->>'IsHot' AS is_hot,source->>'IsRecommend' AS is_recommend,price_usdt,price_cny,stock,is_local_inventory,purchasable FROM shop_catalog WHERE is_on_sale=TRUE AND stock>0 ORDER BY category_id,name"
     ).all();
     const items = (result.results || []).map(row => ({
       product_id: row.product_id,
@@ -443,6 +443,8 @@ async function products(request, env) {
       category: row.category_name || "数字商品",
       icon: String(row.icon || ""),
       icon_url: storefrontIconUrl(row.icon,row.name),
+      is_hot: String(row.is_hot || "").toLowerCase() === "true",
+      is_recommend: String(row.is_recommend || "").toLowerCase() === "true",
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
       price_cny: String(row.price_cny),
