@@ -130,13 +130,41 @@ async function verifyInternal(method, url, headers, rawBody, db, secretOverride)
 async function handleInternal(method, url, headers, rawBody, db) {
   const path = url.pathname;
   const buyStatusMatch = path.match(/^\/api\/internal\/buy\/([a-f0-9-]{36})$/i);
+  const supplierDeliverMatch = path.match(/^\/api\/internal\/supplier-deliver\/([a-f0-9-]{36})$/i);
   const catalogSync = path === "/api/internal/catalog_sync" && method === "POST";
   const catalogSnapshotSync = path === "/api/internal/catalog_snapshot_sync" && method === "POST";
   const nodeProvision = path === "/api/internal/nodes/provision" && method === "POST";
   const nodeRevoke = path === "/api/internal/nodes/revoke" && method === "POST";
-  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !catalogSync && !catalogSnapshotSync && !nodeProvision && !nodeRevoke) return null;
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !supplierDeliverMatch && !catalogSync && !catalogSnapshotSync && !nodeProvision && !nodeRevoke) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db, catalogSnapshotSync ? (process.env.CATALOG_SYNC_SECRET || "") : undefined).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
+
+  if (supplierDeliverMatch && method === "POST") {
+    let data = {};
+    try { data = JSON.parse(rawBody.toString("utf8") || "{}"); }
+    catch { return {status:400,body:{ok:false,error:"invalid_json"}}; }
+    const orderId = supplierDeliverMatch[1];
+    const content = typeof data.content === "string" ? data.content.trim() : "";
+    const supplierOrderId = String(data.supplier_order_id || "").trim().slice(0,128);
+    if (data.confirmed !== true || !content || content.length > 20000) {
+      return {status:400,body:{ok:false,error:"explicit_supplier_confirmation_and_delivery_content_required"}};
+    }
+    const rows = await db.unsafe("SELECT status,delivery_ciphertext FROM shop_supplier_orders WHERE order_id=$1",[orderId]);
+    if (!rows.length) return {status:404,body:{ok:false,error:"supplier_order_not_found"}};
+    if (rows[0].status === "delivered" && rows[0].delivery_ciphertext) {
+      return {status:200,body:{ok:true,status:"delivered",already_delivered:true}};
+    }
+    if (!["pending","processing"].includes(String(rows[0].status))) {
+      return {status:409,body:{ok:false,error:"supplier_order_not_reconcilable",status:rows[0].status}};
+    }
+    const ciphertext = encryptDelivery(content);
+    const updated = await db.unsafe(
+      "UPDATE shop_supplier_orders SET status='delivered',supplier_order_id=COALESCE(NULLIF($2,''),supplier_order_id),delivery_ciphertext=$3,error_code=NULL,updated_at=$4 WHERE order_id=$1 AND status IN ('pending','processing') AND delivery_ciphertext IS NULL RETURNING order_id",
+      [orderId,supplierOrderId,ciphertext,Math.floor(Date.now()/1000)]
+    );
+    if (!updated.length) return {status:409,body:{ok:false,error:"supplier_order_changed_retry_status_check"}};
+    return {status:200,body:{ok:true,status:"delivered",order_id:orderId}};
+  }
 
   if (catalogSnapshotSync) {
     let data = {};
