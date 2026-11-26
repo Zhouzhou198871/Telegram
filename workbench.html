@@ -84,7 +84,7 @@ body[data-page="workbench"]{background:#f7f9fc;color:#243247;min-height:100vh}
 <details><summary>响应字段与错误码</summary>
 <p><strong>商品字段：</strong> product_id、name、category、icon、icon_url、price_cny、price_usdt、stock、currency、price_verified、purchasable。</p>
 <p><strong>订单状态：</strong> reserved（已扣款待处理）、pending（处理中）、delivered（交付成功）、refunded（失败已退款）。</p>
-<p><strong>常见 HTTP 状态：</strong> 200/201 成功；202 订单处理中；400 参数错误；401 密钥缺失或无效；403 余额不足 ¥500 或无 API 资格；402 商品金额余额不足；404 商品不存在；409 商品下架、库存不足、价格快照过期或幂等键冲突；503 商品价格无效或上游配置异常。</p>
+<p><strong>常见 HTTP 状态：</strong> 200/201 成功；202 订单处理中；400 参数错误；401 密钥缺失或无效；403 余额不足 ¥500 或无 API 资格；402 商品金额余额不足；404 商品不存在；409 商品下架、库存不足、价格快照过期或幂等键冲突；503 服务暂不可用，请稍后重试。</p>
 <p>商品价格与库存会在下单时再次校验；目录数据超过 180 秒未更新时，非本地库存商品不可购买。失败订单由现有购买流程退款。</p>
 </details>
 </section>

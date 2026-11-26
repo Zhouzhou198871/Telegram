@@ -95,88 +95,7 @@
       code.classList.remove("invalid");
     });
 
-    // Unified Pointer Events: works with Android/iOS touch, pen, and desktop mouse.
-    const slider = $("sliderVerify"), track = $("sliderTrack"), fill = $("sliderFill");
-    const thumb = $("sliderThumb"), sliderText = $("sliderText");
-    let sliderVerified = false, dragging = false, activePointerId = null;
-    let startX = 0, startLeft = 0, currentLeft = 0;
-    const maxLeft = () => Math.max(0, track.clientWidth - thumb.offsetWidth - 2);
-
-    function paintSlider(left, animate = false) {
-      currentLeft = Math.max(0, Math.min(maxLeft(), left));
-      thumb.style.transition = animate ? "left .18s ease,background .18s ease" : "none";
-      fill.style.transition = animate ? "width .18s ease" : "none";
-      thumb.style.left = currentLeft + "px";
-      fill.style.width = (sliderVerified ? track.clientWidth : currentLeft + thumb.offsetWidth / 2) + "px";
-    }
-    function resetSlider() {
-      dragging = false;
-      activePointerId = null;
-      paintSlider(0, true);
-    }
-    function passSlider() {
-      sliderVerified = true;
-      dragging = false;
-      activePointerId = null;
-      slider.classList.add("is-verified");
-      sliderText.textContent = "验证通过";
-      thumb.textContent = "✓";
-      thumb.setAttribute("aria-label", "验证已通过");
-      thumb.disabled = true;
-      paintSlider(maxLeft(), true);
-    }
-    function finishDrag() {
-      if (!dragging) return;
-      if (currentLeft >= maxLeft() - 5) passSlider();
-      else resetSlider();
-    }
-
-    // Prevent the browser from converting a finger drag into page scrolling.
-    track.style.touchAction = "none";
-    thumb.style.touchAction = "none";
-    thumb.style.webkitUserSelect = "none";
-    thumb.addEventListener("pointerdown", event => {
-      if (sliderVerified || thumb.disabled || (event.pointerType === "mouse" && event.button !== 0)) return;
-      event.preventDefault();
-      dragging = true;
-      activePointerId = event.pointerId;
-      startX = event.clientX;
-      startLeft = currentLeft;
-      thumb.style.transition = "none";
-      try { thumb.setPointerCapture(event.pointerId); } catch (_) {}
-    });
-    thumb.addEventListener("pointermove", event => {
-      if (!dragging || event.pointerId !== activePointerId) return;
-      event.preventDefault();
-      paintSlider(startLeft + event.clientX - startX);
-    });
-    thumb.addEventListener("pointerup", event => {
-      if (!dragging || event.pointerId !== activePointerId) return;
-      finishDrag();
-    });
-    thumb.addEventListener("pointercancel", event => {
-      if (dragging && event.pointerId === activePointerId) resetSlider();
-    });
-    thumb.addEventListener("lostpointercapture", () => {
-      if (dragging) resetSlider();
-    });
-    thumb.addEventListener("dragstart", event => event.preventDefault());
-    thumb.addEventListener("keydown", event => {
-      if (sliderVerified) return;
-      if (event.key === "ArrowRight") {
-        event.preventDefault();
-        paintSlider(currentLeft + 14);
-        if (currentLeft >= maxLeft() - 5) passSlider();
-      } else if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        paintSlider(currentLeft - 14);
-      } else if (event.key === "End") {
-        event.preventDefault();
-        paintSlider(maxLeft());
-        passSlider();
-      } else if (event.key === "Home") {
-        event.preventDefault();
-        paintSlider(0);
+    setMode("password");
       }
     });
     setMode("password");
@@ -207,7 +126,7 @@
         }, 1000);
       } catch (error) {
         const reason = error.message === "request_timeout" ? "服务器响应超时，请稍后重试。" :
-          error.message === "network_error" ? "网络连接失败，请检查网络后重试。" :
+          error.message === "network_error" ? "暂时无法完成请求，请稍后重试。" :
           error.message === "server_error" ? "服务器暂时出现故障，请稍后重试。" :
           error.message === "too_many_requests" ? "验证码发送过于频繁，请稍后再试。" :
           "验证码发送失败，请稍后重试。";
@@ -217,7 +136,6 @@
 
     form.addEventListener("submit", async event => {
       event.preventDefault(); showMessage("");
-      if (!sliderVerified) { showMessage("请先完成滑动验证。"); return; }
       if (!validEmail()) {
         email.classList.add("invalid"); email.focus();
         showMessage("请输入有效的邮箱地址。"); return;
@@ -246,7 +164,7 @@
       } catch (error) {
         const reasonCode = String(error.message || "");
         let reason = reasonCode === "request_timeout" ? "服务器响应超时，请稍后重试。" :
-          reasonCode === "network_error" ? "网络连接失败，请检查网络后重试。" :
+          reasonCode === "network_error" ? "暂时无法完成请求，请稍后重试。" :
           reasonCode === "server_error" ? "服务器暂时出现故障，请稍后重试。" :
           "登录失败，请检查登录信息后重试。";
         if (reasonCode === "invalid_code") reason = "验证码不正确。";
