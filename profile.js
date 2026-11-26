@@ -153,7 +153,6 @@
     if(!token()){location.replace("./auth.html");return;}
     try { await loadAccount(); }
     catch(error) { if(["auth_required","invalid_token","token_expired","token_revoked"].includes(error.message)){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");return;} message("profileMessage","账户资料读取失败，请稍后重试。","error"); }
-    $("languageToggle")?.remove();
     $("chooseAvatar").addEventListener("click",()=>$("avatarFile").click());
     $("avatarFile").addEventListener("change",async()=>{const file=$("avatarFile").files?.[0];if(!file)return;try{avatarData=await compressAvatar(file);setAvatar(avatarData,$("nickname").value);}catch{message("profileMessage","头像处理失败，请更换图片。","error");}});
     $("saveProfile").addEventListener("click",async()=>{
