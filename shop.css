@@ -632,3 +632,21 @@ body[data-page="shop"] .product-cover-kicker{font-size:9px;font-weight:800;lette
 body[data-page="shop"] .product-cover-art strong{max-width:82%;font-size:18px;line-height:1.35;font-weight:850;color:#244b7a}
 body[data-page="shop"] .product-cover-art small{font-size:8px;letter-spacing:.18em;color:#7390b5}
 @media(max-width:760px){body[data-page="shop"] .product-cover{height:126px;margin-bottom:11px}}
+
+
+/* Ensure account shortcuts receive taps above all decorative layers. */
+body[data-page="shop"] #accountMenu{
+  pointer-events:auto !important;
+  isolation:isolate;
+}
+body[data-page="shop"] #accountMenu .account-menu-links,
+body[data-page="shop"] #accountMenu .account-card-link{
+  position:relative;
+  z-index:10001;
+  pointer-events:auto !important;
+  cursor:pointer;
+  touch-action:manipulation;
+}
+body[data-page="shop"] #accountMenu .account-card-link span{
+  pointer-events:none;
+}
