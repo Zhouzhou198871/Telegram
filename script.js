@@ -90,7 +90,7 @@ function updateShopHeading(){
  heading.textContent=document.body.dataset.shopView==="products"?dict.allProducts:dict.catalogHeading;
 }
 function setShopView(view, options={}){
- const next=view==="products"?"products":view==="nodes"?"nodes":"home";
+ const next=view==="products"?"products":"home";
  document.body.dataset.shopView=next;
  document.querySelectorAll("[data-shop-view]").forEach(link=>{
   const active=link.dataset.shopView===next;
@@ -99,7 +99,6 @@ function setShopView(view, options={}){
  });
  updateShopHeading();
  if(options.scroll&&next==="products")$("catalog")?.scrollIntoView({behavior:"smooth",block:"start"});
- else if(options.scroll&&next==="nodes")$("nodeCatalog")?.scrollIntoView({behavior:"smooth",block:"start"});
  else if(options.scroll&&next==="home")window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -586,121 +585,6 @@ function startCatalogAutoRefresh() {
 }
 
 
-async function loadNodeProducts() {
-  const grid=$("nodeProductGrid");
-  if(!grid)return;
-  grid.replaceChildren(safeText("div","loading-card","正在读取自营节点套餐…"));
-  try{
-    const data=await api("/api/node-products"),items=Array.isArray(data.products)?data.products:[];
-    grid.replaceChildren();
-    if(!items.length){grid.appendChild(safeText("div","empty-card","节点套餐暂未开放，请稍后刷新。"));return;}
-    const labels={trojan:"Trojan TLS",shadowsocks:"Shadowsocks",mtproto:"Telegram MTProto",vless:"VLESS Reality",vmess:"VMess WebSocket",hysteria2:"Hysteria2",tuic:"TUIC",anytls:"AnyTLS",ssr:"ShadowsocksR"};
-    const descriptions={
-      mtproto:"专为 Telegram 客户端提供的 MTProto 代理连接。",
-      socks5:"适用于支持 SOCKS5 代理设置的应用与设备。",
-      "http-connect":"兼容 HTTP CONNECT / HTTPS 代理设置。",
-      shadowsocks:"使用 Shadowsocks 协议连接，支持常见代理客户端。",
-      "shadowsocks-2022":"采用 Shadowsocks 2022 加密方式，适用于支持该协议的客户端。",
-      vmess:"VMess 代理协议，支持兼容客户端导入连接。",
-      vless:"VLESS Reality 连接方式，支持兼容客户端导入。",
-      trojan:"Trojan TLS 代理连接，支持兼容客户端导入。",
-      hysteria2:"基于 QUIC 的 Hysteria2 连接，支持兼容客户端导入。",
-      tuic:"基于 QUIC 的 TUIC 连接，支持兼容客户端导入。",
-      anytls:"基于 TLS 的 AnyTLS 连接，支持兼容客户端导入。",
-      ssr:"ShadowsocksR 加密代理连接，支持兼容客户端导入。"
-    };
-    for(const item of items){
-      const card=document.createElement("article");card.className="product-card node-product-card";
-      const head=document.createElement("div");head.className="product-card-head";
-      const icon=document.createElement("div");icon.className="product-icon-wrap";icon.appendChild(safeText("span","product-icon-fallback",item.protocol==="mtproto"?"T":String(item.name||"节").slice(0,1)));
-      const title=document.createElement("div");title.className="product-title-wrap";
-      title.appendChild(safeText("div","product-category","协议服务"));
-      title.appendChild(safeText("h3","product-name",item.name||labels[item.protocol]||"节点线路"));
-      head.append(icon,title);card.append(head);
-      card.appendChild(safeText("span","node-protocol-tag",labels[item.protocol]||item.protocol));
-      
-      card.appendChild(safeText("p","product-description",descriptions[item.protocol]||labels[item.protocol]||"选择套餐，购买后按订单信息开通使用。"));
-      const plans=document.createElement("div");plans.className="node-plan-list";
-      for(const pkg of item.packages||[]){
-        const button=document.createElement("button");button.type="button";button.className="node-plan-button";
-        const span=document.createElement("span");span.textContent=pkg.name||String(pkg.duration_days)+" 天";
-        const price=document.createElement("strong");price.textContent="¥"+Number(pkg.price_cny||0).toFixed(2);
-        button.append(span,price);
-        if(!item.server_present||!item.provisioning_ready){
-          button.disabled=true;
-          button.title="该协议正在完成服务器开通验证，暂不可购买";
-          button.setAttribute("aria-label",span.textContent+"，暂不可购买");
-        }else{
-          button.addEventListener("click",()=>buyNodePackage(pkg,button,item.protocol));
-        }
-        plans.append(button);
-      }
-      if(!plans.childElementCount)plans.append(safeText("div","empty-card",item.server_present?"套餐准备中":"线路接入中"));
-      card.append(plans);grid.append(card);
-    }
-  }catch(error){
-    grid.replaceChildren(safeText("div","empty-card","节点套餐暂时无法加载，请稍后刷新。"));
-    message($("nodeShopMessage"),"节点服务暂时不可用。","error");
-  }
-}
-async function waitNodeOrder(orderId){
-  for(let attempt=0;attempt<20;attempt++){
-    await new Promise(resolve=>setTimeout(resolve,2000));
-    const result=await api("/api/user/node-orders/"+encodeURIComponent(orderId));
-    if(result.status==="fulfilled"&&result.delivery)return result;
-    if(result.status==="refunded")throw new Error("node_order_refunded");
-    if(result.status!=="provisioning")throw new Error(result.error||result.status||"node_order_status_unknown");
-  }
-  return {status:"provisioning",order_id:orderId};
-}
-async function buyNodePackage(pkg,button,protocol){
-  if(button.disabled)return;
-  button.disabled=true;
-  const old=button.innerHTML;button.textContent="正在开通…";
-  message($("nodeShopMessage"),"正在扣除余额并开通节点，请勿重复提交。");
-  try{
-    let result=await api("/api/user/node-orders",{
-      method:"POST",
-      headers:{"Idempotency-Key":crypto.randomUUID()},
-      body:JSON.stringify({package_id:pkg.package_id})
-    });
-    if(result.status==="provisioning"&&result.order_id)result=await waitNodeOrder(result.order_id);
-    if(result.status==="provisioning"){
-      message($("nodeShopMessage"),"订单已受理，节点仍在开通核对中。不会重复扣款，请稍后在订单详情查看。","error");
-      return;
-    }
-    if(result.status!=="fulfilled"||!result.delivery)throw new Error(result.error||result.status||"node_provision_failed");
-    showNodeDelivery(result.delivery);
-    message($("nodeShopMessage"),"节点已开通，配置已生成。","success");
-    await loadUser();
-  }catch(error){
-    const text=error.status===402||error.message==="insufficient_balance"?"余额不足，请先充值。":
-      error.message==="node_package_unavailable"?"该套餐暂不可购买。":
-      error.message==="node_order_refunded"?"节点开通失败，订单已退款。":
-      "节点开通未完成，若余额发生变化请到账户信息查看订单状态。";
-    message($("nodeShopMessage"),text,"error");
-  }finally{
-    button.disabled=false;
-    button.innerHTML=old;
-  }
-}
-function showNodeDelivery(delivery){
-  let content=delivery.clash_yaml||delivery.uri||"";
-  if(delivery.http_uri){
-    const sections=[];
-    if(delivery.uri)sections.push("HTTPS 连接\n"+delivery.uri);
-    sections.push("HTTP 连接\n"+delivery.http_uri);
-    if(delivery.clash_yaml)sections.push("Clash 配置\n"+delivery.clash_yaml);
-    content=sections.join("\n\n");
-  }
-  $("deliveryTitle").textContent=delivery.protocol==="mtproto"?"Telegram 代理已开通":"节点已开通";
-  $("deliveryContent").textContent=content;
-  $("copyDelivery").textContent=delivery.protocol==="mtproto"?"复制 Telegram 链接":delivery.http_uri?"复制 HTTP/HTTPS 配置":delivery.clash_yaml?"复制 Clash 配置":"复制连接链接";
-  const modalCopy=document.querySelector(".modal-copy");
-  if(modalCopy)modalCopy.textContent=delivery.http_uri?"HTTP、HTTPS 与 Clash 配置已生成，请分别选择适合的客户端使用。":delivery.instructions||"请立即复制并保存节点配置。";
-  $("deliveryModal").hidden=false;
-}
-
 function showDelivery(content) {
   $("deliveryContent").textContent = String(content || "");
   $("deliveryModal").hidden = false;
@@ -836,7 +720,6 @@ function initShop() {
   if (initialCatalog && initialCatalog.length) renderProducts(initialCatalog, { verified: false });
   else readCachedProducts();
   loadProducts({silent:true});
-  loadNodeProducts();
   startCatalogAutoRefresh();
   loadUser().catch(error => {
     // Do not block public catalog requests when account-profile hydration is unavailable.
