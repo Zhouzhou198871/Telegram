@@ -152,6 +152,9 @@ async function originRequest(env, method, path, payload) {
 }
 
 const INTERNAL_CNY_PER_USDT = 4;
+const API_MIN_BALANCE_CNY = 500;
+const API_MIN_BALANCE_UNITS = 1250000; // ¥500 at ¥4/USDT and 10,000 internal units/USDT.
+let apiLedgerSchemaReady = false;
 
 function makeReferralCode() {
   const bytes = crypto.getRandomValues(new Uint8Array(5));
@@ -840,13 +843,14 @@ async function userApiKeys(request, env) {
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
   if (request.method === "GET") {
     const result = await env.DB.prepare("SELECT id,key_prefix,label,created_at,last_used_at,revoked_at FROM user_api_keys WHERE user_id=? ORDER BY created_at DESC LIMIT 20").bind(claims.sub).all();
-    return reply(request, env, { ok: true, eligible: (await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(claims.sub).first()).balance_units >= 500000,
+    return reply(request, env, { ok: true, eligible: (await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(claims.sub).first()).balance_units >= API_MIN_BALANCE_UNITS,
+      required_cny: API_MIN_BALANCE_CNY,
       keys: (result.results || []).map(row => ({ id: row.id, key_prefix: row.key_prefix, label: row.label, created_at: Number(row.created_at), last_used_at: row.last_used_at ? Number(row.last_used_at) : null, revoked: Boolean(row.revoked_at) })) });
   }
   let body;
   try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
   const user = await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(claims.sub).first();
-  if (!user || Number(user.balance_units || 0) < 500000) return reply(request, env, { ok: false, error: "api_balance_requirement", required_cny: 200 }, 403);
+  if (!user || Number(user.balance_units || 0) < API_MIN_BALANCE_UNITS) return reply(request, env, { ok: false, error: "api_balance_requirement", required_cny: API_MIN_BALANCE_CNY }, 403);
   const active = await env.DB.prepare("SELECT COUNT(*) AS total FROM user_api_keys WHERE user_id=? AND revoked_at IS NULL").bind(claims.sub).first();
   if (Number(active?.total || 0) >= 5) return reply(request, env, { ok: false, error: "api_key_limit" }, 409);
   const label = String(body.label || "默认 API 密钥").trim().slice(0, 40) || "默认 API 密钥";
@@ -877,22 +881,87 @@ async function userApiUsage(request, env) {
   return reply(request, env, { ok: true, logs: (result.results || []).map(row => ({ id: row.id, endpoint: row.endpoint, method: row.method, status_code: Number(row.status_code), created_at: Number(row.created_at) })) });
 }
 
+async function ensureApiLedger(env) {
+  if (apiLedgerSchemaReady) return;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS api_billing_ledger (id TEXT PRIMARY KEY, order_id TEXT NOT NULL, user_id TEXT NOT NULL, key_id TEXT NOT NULL, product_id TEXT NOT NULL, action TEXT NOT NULL CHECK(action IN ('debit','refund')), amount_units INTEGER NOT NULL CHECK(amount_units>0), balance_after_units INTEGER NOT NULL, created_at INTEGER NOT NULL, UNIQUE(order_id,action))").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_api_billing_user_created ON api_billing_ledger(user_id,created_at DESC)").run();
+  apiLedgerSchemaReady = true;
+}
+async function apiKeyContext(request, env, endpoint) {
+  const header=request.headers.get("Authorization")||"";
+  const key=header.startsWith("Bearer ")?header.slice(7).trim():"";
+  if(!/^qt_live_[a-f0-9]{64}$/.test(key)) return {error:reply(request,env,{ok:false,error:"api_key_required"},401)};
+  const hash=hexBytes(await sha256(key));
+  const row=await env.DB.prepare("SELECT k.id AS key_id,k.user_id,u.email,u.balance_units,u.nickname,u.token_version,u.tg_user_id FROM user_api_keys k JOIN users u ON u.id=k.user_id WHERE k.key_hash=? AND k.revoked_at IS NULL").bind(hash).first();
+  if(!row) return {error:reply(request,env,{ok:false,error:"invalid_api_key"},401)};
+  const balance=Number(row.balance_units||0),now=Math.floor(Date.now()/1000);
+  await env.DB.prepare("UPDATE user_api_keys SET last_used_at=? WHERE id=?").bind(now,row.key_id).run();
+  if(balance<API_MIN_BALANCE_UNITS){
+    await env.DB.prepare("INSERT INTO user_api_usage(id,key_id,user_id,endpoint,method,status_code,created_at) VALUES(?,?,?,?,?,403,?)").bind(crypto.randomUUID(),row.key_id,row.user_id,endpoint,request.method,now).run();
+    return {error:reply(request,env,{ok:false,error:"api_balance_requirement",required_cny:API_MIN_BALANCE_CNY,balance_cny:(balance/10000*INTERNAL_CNY_PER_USDT).toFixed(2),message:"API 调用账户余额必须保持不低于 ¥500。"},403)};
+  }
+  return {row};
+}
+async function recordApiUsage(env,row,endpoint,method,status) {
+  await env.DB.prepare("INSERT INTO user_api_usage(id,key_id,user_id,endpoint,method,status_code,created_at) VALUES(?,?,?,?,?,?,?)")
+    .bind(crypto.randomUUID(),row.key_id,row.user_id,endpoint,method,status,Math.floor(Date.now()/1000)).run();
+}
 async function publicApiAccount(request, env) {
-  const header = request.headers.get("Authorization") || "";
-  const key = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
-  if (!/^qt_live_[a-f0-9]{64}$/.test(key)) return reply(request, env, { ok: false, error: "api_key_required" }, 401);
-  const hash = hexBytes(await sha256(key));
-  const row = await env.DB.prepare("SELECT k.id AS key_id,k.user_id,u.email,u.balance_units,u.nickname FROM user_api_keys k JOIN users u ON u.id=k.user_id WHERE k.key_hash=? AND k.revoked_at IS NULL")
-    .bind(hash).first();
-  if (!row) return reply(request, env, { ok: false, error: "invalid_api_key" }, 401);
-  const now = Math.floor(Date.now()/1000), balanceUnits = Number(row.balance_units || 0);
-  if (balanceUnits < 500000) return reply(request, env, { ok: false, error: "api_balance_requirement", required_cny: 200 }, 403);
-  await env.DB.batch([
-    env.DB.prepare("UPDATE user_api_keys SET last_used_at=? WHERE id=?").bind(now, row.key_id),
-    env.DB.prepare("INSERT INTO user_api_usage(id,key_id,user_id,endpoint,method,status_code,created_at) VALUES(?,?,?,?,?,200,?)")
-      .bind(crypto.randomUUID(), row.key_id, row.user_id, "/api/v1/account", "GET", now)
-  ]);
-  return reply(request, env, { ok: true, data: { email: row.email, nickname: row.nickname || "", balance_cny: (balanceUnits / 10000 * INTERNAL_CNY_PER_USDT).toFixed(2), currency: "CNY" } });
+  const auth=await apiKeyContext(request,env,"/api/v1/account"); if(auth.error)return auth.error;
+  const row=auth.row, balance=Number(row.balance_units||0);
+  await recordApiUsage(env,row,"/api/v1/account","GET",200);
+  return reply(request,env,{ok:true,data:{email:row.email,nickname:row.nickname||"",balance_cny:(balance/10000*INTERNAL_CNY_PER_USDT).toFixed(2),api_minimum_balance_cny:API_MIN_BALANCE_CNY,currency:"CNY"}});
+}
+async function publicApiProducts(request,env,productId=null) {
+  const endpoint=productId?"/api/v1/products/"+productId:"/api/v1/products";
+  const auth=await apiKeyContext(request,env,endpoint);if(auth.error)return auth.error;
+  const response=await products(request,env),payload=await response.json();
+  if(!payload.ok){await recordApiUsage(env,auth.row,endpoint,"GET",response.status);return reply(request,env,payload,response.status);}
+  let items=payload.items||[];
+  if(productId) items=items.filter(x=>String(x.product_id)===productId);
+  if(productId&&!items.length){await recordApiUsage(env,auth.row,endpoint,"GET",404);return reply(request,env,{ok:false,error:"product_not_found"},404);}
+  await recordApiUsage(env,auth.row,endpoint,"GET",200);
+  return reply(request,env,{ok:true,count:items.length,updated_at:payload.updated_at,catalog_stale:payload.catalog_stale,items});
+}
+async function publicApiOrders(request,env) {
+  const endpoint="/api/v1/orders",auth=await apiKeyContext(request,env,endpoint);if(auth.error)return auth.error;
+  if(request.method==="GET"){
+    const rows=await env.DB.prepare("SELECT p.order_id,p.product_id,p.amount_units,p.status,p.error_code,p.created_at,p.updated_at,c.name AS product_name FROM web_purchases p LEFT JOIN shop_catalog c ON c.product_id=p.product_id WHERE p.user_id=? ORDER BY p.created_at DESC LIMIT 100").bind(auth.row.user_id).all();
+    await recordApiUsage(env,auth.row,endpoint,"GET",200);
+    return reply(request,env,{ok:true,count:(rows.results||[]).length,orders:(rows.results||[]).map(x=>({order_id:x.order_id,product_id:x.product_id,product_name:x.product_name||x.product_id,amount_cny:(Number(x.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),currency:"CNY",status:x.status,error_code:x.error_code||null,created_at:Number(x.created_at),updated_at:Number(x.updated_at)}))});
+  }
+  let body;try{body=await request.json();}catch{return reply(request,env,{ok:false,error:"invalid_json"},400);}
+  const productId=String(body.product_id||"").trim(),idem=request.headers.get("Idempotency-Key")||"";
+  if(!productId||productId.length>100||idem.length<12||idem.length>128){await recordApiUsage(env,auth.row,endpoint,"POST",400);return reply(request,env,{ok:false,error:"invalid_order_request",message:"product_id 必填，并提供至少 12 位 Idempotency-Key。"},400);}
+  const token=await signToken({sub:auth.row.user_id,email:auth.row.email,iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+300,ver:Number(auth.row.token_version||0)},env.JWT_SECRET||"");
+  const headers=new Headers(request.headers);headers.set("Authorization","Bearer "+token);headers.set("Idempotency-Key",idem);
+  const internalRequest=new Request(request.url,{method:"POST",headers,body:JSON.stringify({product_id:productId})});
+  const result=await buy(internalRequest,env);
+  const status=result.status,payload=await result.clone().json().catch(()=>({ok:false,error:"invalid_buy_response"}));
+  await recordApiUsage(env,auth.row,endpoint,"POST",status);
+  if(payload.order_id){
+    await ensureApiLedger(env);
+    const purchase=await env.DB.prepare("SELECT order_id,product_id,amount_units,status FROM web_purchases WHERE order_id=? AND user_id=?").bind(payload.order_id,auth.row.user_id).first();
+    if(purchase){
+      const balanceRow=await env.DB.prepare("SELECT balance_units FROM users WHERE id=?").bind(auth.row.user_id).first();
+      const balanceAfter=Number(balanceRow?.balance_units||0),amount=Number(purchase.amount_units||0),now=Math.floor(Date.now()/1000);
+      if(purchase.status==="refunded"){
+        await env.DB.batch([
+          env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now),
+          env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'refund',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now)
+        ]);
+      } else {
+        await env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now).run();
+      }
+    }
+  }
+  return reply(request,env,payload,status);
+}
+async function userApiBilling(request,env) {
+  let claims;try{claims=await verifyToken(request,env);}catch(e){return reply(request,env,{ok:false,error:e.message},401);}
+  await ensureApiLedger(env);
+  const rows=await env.DB.prepare("SELECT id,order_id,product_id,key_id,action,amount_units,balance_after_units,created_at FROM api_billing_ledger WHERE user_id=? ORDER BY created_at DESC LIMIT 100").bind(claims.sub).all();
+  return reply(request,env,{ok:true,entries:(rows.results||[]).map(x=>({id:x.id,order_id:x.order_id,product_id:x.product_id,key_id:x.key_id,action:x.action,amount_cny:(Number(x.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),balance_after_cny:(Number(x.balance_after_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),created_at:Number(x.created_at)}))});
 }
 
 async function confirmRecharge(request, env) {
@@ -1460,6 +1529,11 @@ export default {
       const revokeKeyMatch = url.pathname.match(/^\/api\/user\/api-keys\/([a-f0-9-]{36})$/i);
       if (revokeKeyMatch && request.method === "DELETE") return await revokeUserApiKey(request, env, revokeKeyMatch[1]);
       if (url.pathname === "/api/v1/account" && request.method === "GET") return await publicApiAccount(request, env);
+       if (url.pathname === "/api/v1/products" && request.method === "GET") return await publicApiProducts(request, env);
+       const publicProductMatch=url.pathname.match(/^\/api\/v1\/products\/([^/]+)$/);
+       if (publicProductMatch && request.method === "GET") return await publicApiProducts(request, env, decodeURIComponent(publicProductMatch[1]));
+       if (url.pathname === "/api/v1/orders" && ["GET","POST"].includes(request.method)) return await publicApiOrders(request, env);
+       if (url.pathname === "/api/user/api-billing" && request.method === "GET") return await userApiBilling(request, env);
       if (url.pathname === "/api/admin/recharge/confirm" && request.method === "POST") return await confirmRecharge(request, env);
       if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
       if (url.pathname === "/api/user/orders" && request.method === "GET") return await userOrders(request, env);
