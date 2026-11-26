@@ -762,9 +762,18 @@ async function userNodeOrders(request,env){
     ]);
     return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery},201);
   }catch(e){
-    if(account?.client_ref){try{await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account.client_ref,server_ref:serverRef})}catch{}}
-    await refundNodeOrder(env,orderId,String(e.message||"node_provision_failed"));
-    return reply(request,env,{ok:false,order_id:orderId,status:"refunded",error:"node_provision_failed"},502);
+    let cleanupConfirmed=false;
+    try{
+      const cleanup=await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account?.client_ref||orderId,server_ref:serverRef});
+      cleanupConfirmed=cleanup?.ok===true;
+    }catch{}
+    if(cleanupConfirmed){
+      await refundNodeOrder(env,orderId,String(e.message||"node_provision_failed"));
+      return reply(request,env,{ok:false,order_id:orderId,status:"refunded",error:"node_provision_failed"},502);
+    }
+    await env.DB.prepare("UPDATE node_orders SET error_code='node_provision_result_uncertain',updated_at=? WHERE order_id=? AND status='provisioning'")
+      .bind(Math.floor(Date.now()/1000),orderId).run();
+    return reply(request,env,{ok:true,order_id:orderId,status:"provisioning",error_code:"node_provision_result_uncertain",message:"节点开通结果正在核对，请勿重复下单。"},202);
   }
 }
 async function nodeOrderStatus(request,env,orderId){
