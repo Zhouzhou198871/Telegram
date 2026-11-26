@@ -4,6 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7f9fc">
 <title>API 工作台 · 晴天号铺</title><link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=api-workbench-20261126-v1">
 <style>
+.account-subnav{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.account-subnav a{display:inline-flex;align-items:center;min-height:36px;padding:7px 10px;border:1px solid #e1e8f0;border-radius:8px;background:#fff;color:#4b82bf;text-decoration:none;font-size:12px;white-space:nowrap}.account-subnav a[aria-current="page"]{background:#edf5ff;border-color:#bfd8f5;color:#2468b5;font-weight:750}@media(max-width:620px){.account-subnav{width:100%;justify-content:flex-start;gap:5px}.account-subnav a{min-height:32px;padding:6px 8px;font-size:11px}}
 body[data-page="workbench"]{background:#f7f9fc;color:#243247;min-height:100vh}
 .wb-header{width:min(1160px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
 .wb-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#243247;font-size:19px;font-weight:800}.wb-brand img{width:42px;height:42px;border-radius:12px;object-fit:cover}
@@ -30,7 +31,7 @@ body[data-page="workbench"]{background:#f7f9fc;color:#243247;min-height:100vh}
 </style>
 </head>
 <body data-page="workbench">
-<header class="wb-header"><a class="wb-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><a class="wb-home" href="./shop.html">返回首页</a></header>
+<header class="wb-header"><a class="wb-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><nav class="account-subnav" aria-label="账户导航"><a href="./orders.html">订单详情</a><a href="./profile.html">个人中心</a><a href="./invite.html">邀请奖励</a><a href="./workbench.html" aria-current="page">工作台</a><a href="./profile.html#recharge">充值入口</a></nav></header>
 <main class="wb-main">
 <nav class="wb-breadcrumb"><a href="./shop.html">首页</a> / <span>API 开放工作台</span></nav>
 <div class="wb-title"><h1>API 开放工作台</h1><p>管理 API 密钥、查询账号商品、提交购买订单，并追踪调用与扣费记录。</p></div>
@@ -96,5 +97,6 @@ body[data-page="workbench"]{background:#f7f9fc;color:#243247;min-height:100vh}
 <div id="wbBilling" class="wb-table-wrap"><div class="wb-empty">正在读取扣费记录…</div></div>
 </section>
 </main>
+<footer class="footer-note" style="width:100%;margin:0 auto 18px;text-align:center;color:#a1aab8;font-size:10px;line-height:1.7">2026 晴天号铺 版权所有<br>所有账号仅供合法合规用途，严禁用于任何违法行为。</footer>
 <script src="./workbench.js?v=api-workbench-20261126-v1" defer></script>
 </body></html>
