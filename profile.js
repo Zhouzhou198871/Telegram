@@ -161,7 +161,8 @@
         const card=document.createElement("article");card.className="node-order-card";
         const title=document.createElement("h4");title.textContent=(labels[account.protocol]||String(account.protocol||"").toUpperCase())+" · "+(account.status==="active"?"使用中":account.status==="exhausted"?"流量已用尽":account.status==="expired"?"已到期":"已停用");card.append(title);
         const limit=Number(account.traffic_limit_bytes||0),used=Number(account.traffic_used_bytes||0);
-        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="节点："+(account.server_ref||"—")+"\n到期："+dateText(account.expires_at)+"\n流量："+bytes(used)+" / "+(limit?bytes(limit):"不限");card.append(meta);
+        const trafficText=data.traffic_usage_available?"流量："+bytes(used)+" / "+(limit?bytes(limit):"不限"):"流量上限："+(limit?bytes(limit):"不限")+"\n已用流量：暂未接入实时统计";
+        const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="节点："+(account.server_ref||"—")+"\n到期："+dateText(account.expires_at)+"\n"+trafficText;card.append(meta);
         const order=orderMap.get(account.order_id),delivery=order?.delivery,actions=document.createElement("div");actions.className="node-order-actions";
         const config=delivery?.clash_yaml||delivery?.uri;
         if(config){const copy=document.createElement("button");copy.type="button";copy.textContent=delivery?.clash_yaml?"复制 Clash 配置":"复制连接配置";copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(config);message("nodeOrderMessage","连接配置已复制。","success");}catch{message("nodeOrderMessage","复制失败，请重试。","error");}});actions.append(copy);}
