@@ -728,9 +728,9 @@ async function userRechargeOrders(request, env) {
     }
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
     const creditUnits = Math.round(cents * 25); // ¥4 = 1 USDT; balance is stored in 1/10000 USDT.
-    await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?, 'USDT_TRC20','pending',?,?)")
-      .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, now, now).run();
-    return reply(request, env, { ok: true, order: { order_id: orderId, amount_cny: (cents/100).toFixed(2), payment_method: "USDT_TRC20", status: "pending", created_at: now }, payment_instructions: "请先联系官方客服获取实时收款地址；付款后提交订单号与凭证，由客服核验入账。" }, 201);
+    await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
+      .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, paymentMethod, now, now).run();
+    return reply(request, env, { ok: true, order: { order_id: orderId, amount_cny: (cents/100).toFixed(2), payment_method: paymentMethod, status: "pending", created_at: now }, payment_instructions: "请先联系官方客服获取实时收款地址；付款后提交订单号与凭证，由客服核验入账。" }, 201);
   }
   const result = await env.DB.prepare("SELECT order_id,amount_cny,payment_method,status,created_at,updated_at,paid_at FROM recharge_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100")
     .bind(claims.sub).all();
@@ -739,6 +739,66 @@ async function userRechargeOrders(request, env) {
     payment_method: String(row.payment_method), status: String(row.status),
     created_at: Number(row.created_at), updated_at: Number(row.updated_at), paid_at: row.paid_at ? Number(row.paid_at) : null
   })) });
+}
+
+
+let userWithdrawalsSchemaReady = false;
+async function ensureUserWithdrawalsSchema(env) {
+  if (userWithdrawalsSchemaReady) return;
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS user_withdrawals (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, amount_units INTEGER NOT NULL, payment_method TEXT NOT NULL, account_value TEXT NOT NULL, holder_name TEXT NOT NULL DEFAULT '', status TEXT NOT NULL DEFAULT 'pending', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, resolved_at INTEGER)").run();
+  await env.DB.prepare("CREATE INDEX IF NOT EXISTS idx_user_withdrawals_user_created ON user_withdrawals(user_id,created_at DESC)").run();
+  await env.DB.prepare("CREATE UNIQUE INDEX IF NOT EXISTS idx_user_withdrawals_one_pending ON user_withdrawals(user_id) WHERE status='pending'").run();
+  userWithdrawalsSchemaReady = true;
+}
+async function userWithdrawals(request, env) {
+  let claims;
+  try { claims = await verifyToken(request, env); }
+  catch (e) { return reply(request, env, { ok:false, error:e.message }, 401); }
+  await ensureUserWithdrawalsSchema(env);
+  if (request.method === "GET") {
+    const user = await findUserById(env, claims.sub);
+    if (!user) return reply(request, env, {ok:false,error:"user_not_found"},404);
+    const rows = await env.DB.prepare("SELECT id,amount_units,payment_method,status,created_at,updated_at FROM user_withdrawals WHERE user_id=? ORDER BY created_at DESC LIMIT 50").bind(claims.sub).all();
+    return reply(request, env, {ok:true,balance_cny:(Number(user.balance_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),withdrawals:(rows.results||[]).map(x=>({id:x.id,amount_cny:(Number(x.amount_units)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),payment_method:x.payment_method,status:x.status,created_at:Number(x.created_at),updated_at:Number(x.updated_at)}))});
+  }
+  let body;
+  try { body=await request.json(); } catch { return reply(request,env,{ok:false,error:"invalid_json"},400); }
+  const method=String(body.payment_method||"").toUpperCase(), account=String(body.account||"").trim(), holder=String(body.holder_name||"").trim();
+  if (!["ALIPAY","USDT_TRC20"].includes(method) || !account || account.length>120 || holder.length>80 || (method==="ALIPAY"&&!holder) || (method==="USDT_TRC20"&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(account))) return reply(request,env,{ok:false,error:"invalid_withdrawal_details"},400);
+  const id=crypto.randomUUID(), now=Math.floor(Date.now()/1000);
+  try {
+    await env.DB.prepare("INSERT INTO user_withdrawals(id,user_id,amount_units,payment_method,account_value,holder_name,status,created_at,updated_at) SELECT ?,id,balance_units,?,?,?,'pending',?,? FROM users WHERE id=? AND balance_units>0 AND NOT EXISTS (SELECT 1 FROM user_withdrawals WHERE user_id=? AND status='pending')")
+      .bind(id,method,account,holder,now,now,claims.sub,claims.sub).run();
+  } catch {
+    const pending=await env.DB.prepare("SELECT id FROM user_withdrawals WHERE user_id=? AND status='pending' LIMIT 1").bind(claims.sub).first();
+    return reply(request,env,{ok:false,error:pending?"withdrawal_pending":"withdrawal_create_failed"},409);
+  }
+  const created=await env.DB.prepare("SELECT amount_units FROM user_withdrawals WHERE id=? AND user_id=? AND status='pending'").bind(id,claims.sub).first();
+  if (!created) return reply(request,env,{ok:false,error:"insufficient_balance"},409);
+  const units=Number(created.amount_units||0);
+  const changed=await env.DB.prepare("UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=?").bind(units,units,now,claims.sub,units).run();
+  if (Number(changed.meta?.changes||0)!==1) {
+    await env.DB.prepare("DELETE FROM user_withdrawals WHERE id=? AND status='pending'").bind(id).run();
+    return reply(request,env,{ok:false,error:"insufficient_balance"},409);
+  }
+  return reply(request,env,{ok:true,withdrawal:{id,amount_cny:(units/10000*INTERNAL_CNY_PER_USDT).toFixed(2),payment_method:method,status:"pending",created_at:now}},201);
+}
+
+async function resolveUserWithdrawal(request, env) {
+  if (!env.ADMIN_API_KEY || request.headers.get("X-Admin-Key") !== env.ADMIN_API_KEY) return reply(request,env,{ok:false,error:"unauthorized"},401);
+  let body; try { body=await request.json(); } catch { return reply(request,env,{ok:false,error:"invalid_json"},400); }
+  const id=String(body.id||"").trim(), decision=String(body.decision||"").toLowerCase();
+  if (!id || !["approve","reject"].includes(decision)) return reply(request,env,{ok:false,error:"invalid_request"},400);
+  await ensureUserWithdrawalsSchema(env);
+  const now=Math.floor(Date.now()/1000);
+  if (decision==="approve") {
+    const row=await env.DB.prepare("UPDATE user_withdrawals SET status='approved',updated_at=?,resolved_at=? WHERE id=? AND status='pending' RETURNING id").bind(now,now,id).first();
+    return row?reply(request,env,{ok:true,id,status:"approved",note:"请完成线下转账"}):reply(request,env,{ok:false,error:"withdrawal_not_pending"},409);
+  }
+  const changed=await env.DB.prepare("UPDATE user_withdrawals SET status='rejected',updated_at=?,resolved_at=? WHERE id=? AND status='pending'").bind(now,now,id).run();
+  if (Number(changed.meta?.changes||0)!==1) return reply(request,env,{ok:false,error:"withdrawal_not_pending"},409);
+  const refund=await env.DB.prepare("UPDATE users SET balance_units=balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?),balance=ROUND((balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?))/10000.0,4),updated_at=? WHERE id=(SELECT user_id FROM user_withdrawals WHERE id=?)").bind(id,id,now,id).run();
+  return reply(request,env,{ok:true,id,status:"rejected",refunded:Number(refund.meta?.changes||0)===1});
 }
 
 async function userApiKeys(request, env) {
@@ -1255,6 +1315,8 @@ export default {
       if (url.pathname === "/api/user/profile" && request.method === "POST") return await updateUserProfile(request, env);
       if (url.pathname === "/api/user/change-password" && request.method === "POST") return await changeUserPassword(request, env);
       if (url.pathname === "/api/user/recharge-orders" && ["GET","POST"].includes(request.method)) return await userRechargeOrders(request, env);
+      if (url.pathname === "/api/user/withdrawals" && ["GET","POST"].includes(request.method)) return await userWithdrawals(request, env);
+      if (url.pathname === "/api/admin/withdrawals/resolve" && request.method === "POST") return await resolveUserWithdrawal(request, env);
       if (url.pathname === "/api/user/api-keys" && ["GET","POST"].includes(request.method)) return await userApiKeys(request, env);
       if (url.pathname === "/api/user/api-usage" && request.method === "GET") return await userApiUsage(request, env);
       const revokeKeyMatch = url.pathname.match(/^\/api\/user\/api-keys\/([a-f0-9-]{36})$/i);

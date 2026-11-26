@@ -163,17 +163,6 @@
       finally{button.disabled=false;}
     });
     $("changePassword").addEventListener("click",revokePasswordFlow);
-    const openAccountCenter=(tab="recharge")=>{$("accountCenter").hidden=false;setServiceTab(tab);$("accountCenter").scrollIntoView({behavior:"smooth",block:"start"});};
-    $("openAccountCenter").addEventListener("click",()=>openAccountCenter("recharge"));
-    $("closeAccountCenter").addEventListener("click",()=>$("accountCenter").hidden=true);
-    const deepLink=String(location.hash||"").toLowerCase();
-    if(deepLink==="#accountcenter")openAccountCenter("api");
-    else if(deepLink==="#recharge")openAccountCenter("recharge");
-    document.querySelectorAll("[data-service-tab]").forEach(button=>button.addEventListener("click",()=>setServiceTab(button.dataset.serviceTab)));
-    document.querySelectorAll("[data-recharge-amount]").forEach(button=>button.addEventListener("click",()=>{$("rechargeAmount").value=button.dataset.rechargeAmount;document.querySelectorAll("[data-recharge-amount]").forEach(x=>x.setAttribute("aria-pressed",String(x===button)));}));
-    $("createRechargeOrder").addEventListener("click",createRecharge);
-    $("createApiKey").addEventListener("click",createApiKey);
-    $("copyApiKey").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("newApiKey").textContent);message("apiMessage","密钥已复制。","success");}catch{message("apiMessage","复制失败，请手动复制密钥。","error");}});
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
