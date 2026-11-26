@@ -18,7 +18,7 @@ body[data-page="orders"]{background:#f7f9fc!important;color:#243247!important;mi
 .orders-filter.active{border-color:#8bb8ef;background:#eef6ff;color:#2868b5}
 .orders-list{display:grid;gap:13px}.order-card{padding:17px;border:1px solid #e0e5ec;border-radius:15px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
 .order-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.order-heading{min-width:0}.order-kind{display:inline-block;margin-bottom:5px;color:#8290a3;font-size:11px;font-weight:700}.order-name{font-weight:750;font-size:16px;line-height:1.55;overflow-wrap:anywhere;color:#243247}
-.order-status{white-space:nowrap;border-radius:20px;padding:5px 9px;font-size:12px;background:#eff6ff;color:#2563eb}.order-status.status-delivered,.order-status.status-fulfilled,.order-status.status-paid,.order-status.status-active{background:#ecfdf3;color:#16834a}.order-status.status-refunded,.order-status.status-failed{background:#fff1f2;color:#dc2626}.order-status.status-expired{background:#f1f5f9;color:#64748b}
+.order-status{white-space:nowrap;border-radius:20px;padding:5px 9px;font-size:12px;background:#eff6ff;color:#2563eb}.order-status.status-delivered,.order-status.status-fulfilled,.order-status.status-paid,.order-status.status-active{background:#ecfdf3;color:#16834a}.order-status.status-refunded,.order-status.status-failed,.order-status.status-closed{background:#fff1f2;color:#dc2626}.order-status.status-expired{background:#f1f5f9;color:#64748b}
 .order-meta{font-size:12px;color:#8390a2;line-height:1.8;margin-top:9px;overflow-wrap:anywhere;white-space:pre-line}
 .order-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:13px}.order-price{font-size:19px;font-weight:800;color:#16834a}
 .detail-toggle,.detail-action{border:1px solid #d7e4f5;border-radius:9px;background:#f4f8ff;color:#2868c7;padding:9px 12px;font-size:13px;font-weight:700;cursor:pointer}.detail-toggle:disabled,.detail-action:disabled{opacity:.55;cursor:wait}
@@ -33,11 +33,11 @@ body[data-page="orders"]{background:#f7f9fc!important;color:#243247!important;mi
 <header class="orders-header"><a class="orders-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天商城"><span>晴天商城</span></a><div class="orders-actions"><a href="./shop.html" aria-label="返回首页">返回首页</a></div></header>
 <main class="orders-main">
 <nav class="orders-breadcrumb" aria-label="当前位置"><a href="./shop.html" data-i18n="home">首页</a>　/　<a href="./shop.html#accountMenu" data-i18n="myAccount">我的账户</a>　/　<span aria-current="page" data-i18n="title">订单详情</span></nav>
-<div class="orders-title-row"><div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 id="ordersTitle">订单详情</h1><button id="languageToggle" type="button" class="detail-action">English</button><button id="refreshOrders" type="button" class="detail-action" data-i18n="refresh">刷新订单</button></div><p class="orders-subtitle" id="ordersSubtitle">集中查看账号商品购买和账户充值订单。订单状态与交付信息来自你的账户记录。</p></div><span class="orders-count"><span id="ordersCount">0</span> 条</span></div>
+<div class="orders-title-row"><div><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h1 id="ordersTitle">订单详情</h1><button id="languageToggle" type="button" class="detail-action">English</button><button id="refreshOrders" type="button" class="detail-action" data-i18n="refresh">刷新订单</button></div><p class="orders-subtitle" id="ordersSubtitle">查看你的商品订单、付款状态、发货进度与已交付卡密。</p></div><span class="orders-count"><span id="ordersCount">0</span> 条</span></div>
 <nav class="orders-filters" aria-label="订单类型筛选">
 <button class="orders-filter active" type="button" data-filter="all">全部</button>
 <button class="orders-filter" type="button" data-filter="goods">商品订单</button>
-<button class="orders-filter" type="button" data-filter="recharge">充值订单</button>
+
 </nav>
 <section id="ordersList" class="orders-list" aria-live="polite"><div class="orders-state">正在读取订单…</div></section>
 </main>
