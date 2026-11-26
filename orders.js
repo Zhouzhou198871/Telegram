@@ -30,7 +30,10 @@ async function api(path) {
   cache:"no-store"
  });
  let data={}; try { data=await response.json(); } catch {}
- if(response.status===401){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("unauthorized");}
+ // 后端统一把业务错误包装成 HTTP 200，真实状态放在 http_status 中。
+ if(response.status===401 || Number(data.http_status)===401 || data.message==="unauth" || data.message==="登录已过期"){
+  localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("unauthorized");
+ }
  if(!response.ok || data.status==="fail" || data.code===0) throw new Error(data.message||data.msg||"request_failed");
  return data;
 }
