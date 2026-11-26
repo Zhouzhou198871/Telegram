@@ -419,7 +419,7 @@ function storefrontDescription(value) {
   const detail=parts.length>1?parts.slice(1).filter(x=>!/^\[?货号/i.test(x)&&!/单次最多购买|最多购买\s*\d+/i.test(x)).join(" · "):"";
   return detail.length>76?detail.slice(0,73)+"…":detail;
 }
-function storefrontPopularityScore(name,icon) {
+function storefrontPopularityScore(name,icon,source={}) {
   const n=String(name||"").toLowerCase(), i=String(icon||"").toLowerCase();
   const rules=[
     [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
@@ -431,9 +431,12 @@ function storefrontPopularityScore(name,icon) {
     [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/textnow/i,56],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
   ];
   const hit=rules.find(([pattern])=>pattern.test(n));
-  if(hit)return hit[1];
+  const base=hit?hit[1]:(ranks[i]||0);
+  const hot=source?.IsHot===true || String(source?.IsHot||"").toLowerCase()==="true";
+  const recommended=source?.IsRecommend===true || String(source?.IsRecommend||"").toLowerCase()==="true";
+  return (hot?120:0)+(recommended?60:0)+base;
   const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
-  return ranks[i]||0;
+
 }
 async function renderStorefront(res) {
   const fileUrl = new URL("../shop.html", import.meta.url);
@@ -444,7 +447,7 @@ async function renderStorefront(res) {
     const latest=Number(freshness[0]?.latest||0);
     const fresh=latest>0 && Math.floor(Date.now()/1000)-latest<=180;
     const rows=await db.unsafe("SELECT product_id,name,category_name,price_cny,price_usdt,stock,is_on_sale,is_local_inventory,purchasable,source,updated_at FROM shop_catalog WHERE is_on_sale=true AND stock>0");
-    rows.sort((a,b)=>storefrontPopularityScore(b.name,b.source?.Icon)-storefrontPopularityScore(a.name,a.source?.Icon) || Number(b.updated_at||0)-Number(a.updated_at||0) || String(a.name||"").localeCompare(String(b.name||"")));
+    rows.sort((a,b)=>storefrontPopularityScore(b.name,b.source?.Icon,b.source)-storefrontPopularityScore(a.name,a.source?.Icon,a.source) || Number(b.updated_at||0)-Number(a.updated_at||0) || String(a.name||"").localeCompare(String(b.name||"")));
     const products=rows.slice(0,48).map(row=>{
       const source=row.source&&typeof row.source==="object"?row.source:{};
       return {product_id:String(row.product_id),name:String(row.name||""),category:String(row.category_name||"其他商品"),
