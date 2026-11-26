@@ -120,7 +120,7 @@ async function originRequest(env, method, path, payload) {
   if (typeof env.INTERNAL_HANDLER === "function") {
     return await env.INTERNAL_HANDLER(method, path, payload);
   }
-  const signingSecret = path.startsWith("/api/internal/nodes/") ? env.NODE_STORE_SECRET : env.INTERNAL_API_SECRET;
+  const signingSecret = env.INTERNAL_API_SECRET;
   if (!env.SERVER_ORIGIN || !signingSecret) throw new Error("origin_not_configured");
   const body = payload === undefined ? "" : JSON.stringify(payload);
   const ts = String(Math.floor(Date.now() / 1000));
@@ -666,143 +666,6 @@ async function buyStatus(request, env, orderId) {
 
 
 
-function nodeHexBytes(value) {
-  const s=String(value||"").trim();
-  if(!/^[a-f0-9]{64}$/i.test(s))throw new Error("delivery_encryption_not_configured");
-  return Uint8Array.from(s.match(/.{2}/g),x=>parseInt(x,16));
-}
-function nodeB64(bytes) {
-  let s="";for(const b of bytes)s+=String.fromCharCode(b);return btoa(s);
-}
-async function encryptNodePayload(value,env) {
-  const key=await crypto.subtle.importKey("raw",nodeHexBytes(env.DELIVERY_ENCRYPTION_KEY),{name:"AES-GCM"},false,["encrypt"]);
-  const iv=crypto.getRandomValues(new Uint8Array(12));
-  const encrypted=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(value)));
-  const packed=new Uint8Array(iv.length+encrypted.length);packed.set(iv);packed.set(encrypted,iv.length);
-  return nodeB64(packed);
-}
-async function decryptNodePayload(value,env) {
-  const raw=Uint8Array.from(atob(String(value||"")),c=>c.charCodeAt(0));
-  if(raw.length<29)throw new Error("node_delivery_invalid");
-  const key=await crypto.subtle.importKey("raw",nodeHexBytes(env.DELIVERY_ENCRYPTION_KEY),{name:"AES-GCM"},false,["decrypt"]);
-  const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv:raw.slice(0,12)},key,raw.slice(12));
-  return JSON.parse(new TextDecoder().decode(clear));
-}
-function yamlScalar(value){return JSON.stringify(String(value));}
-function nodeClashYaml(proxy){
-  const keys=["name","type","server","port","uuid","alterId","cipher","network","tls","udp","flow","servername","client-fingerprint","username","password","obfs","obfs-password","sni","skip-cert-verify"];
-  const lines=["mixed-port: 7890","allow-lan: false","mode: rule","log-level: info","proxies:"];
-  lines.push("  - name: "+yamlScalar(proxy.name));
-  for(const key of keys){if(proxy[key]===undefined||proxy[key]===null)continue;const val=proxy[key];lines.push("    "+key+": "+(typeof val==="boolean"||typeof val==="number"?String(val):yamlScalar(val)));}
-  if(proxy["reality-opts"]){lines.push("    reality-opts:");for(const [k,v] of Object.entries(proxy["reality-opts"]))lines.push("      "+k+": "+yamlScalar(v));}
-  if(proxy["ws-opts"]){lines.push("    ws-opts:");lines.push("      path: "+yamlScalar(proxy["ws-opts"].path||"/"));if(proxy["ws-opts"].headers){lines.push("      headers:");for(const [k,v] of Object.entries(proxy["ws-opts"].headers))lines.push("        "+k+": "+yamlScalar(v));}}
-  lines.push("proxy-groups:","  - name: Proxy","    type: select","    proxies:","      - "+yamlScalar(proxy.name),"      - DIRECT","rules:","  - MATCH,Proxy","");
-  return lines.join("\n");
-}
-async function nodeProducts(request,env){
-  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE AND server_present=TRUE AND provisioning_ready=TRUE ORDER BY display_order").all();
-  const products=[];
-  for(const p of result.results||[]){
-    const pkgs=await env.DB.prepare("SELECT package_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices FROM node_packages WHERE product_id=? AND active=TRUE ORDER BY display_order").bind(p.product_id).all();
-    products.push({...p,packages:(pkgs.results||[]).map(x=>({...x,price_cny:Number(x.price_cny),duration_days:Number(x.duration_days),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes),max_devices:Number(x.max_devices||1)}))});
-  }
-  return reply(request,env,{ok:true,products});
-}
-async function refundNodeOrder(env,orderId,reason){
-  const now=Math.floor(Date.now()/1000);
-  await env.DB.prepare("WITH failed AS (UPDATE node_orders SET status='refunded',error_code=?,updated_at=? WHERE order_id=? AND status='provisioning' RETURNING user_id,amount_units) UPDATE users SET balance_units=users.balance_units+failed.amount_units,balance=ROUND((users.balance_units+failed.amount_units)/10000.0,4),updated_at=? FROM failed WHERE users.id=failed.user_id")
-    .bind(String(reason||"node_provision_failed").slice(0,100),now,orderId,now).run();
-}
-async function userNodeOrders(request,env){
-  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  if(request.method==="GET"){
-    const currentTime=Math.floor(Date.now()/1000);
-    await env.DB.prepare("UPDATE node_accounts SET status='expired',updated_at=? WHERE user_id=? AND status='active' AND expires_at<=?").bind(currentTime,claims.sub,currentTime).run();
-    const accountRows=await env.DB.prepare("SELECT account_id,order_id,product_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,traffic_used_bytes,status,created_at,updated_at FROM node_accounts WHERE user_id=? ORDER BY created_at DESC LIMIT 100").bind(claims.sub).all();
-    let accounts=(accountRows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0)}));
-    let trafficUsageAvailable=false;
-    if(accounts.length){
-      try{
-        const usage=await originRequest(env,"POST","/api/internal/nodes/usage",{client_refs:accounts.map(x=>x.client_ref)});
-        if(Array.isArray(usage.accounts)){
-          trafficUsageAvailable=true;
-          for(const item of usage.accounts){
-            const used=Number(item.traffic_used_bytes||0),status=String(item.status||"active");
-            await env.DB.prepare("UPDATE node_accounts SET traffic_used_bytes=?,status=?,updated_at=? WHERE client_ref=? AND user_id=?").bind(used,status,currentTime,item.client_ref,claims.sub).run();
-            const local=accounts.find(x=>x.client_ref===item.client_ref);if(local){local.traffic_used_bytes=used;local.status=status;}
-          }
-        }
-      }catch{}
-    }
-    const rows=await env.DB.prepare("SELECT o.order_id,o.product_id,o.package_id,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100").bind(claims.sub).all();
-    const orders=[];
-    for(const r of rows.results||[]){
-      let delivery=null;if(r.delivery_ciphertext&&r.status==="fulfilled"){try{delivery=await decryptNodePayload(r.delivery_ciphertext,env)}catch{}}
-      orders.push({order_id:r.order_id,product_id:r.product_id,package_id:r.package_id,product_name:r.product_name||"节点服务",package_name:r.package_name||"",amount_cny:(Number(r.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),status:r.status,error_code:r.error_code||null,created_at:Number(r.created_at),updated_at:Number(r.updated_at),delivery});
-    }
-    return reply(request,env,{ok:true,orders,accounts,traffic_usage_available:trafficUsageAvailable});
-  }
-  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
-  const packageId=String(body.package_id||"").trim();
-  const idem=String(request.headers.get("Idempotency-Key")||body.idempotency_key||"").trim();
-  if(!packageId||idem.length<8||idem.length>120)return reply(request,env,{ok:false,error:"invalid_node_order"},400);
-  const existing=await env.DB.prepare("SELECT order_id,status,delivery_ciphertext,error_code FROM node_orders WHERE user_id=? AND idempotency_key=?").bind(claims.sub,idem).first();
-  if(existing){
-    let delivery=null;if(existing.delivery_ciphertext&&existing.status==="fulfilled"){try{delivery=await decryptNodePayload(existing.delivery_ciphertext,env)}catch{}}
-    return reply(request,env,{ok:true,order_id:existing.order_id,status:existing.status,delivery,error_code:existing.error_code||null});
-  }
-  const pkg=await env.DB.prepare("SELECT g.package_id,g.product_id,g.name AS package_name,g.price_cny,g.duration_days,g.traffic_limit_bytes,g.max_devices,p.name AS product_name,p.protocol,p.server_ref,p.provisioning_ready,p.server_present,p.active AS product_active FROM node_packages g JOIN node_products p ON p.product_id=g.product_id WHERE g.package_id=? AND g.active=TRUE").bind(packageId).first();
-  if(!pkg||!pkg.product_active||!pkg.provisioning_ready||!pkg.server_present)return reply(request,env,{ok:false,error:"node_package_unavailable"},404);
-  const cents=Math.round(Number(pkg.price_cny)*100),units=cents*25;
-  if(!Number.isSafeInteger(units)||units<1)return reply(request,env,{ok:false,error:"invalid_package_price"},409);
-  const orderId=crypto.randomUUID(),now=Math.floor(Date.now()/1000);
-  let inserted;
-  try{
-    inserted=await env.DB.prepare("WITH debit AS (UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=? RETURNING id) INSERT INTO node_orders(order_id,user_id,product_id,package_id,amount_units,status,idempotency_key,created_at,updated_at,expires_at) SELECT ?,?,?,?,?,'provisioning',?,?,?,? FROM debit RETURNING order_id")
-      .bind(units,units,now,claims.sub,units,orderId,claims.sub,pkg.product_id,pkg.package_id,units,idem,now,now,now+900).first();
-  }catch(e){
-    const dupe=await env.DB.prepare("SELECT order_id,status FROM node_orders WHERE user_id=? AND idempotency_key=?").bind(claims.sub,idem).first();
-    if(dupe)return reply(request,env,{ok:true,order_id:dupe.order_id,status:dupe.status});
-    throw e;
-  }
-  if(!inserted)return reply(request,env,{ok:false,error:"insufficient_balance",required_cny:(units/10000*INTERNAL_CNY_PER_USDT).toFixed(2)},402);
-  let account;
-  const serverRef=String(pkg.server_ref||"us").toLowerCase();
-  try{
-    const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days),server_ref:serverRef,traffic_limit_bytes:Number(pkg.traffic_limit_bytes||0)});
-    account=provisioned.account;
-    if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
-    const delivery={protocol:pkg.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"在 Telegram 客户端打开此代理链接即可添加。":"复制连接链接，在支持 "+String(pkg.protocol).toUpperCase()+" 的客户端中添加或导入。"};
-    const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
-      env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),claims.sub,pkg.product_id,orderId,pkg.protocol,serverRef,account.client_ref,Number(account.expires_at),pkg.traffic_limit_bytes,Math.floor(Date.now()/1000),Math.floor(Date.now()/1000))
-    ]);
-    return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery},201);
-  }catch(e){
-    let cleanupConfirmed=false;
-    try{
-      const cleanup=await originRequest(env,"POST","/api/internal/nodes/revoke",{protocol:pkg.protocol,client_ref:account?.client_ref||orderId,server_ref:serverRef});
-      cleanupConfirmed=cleanup?.ok===true;
-    }catch{}
-    if(cleanupConfirmed){
-      await refundNodeOrder(env,orderId,String(e.message||"node_provision_failed"));
-      return reply(request,env,{ok:false,order_id:orderId,status:"refunded",error:"node_provision_failed"},502);
-    }
-    await env.DB.prepare("UPDATE node_orders SET error_code='node_provision_result_uncertain',updated_at=? WHERE order_id=? AND status='provisioning'")
-      .bind(Math.floor(Date.now()/1000),orderId).run();
-    return reply(request,env,{ok:true,order_id:orderId,status:"provisioning",error_code:"node_provision_result_uncertain",message:"节点开通结果正在核对，请勿重复下单。"},202);
-  }
-}
-async function nodeOrderStatus(request,env,orderId){
-  let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  const row=await env.DB.prepare("SELECT o.order_id,o.status,o.amount_units,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.order_id=? AND o.user_id=?").bind(orderId,claims.sub).first();
-  if(!row)return reply(request,env,{ok:false,error:"order_not_found"},404);
-  let delivery=null;if(row.delivery_ciphertext&&row.status==="fulfilled"){try{delivery=await decryptNodePayload(row.delivery_ciphertext,env)}catch{}}
-  return reply(request,env,{ok:true,order_id:row.order_id,status:row.status,product_name:row.product_name,package_name:row.package_name,amount_cny:(Number(row.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),error_code:row.error_code||null,created_at:Number(row.created_at),updated_at:Number(row.updated_at),delivery});
-}
-
 function hexBytes(bytes) { return Array.from(bytes, b => b.toString(16).padStart(2, "0")).join(""); }
 
 async function changeUserPassword(request, env) {
@@ -996,13 +859,12 @@ async function confirmRecharge(request, env) {
 
 
 const ADMIN_ROOT_EMAIL = "chulingli1988@outlook.com";
-const ADMIN_ROLE_LABELS = { super_admin:"超级管理员", operations_admin:"运营管理员", support_admin:"客服管理员", node_admin:"节点管理员", viewer:"只读管理员" };
+const ADMIN_ROLE_LABELS = { super_admin:"超级管理员", operations_admin:"运营管理员", support_admin:"客服管理员", viewer:"只读管理员" };
 const ADMIN_ROLE_PERMISSIONS = {
  super_admin:["*"],
  operations_admin:["overview.read","orders.read","orders.manage","users.read","products.read","products.manage","inventory.read","inventory.manage","email.read","email.manage","notices.read","notices.manage","payments.read","bots.read"],
  support_admin:["overview.read","users.read","support.read","support.manage"],
- node_admin:["overview.read","users.read","nodes.read","nodes.manage","bots.read","bots.manage"],
- viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","nodes.read","support.read","bots.read"]
+ viewer:["overview.read","orders.read","users.read","products.read","inventory.read","email.read","notices.read","payments.read","support.read","bots.read"]
 };
 let adminAccountsSchemaReady=false;
 async function ensureAdminAccounts(env){
@@ -1031,15 +893,12 @@ async function adminAuthorize(request,env,permission="overview.read"){
  return auth;
 }
 function legacyAdminPermission(path,method){
- if(path.includes("/nodes/export"))return "nodes.manage";
  const suffix=method==="GET"?"read":"manage";
  if(path.includes("/stats/overview"))return "overview.read";
  if(path.includes("/stats/online"))return "users.read";
  if(path.includes("/upstream/overview"))return "products."+suffix;
- if(path.includes("/config/dnshe"))return "nodes."+suffix;
  if(path.includes("/tickets")||path.includes("/ticket/")||path.includes("/chat/"))return "support."+suffix;
  if(path.includes("/bots/matrix/")||path.includes("/bots/credentials"))return "bots."+suffix;
- if(path.includes("/nodes")||path.includes("/servers")||path.includes("/plans"))return "nodes."+suffix;
  if(path.includes("/users"))return "users."+suffix;
  if(path.includes("/orders")||path.includes("/shop/order/"))return "orders."+suffix;
  if(path.includes("/shop/products")||path.includes("/shop/product/")||path.endsWith("/products"))return "products."+suffix;
@@ -1051,13 +910,13 @@ function legacyAdminPermission(path,method){
  return "settings."+suffix;
 }
 
+
 async function adminOverview(request, env) {
   const auth = await adminAuthorize(request, env, "overview.read");
   if (auth.error) return auth.error;
-  const [users, webOrders, nodeOrders, catalog, activeCatalog, products] = await Promise.all([
+  const [users, webOrders, catalog, activeCatalog, products] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS total FROM users").first(),
     env.DB.prepare("SELECT COUNT(*) AS total FROM web_purchases").first(),
-    env.DB.prepare("SELECT COUNT(*) AS total FROM node_orders").first(),
     env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog").first(),
     env.DB.prepare("SELECT COUNT(*) AS total FROM shop_catalog WHERE is_on_sale=true AND purchasable=true").first(),
     env.DB.prepare("SELECT COUNT(*) AS total FROM products WHERE active=1").first()
@@ -1066,9 +925,8 @@ async function adminOverview(request, env) {
     ok: true,
     overview: {
       users: Number(users?.total || 0),
-      orders: Number(webOrders?.total || 0) + Number(nodeOrders?.total || 0),
+      orders: Number(webOrders?.total || 0),
       web_orders: Number(webOrders?.total || 0),
-      node_orders: Number(nodeOrders?.total || 0),
       catalog_products: Number(catalog?.total || 0),
       purchasable_products: Number(activeCatalog?.total || 0),
       synced_products: Number(products?.total || 0)
@@ -1091,6 +949,7 @@ async function adminListUsers(request, env) {
   return reply(request, env, { ok: true, users: rows.results || [], total: Number(count?.total || 0), page, limit });
 }
 
+
 async function adminListOrders(request, env) {
   const auth = await adminAuthorize(request, env, "orders.read");
   if (auth.error) return auth.error;
@@ -1099,13 +958,8 @@ async function adminListOrders(request, env) {
   const status = String(url.searchParams.get("status") || "").trim().slice(0, 40);
   const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50));
   const pattern = "%" + q + "%";
-  const [web, nodes] = await Promise.all([
-    env.DB.prepare("SELECT w.order_id,w.user_id,u.email,w.product_id,w.amount::text AS amount,w.status,w.created_at,w.updated_at,'商城订单' AS order_type FROM web_purchases w LEFT JOIN users u ON u.id=w.user_id WHERE (?='' OR w.status=?) AND (?='' OR w.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR w.product_id ILIKE ?) ORDER BY w.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all(),
-    env.DB.prepare("SELECT n.order_id,n.user_id,u.email,n.product_id,(n.amount_units::numeric/10000)::text AS amount,n.status,n.created_at,n.updated_at,'节点订单' AS order_type FROM node_orders n LEFT JOIN users u ON u.id=n.user_id WHERE (?='' OR n.status=?) AND (?='' OR n.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR n.product_id ILIKE ?) ORDER BY n.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all()
-  ]);
-  const orders = [...(web.results || []), ...(nodes.results || [])]
-    .sort((a,b) => Number(b.created_at || 0) - Number(a.created_at || 0))
-    .slice(0, limit);
+  const web = await env.DB.prepare("SELECT w.order_id,w.user_id,u.email,w.product_id,w.amount::text AS amount,w.status,w.created_at,w.updated_at,'商城订单' AS order_type FROM web_purchases w LEFT JOIN users u ON u.id=w.user_id WHERE (?='' OR w.status=?) AND (?='' OR w.order_id ILIKE ? OR COALESCE(u.email,'') ILIKE ? OR w.product_id ILIKE ?) ORDER BY w.created_at DESC LIMIT ?").bind(status,status,q,pattern,pattern,pattern,limit).all();
+  const orders = web.results || [];
   return reply(request, env, { ok: true, orders, total_returned: orders.length, limit });
 }
 
@@ -1203,113 +1057,6 @@ async function adminSession(request, env) {
  return reply(request,env,{ok:true,admin:auth.admin});
 }
 
-async function adminNodeAccounts(request,env){
- const auth=await adminAuthorize(request,env,request.method==="GET"?"nodes.read":"nodes.manage");if(auth.error)return auth.error;
- if(request.method==="GET"){
-  const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
-  const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,u.email,a.product_id,p.name AS product_name,a.order_id,a.protocol,a.server_ref,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.traffic_used_bytes,a.status,a.created_at,a.updated_at FROM node_accounts a LEFT JOIN users u ON u.id=a.user_id LEFT JOIN node_products p ON p.product_id=a.product_id ORDER BY a.created_at DESC LIMIT ?").bind(limit).all();
-  const accounts=(rows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}));
-  let trafficUsageAvailable=false;
-  if(accounts.length){
-   try{
-    const usage=await originRequest(env,"POST","/api/internal/nodes/usage",{client_refs:accounts.map(x=>x.client_ref)});
-    if(Array.isArray(usage.accounts)){
-     trafficUsageAvailable=true;
-     for(const item of usage.accounts){
-      const used=Number(item.traffic_used_bytes||0),status=String(item.status||"active"),expires=Number(item.expires_at||0),now=Math.floor(Date.now()/1000);
-      await env.DB.prepare("UPDATE node_accounts SET traffic_used_bytes=?,status=?,expires_at=?,updated_at=? WHERE client_ref=?").bind(used,status,expires||now,item.updated_at?Number(item.updated_at):now,item.client_ref).run();
-      const local=accounts.find(x=>x.client_ref===item.client_ref);if(local){local.traffic_used_bytes=used;local.status=status;if(expires)local.expires_at=expires;}
-     }
-    }
-   }catch{}
-  }
-  return reply(request,env,{ok:true,accounts,traffic_usage_available:trafficUsageAvailable});
- }
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const id=String(body.account_id||"").trim(),action=String(body.action||"");
- if(!id||action!=="revoke")return reply(request,env,{ok:false,error:"invalid_node_account_action"},400);
- const account=await env.DB.prepare("SELECT client_ref,server_ref,status FROM node_accounts WHERE account_id=?").bind(id).first();
- if(!account)return reply(request,env,{ok:false,error:"node_account_not_found"},404);
- try{await originRequest(env,"POST","/api/internal/nodes/revoke",{client_ref:account.client_ref,server_ref:account.server_ref});}
- catch{return reply(request,env,{ok:false,error:"node_server_revoke_failed"},502)}
- await env.DB.prepare("UPDATE node_accounts SET status='revoked',updated_at=? WHERE account_id=?").bind(Math.floor(Date.now()/1000),id).run();
- return reply(request,env,{ok:true,account_id:id,status:"revoked"});
-}
-async function adminNodeOrders(request,env){
- const auth=await adminAuthorize(request,env,request.method==="GET"?"nodes.read":"nodes.manage");if(auth.error)return auth.error;
- if(request.method==="GET"){
-  const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
-  const rows=await env.DB.prepare("SELECT o.order_id,o.user_id,u.email,o.product_id,p.name AS product_name,p.protocol,p.server_ref,o.package_id,g.name AS package_name,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at FROM node_orders o LEFT JOIN users u ON u.id=o.user_id LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id ORDER BY o.created_at DESC LIMIT ?").bind(limit).all();
-  return reply(request,env,{ok:true,orders:(rows.results||[]).map(x=>({...x,amount_cny:(Number(x.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}))});
- }
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const orderId=String(body.order_id||"").trim();
- if(body.action!=="retry"||body.confirmed!==true||!orderId)return reply(request,env,{ok:false,error:"explicit_retry_confirmation_required"},400);
- const row=await env.DB.prepare("SELECT o.order_id,o.user_id,o.product_id,o.package_id,o.status,g.duration_days,g.traffic_limit_bytes,p.protocol,p.server_ref FROM node_orders o JOIN node_products p ON p.product_id=o.product_id JOIN node_packages g ON g.package_id=o.package_id WHERE o.order_id=?").bind(orderId).first();
- if(!row)return reply(request,env,{ok:false,error:"node_order_not_found"},404);
- if(row.status!=="provisioning")return reply(request,env,{ok:false,error:"node_order_not_pending",status:row.status},409);
- try{
-  const serverRef=String(row.server_ref||"us").toLowerCase();
-  const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:row.protocol,duration_days:Number(row.duration_days),server_ref:serverRef,traffic_limit_bytes:Number(row.traffic_limit_bytes||0)});
-  const account=provisioned?.account;
-  if(!provisioned?.ok||!account?.uri||!account?.client_ref)throw new Error("node_delivery_missing");
-  const delivery={protocol:row.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:row.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将连接链接导入支持该协议的客户端。"};
-  const encrypted=await encryptNodePayload(JSON.stringify(delivery),env),now=Math.floor(Date.now()/1000);
-  const existing=await env.DB.prepare("SELECT account_id FROM node_accounts WHERE client_ref=?").bind(account.client_ref).first();
-  const stmts=[env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,error_code=NULL,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,now,Number(account.expires_at),orderId)];
-  if(existing)stmts.push(env.DB.prepare("UPDATE node_accounts SET status='active',expires_at=?,traffic_limit_bytes=?,updated_at=? WHERE client_ref=?").bind(Number(account.expires_at),Number(row.traffic_limit_bytes||0),now,account.client_ref));
-  else stmts.push(env.DB.prepare("INSERT INTO node_accounts(account_id,user_id,product_id,order_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'active',?,?)").bind(crypto.randomUUID(),row.user_id,row.product_id,orderId,row.protocol,serverRef,account.client_ref,Number(account.expires_at),Number(row.traffic_limit_bytes||0),now,now));
-  await env.DB.batch(stmts);
-  return reply(request,env,{ok:true,order_id:orderId,status:"fulfilled",delivery});
- }catch(e){
-  await env.DB.prepare("UPDATE node_orders SET error_code='node_provision_result_uncertain',updated_at=? WHERE order_id=? AND status='provisioning'").bind(Math.floor(Date.now()/1000),orderId).run();
-  return reply(request,env,{ok:true,order_id:orderId,status:"provisioning",error_code:"node_provision_result_uncertain"},202);
- }
-}
-async function adminNodeCatalog(request,env){
- const auth=await adminAuthorize(request,env,"nodes.read");if(auth.error)return auth.error;
- const [products,packages]=await Promise.all([
-  env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready,active,display_order,provisioning_mode FROM node_products ORDER BY display_order,product_id").all(),
-  env.DB.prepare("SELECT package_id,product_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices,active,display_order FROM node_packages ORDER BY product_id,display_order,package_id").all()
- ]);
- return reply(request,env,{ok:true,products:(products.results||[]).map(x=>({...x,server_present:!!x.server_present,provisioning_ready:!!x.provisioning_ready,active:!!x.active,display_order:Number(x.display_order||0)})),packages:(packages.results||[]).map(x=>({...x,price_cny:Number(x.price_cny),duration_days:Number(x.duration_days),traffic_limit_bytes:x.traffic_limit_bytes===null?null:Number(x.traffic_limit_bytes),max_devices:Number(x.max_devices||1),active:!!x.active,display_order:Number(x.display_order||0)}))});
-}
-async function adminNodeProductUpdate(request,env,productId){
- const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const product=await env.DB.prepare("SELECT product_id,server_ref,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
- if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
- const active=body.active===true||body.active===1||body.active==="1";
- if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
- const serverRef=String(body.server_ref===undefined?product.server_ref:body.server_ref).toLowerCase();
- if(!["us","sg"].includes(serverRef))return reply(request,env,{ok:false,error:"invalid_server_ref"},400);
- await env.DB.prepare("UPDATE node_products SET active=?,server_ref=?,updated_at=? WHERE product_id=?").bind(active,serverRef,Math.floor(Date.now()/1000),productId).run();
- return reply(request,env,{ok:true,product_id:productId,active,server_ref:serverRef});
-}
-async function adminNodePackageSave(request,env,packageId=null){
- const auth=await adminAuthorize(request,env,"nodes.manage");if(auth.error)return auth.error;
- let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
- const id=String(packageId||body.package_id||"").trim(),productId=String(body.product_id||"").trim(),name=String(body.name||"").trim().slice(0,80);
- const price=Number(body.price_cny),days=Number(body.duration_days),devices=Number(body.max_devices||1),sort=Math.trunc(Number(body.display_order||0));
- const traffic=body.traffic_limit_bytes===null||body.traffic_limit_bytes===""||body.traffic_limit_bytes===undefined?null:Number(body.traffic_limit_bytes);
- if(!/^[a-z0-9][a-z0-9-]{1,63}$/i.test(id)||!productId||!name||!Number.isFinite(price)||price<=0||price>100000||!Number.isInteger(days)||days<1||days>3650||!Number.isInteger(devices)||devices<1||devices>20||!Number.isInteger(sort)||!Number.isFinite(traffic===null?0:traffic)||(traffic!==null&&(!Number.isSafeInteger(traffic)||traffic<0)))return reply(request,env,{ok:false,error:"invalid_node_package"},400);
- const product=await env.DB.prepare("SELECT product_id,server_present,provisioning_ready FROM node_products WHERE product_id=?").bind(productId).first();
- if(!product)return reply(request,env,{ok:false,error:"node_product_not_found"},404);
- const active=body.active===true||body.active===1||body.active==="1";
- if(active&&(!product.server_present||!product.provisioning_ready))return reply(request,env,{ok:false,error:"node_product_not_ready",server_present:!!product.server_present,provisioning_ready:!!product.provisioning_ready},409);
-
- const existing=await env.DB.prepare("SELECT package_id,product_id FROM node_packages WHERE package_id=?").bind(id).first();
- if(packageId&&!existing)return reply(request,env,{ok:false,error:"node_package_not_found"},404);
- if(existing&&existing.product_id!==productId)return reply(request,env,{ok:false,error:"node_package_product_immutable"},409);
- const now=Math.floor(Date.now()/1000);
- if(existing){
-  await env.DB.prepare("UPDATE node_packages SET name=?,price_cny=?,duration_days=?,traffic_limit_bytes=?,max_devices=?,active=?,display_order=?,updated_at=? WHERE package_id=?").bind(name,price,days,traffic,devices,active,sort,now,id).run();
- }else{
-  await env.DB.prepare("INSERT INTO node_packages(package_id,product_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices,active,display_order,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?)").bind(id,productId,name,price,days,traffic,devices,active,sort,now,now).run();
- }
- return reply(request,env,{ok:true,package_id:id,product_id:productId,active});
-}
-
 async function adminApiKeys(request, env) {
  const auth=await adminAuthorize(request,env,"staff.manage");if(auth.error)return auth.error;
  if(request.method==="GET"){
@@ -1395,7 +1142,6 @@ const LEGACY_ADMIN_EXACT = new Set([
   "/api/v1/admin/bots/matrix/stats",
   "/api/v1/admin/bots/matrix/users",
   "/api/v1/admin/bots/credentials",
-  "/api/v1/admin/config/dnshe",
   "/api/v1/admin/logs",
   "/api/v1/admin/stats/online",
   "/api/v1/admin/upload",
@@ -1404,13 +1150,10 @@ const LEGACY_ADMIN_EXACT = new Set([
   "/api/v1/admin/config/mail",
   "/api/v1/admin/mail/send",
   "/api/v1/admin/mail/templates",
-  "/api/v1/admin/nodes",
   "/api/v1/admin/notices",
   "/api/v1/admin/orders",
   "/api/v1/admin/payment_configs",
-  "/api/v1/admin/plans",
   "/api/v1/admin/products",
-  "/api/v1/admin/servers",
   "/api/v1/admin/shop/orders",
   "/api/v1/admin/shop/overview",
   "/api/v1/admin/shop/products",
@@ -1423,13 +1166,9 @@ const LEGACY_ADMIN_PREFIXES = [
   "/api/v1/admin/account_pool/",
   "/api/v1/admin/bots/matrix/",
   "/api/v1/admin/bots/credentials/",
-  "/api/v1/admin/config/dnshe/",
   "/api/v1/admin/chat/",
   "/api/v1/admin/mail/",
-  "/api/v1/admin/nodes/",
   "/api/v1/admin/notices/",
-  "/api/v1/admin/plans/",
-  "/api/v1/admin/servers/",
   "/api/v1/admin/shop/order/",
   "/api/v1/admin/shop/product/",
   "/api/v1/admin/ticket/",
@@ -1554,10 +1293,6 @@ export default {
       if (url.pathname === "/api/admin/recharge/confirm" && request.method === "POST") return await confirmRecharge(request, env);
       if (url.pathname === "/api/user/referrals" && request.method === "GET") return await userReferrals(request, env);
       if (url.pathname === "/api/user/orders" && request.method === "GET") return await userOrders(request, env);
-      if (url.pathname === "/api/node-products" && request.method === "GET") return await nodeProducts(request, env);
-      if (url.pathname === "/api/user/node-orders" && ["GET","POST"].includes(request.method)) return await userNodeOrders(request, env);
-      const nodeOrderMatch = url.pathname.match(/^\/api\/user\/node-orders\/([a-f0-9-]{36})$/i);
-      if (nodeOrderMatch && request.method === "GET") return await nodeOrderStatus(request, env, nodeOrderMatch[1]);
       if (url.pathname === "/api/products" && request.method === "GET") {
         try { await verifyToken(request, env); } catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
         return await products(request, env);
@@ -1577,14 +1312,6 @@ export default {
       const supplierDeliveryMatch = url.pathname.match(/^\/api\/admin\/supplier-orders\/([a-f0-9-]{36})\/deliver$/i);
       if (supplierDeliveryMatch && request.method === "POST") return await adminSupplierOrders(request, env, supplierDeliveryMatch[1]);
       if (url.pathname === "/api/admin/products" && request.method === "GET") return await adminListProducts(request, env);
-      if (url.pathname === "/api/admin/node-orders" && ["GET","POST"].includes(request.method)) return await adminNodeOrders(request,env);
-      if (url.pathname === "/api/admin/node-catalog" && request.method === "GET") return await adminNodeCatalog(request,env);
-      if (url.pathname === "/api/admin/node-accounts" && ["GET","POST"].includes(request.method)) return await adminNodeAccounts(request,env);
-      const nodeProductMatch=url.pathname.match(/^\/api\/admin\/node-products\/([a-z0-9][a-z0-9-]{1,63})$/i);
-      if (nodeProductMatch && request.method === "POST") return await adminNodeProductUpdate(request,env,nodeProductMatch[1]);
-      if (url.pathname === "/api/admin/node-packages" && request.method === "POST") return await adminNodePackageSave(request,env);
-      const nodePackageMatch=url.pathname.match(/^\/api\/admin\/node-packages\/([a-z0-9][a-z0-9-]{1,63})$/i);
-      if (nodePackageMatch && request.method === "POST") return await adminNodePackageSave(request,env,nodePackageMatch[1]);
       if (url.pathname === "/api/admin/api-keys" && ["GET","POST"].includes(request.method)) return await adminApiKeys(request,env);
       const apiKeyRevokeMatch=url.pathname.match(/^\/api\/admin\/api-keys\/([a-f0-9-]{36})\/revoke$/i);
       if (apiKeyRevokeMatch && request.method === "POST") return await adminRevokeApiKey(request,env,apiKeyRevokeMatch[1]);
