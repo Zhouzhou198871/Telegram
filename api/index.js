@@ -3,7 +3,7 @@ import { storefrontIconUrl } from "../product-icons.js";
 import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import nodemailer from "nodemailer";
-import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv, createHash } from "node:crypto";
+import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv } from "node:crypto";
 
 export const config = { api: { bodyParser: false } };
 let sqlClient;
@@ -133,9 +133,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
   const supplierDeliverMatch = path.match(/^\/api\/internal\/supplier-deliver\/([a-f0-9-]{36})$/i);
   const catalogSync = path === "/api/internal/catalog_sync" && method === "POST";
   const catalogSnapshotSync = path === "/api/internal/catalog_snapshot_sync" && method === "POST";
-  const nodeProvision = path === "/api/internal/nodes/provision" && method === "POST";
-  const nodeRevoke = path === "/api/internal/nodes/revoke" && method === "POST";
-  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !supplierDeliverMatch && !catalogSync && !catalogSnapshotSync && !nodeProvision && !nodeRevoke) return null;
+  if (path !== "/api/internal/send_email" && path !== "/api/internal/buy" && !buyStatusMatch && !supplierDeliverMatch && !catalogSync && !catalogSnapshotSync) return null;
   const authorized = await verifyInternal(method, url, headers, rawBody, db, catalogSnapshotSync ? (process.env.CATALOG_SYNC_SECRET || "") : undefined).catch(() => false);
   if (!authorized) return { status: 401, body: { ok:false, error:"unauthorized" } };
 
@@ -263,39 +261,6 @@ async function handleInternal(method, url, headers, rawBody, db) {
       await tx.unsafe("DELETE FROM catalog_snapshot_categories WHERE version NOT IN (SELECT DISTINCT version FROM catalog_snapshot_categories ORDER BY version DESC LIMIT 2)");
     });
     return {status:200,body:{ok:true,version,products:products.length,categories:categories.length,active_products:activeCount}};
-  }
-
-  if (nodeProvision || nodeRevoke) {
-    const serverApiOrigin = String(process.env.NODE_SERVER_API_ORIGIN || "http://167.253.96.220:8001").trim();
-    if (!serverApiOrigin || !process.env.INTERNAL_API_SECRET) return {status:503,body:{ok:false,error:"node_origin_not_configured"}};
-    const originPath = nodeProvision ? "/api/nodes/provision" : "/api/nodes/revoke";
-    const ts = String(Math.floor(Date.now()/1000));
-    const nonce = Array.from(cryptoRandom(16),b=>b.toString(16).padStart(2,"0")).join("");
-    const bodyText = rawBody.toString("utf8");
-    const signed = ts + "\n" + nonce + "\nPOST\n" + originPath + "\n" + bodyText;
-    const signature = createHmac("sha256",process.env.INTERNAL_API_SECRET).update(signed).digest("hex");
-    try {
-      const response = await fetch(new URL(originPath,serverApiOrigin), {
-        method:"POST",
-        headers:{"Content-Type":"application/json","X-Worker-Timestamp":ts,"X-Worker-Nonce":nonce,"X-Worker-Signature":signature},
-        body:rawBody,
-        signal:AbortSignal.timeout(65000)
-      });
-      const result = await response.json().catch(()=>({ok:false,error:"node_origin_invalid_response"}));
-      if (!response.ok || !result.ok) return {status:response.status,body:result};
-      if (nodeProvision) {
-        const packed = Buffer.from(String(result.encrypted || ""), "base64");
-        if (packed.length < 29) return {status:502,body:{ok:false,error:"node_delivery_envelope_invalid"}};
-        const key = createHash("sha256").update(process.env.INTERNAL_API_SECRET + "|node-manager-response").digest();
-        const decipher = createDecipheriv("aes-256-gcm",key,packed.subarray(0,12));
-        decipher.setAuthTag(packed.subarray(packed.length-16));
-        const clear = Buffer.concat([decipher.update(packed.subarray(12,packed.length-16)),decipher.final()]);
-        return {status:200,body:{ok:true,account:JSON.parse(clear.toString("utf8"))}};
-      }
-      return {status:response.status,body:result};
-    } catch {
-      return {status:502,body:{ok:false,error:"node_origin_unavailable"}};
-    }
   }
 
   if (catalogSync) {
