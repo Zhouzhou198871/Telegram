@@ -425,11 +425,18 @@ async function handleInternal(method, url, headers, rawBody, db) {
       if (purchaseResponse.status >= 500 || !purchaseData || typeof purchaseData.success !== "boolean") {
         throw new Error("supplier_purchase_response_uncertain");
       }
+      const supplierOrderId = String(purchaseData.order_id || "");
+      const purchaseMessage = String(purchaseData.msg || "");
+      const uncertainPurchase = purchaseData.uncertain === true ||
+        /结果不确定|请人工核对|已受理采购|订单号暂不可读取|订单查询结果不确定|读取结果不确定/i.test(purchaseMessage);
       if (!purchaseResponse.ok || purchaseData.success === false) {
-        await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code=$2,updated_at=$3 WHERE order_id=$1",[orderId,String(purchaseData.msg||"supplier_purchase_failed").slice(0,120),Math.floor(Date.now()/1000)]);
+        if (supplierOrderId || uncertainPurchase) {
+          await db.unsafe("UPDATE shop_supplier_orders SET status='pending',error_code='supplier_result_uncertain',supplier_order_id=$2,updated_at=$3 WHERE order_id=$1",[orderId,supplierOrderId,Math.floor(Date.now()/1000)]);
+          return {status:200,body:{ok:true,status:"pending",error_code:"supplier_result_uncertain",supplier_order_id:supplierOrderId || null}};
+        }
+        await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code=$2,updated_at=$3 WHERE order_id=$1",[orderId,purchaseMessage.slice(0,120)||"supplier_purchase_failed",Math.floor(Date.now()/1000)]);
         return {status:200,body:{ok:true,status:"failed",error_code:"supplier_purchase_failed"}};
       }
-      const supplierOrderId = String(purchaseData.order_id || "");
       const content = String(purchaseData.card || "");
       if (!content) {
         await db.unsafe("UPDATE shop_supplier_orders SET status='pending',error_code='supplier_delivery_pending',supplier_order_id=$2,updated_at=$3 WHERE order_id=$1",[orderId,supplierOrderId,Math.floor(Date.now()/1000)]);
