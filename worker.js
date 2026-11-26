@@ -1019,8 +1019,8 @@ async function adminSupplierOrders(request, env, orderId = "") {
     const status = String(url.searchParams.get("status") || "pending").trim().slice(0, 24);
     const limit = Math.max(10, Math.min(100, Number.parseInt(url.searchParams.get("limit") || "50", 10) || 50));
     const rows = await env.DB.prepare(
-      "SELECT s.order_id,s.user_id,u.email,w.product_id,c.name AS product_name,s.status AS supplier_status,s.supplier_order_id,s.error_code,s.created_at,s.updated_at,w.status AS payment_order_status,w.amount::text AS amount FROM shop_supplier_orders s LEFT JOIN web_purchases w ON w.order_id=s.order_id LEFT JOIN users u ON u.id=s.user_id LEFT JOIN shop_catalog c ON c.product_id=w.product_id WHERE (?='' OR s.status=?) ORDER BY CASE WHEN s.status='pending' THEN 0 WHEN s.status='processing' THEN 1 ELSE 2 END,s.updated_at ASC LIMIT ?"
-    ).bind(status === "all" ? "" : status, status === "all" ? "" : status, limit).all();
+      "SELECT w.order_id,w.user_id,u.email,w.product_id,c.name AS product_name,COALESCE(s.status,'missing_supplier_record') AS supplier_status,s.supplier_order_id,COALESCE(s.error_code,w.error_code,'supplier_record_missing') AS error_code,w.created_at,COALESCE(s.updated_at,w.updated_at) AS updated_at,w.status AS payment_order_status,w.amount::text AS amount FROM web_purchases w LEFT JOIN shop_supplier_orders s ON s.order_id=w.order_id LEFT JOIN users u ON u.id=w.user_id LEFT JOIN shop_catalog c ON c.product_id=w.product_id WHERE ((?='all' AND (s.order_id IS NOT NULL OR w.status IN ('pending','reserved'))) OR (?='pending' AND (s.status='pending' OR (s.order_id IS NULL AND w.status IN ('pending','reserved')))) OR (?='processing' AND s.status='processing')) ORDER BY CASE WHEN s.status='pending' OR s.order_id IS NULL THEN 0 WHEN s.status='processing' THEN 1 ELSE 2 END,COALESCE(s.updated_at,w.updated_at) ASC LIMIT ?"
+    ).bind(status,status,status,limit).all();
     return reply(request, env, { ok: true, orders: rows.results || [], total_returned: (rows.results || []).length, status });
   }
   if (request.method !== "POST" || !orderId) return reply(request, env, {ok:false,error:"method_not_allowed"},405);
