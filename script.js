@@ -345,7 +345,7 @@ function createProductIcon(item) {
   return wrap;
 }
 
-const PRODUCT_CACHE_KEY = "qingtian_catalog_cache_v2";
+const PRODUCT_CACHE_KEY = "qingtian_legacy_catalog_cache_v3";
 const PRODUCT_CACHE_MAX_AGE = 7 * 24 * 60 * 60 * 1000;
 
 function cleanProductTitle(value) {
@@ -386,7 +386,7 @@ function saveCachedProducts(items) {
       items: items.map(item => ({
         product_id: item.product_id, name: item.name, category: item.category,
         icon: item.icon, icon_url: item.icon_url, is_hot: item.is_hot === true, is_recommend: item.is_recommend === true, price_cny: item.price_cny, price_usdt: item.price_usdt,
-        stock: item.stock, purchasable: item.purchasable
+        stock: item.stock, purchasable: item.purchasable, legacy_migrated: item.legacy_migrated === true
       }))
     }));
   } catch {}
@@ -472,8 +472,8 @@ function drawFilteredProducts() {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.catalog_verified === false || item.price_verified !== true ? ("价格核验中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
-    buyButton.disabled = item.catalog_verified === false || item.price_verified !== true || item.purchasable === false;
+    buyButton.textContent = item.legacy_migrated === true ? "价格已迁移，购买功能未切换" : item.catalog_verified === false || item.price_verified !== true ? ("价格核验中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
+    buyButton.disabled = item.legacy_migrated === true || item.catalog_verified === false || item.price_verified !== true || item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
     fragment.appendChild(card);
@@ -528,11 +528,38 @@ async function loadProducts() {
   const grid = $("productGrid");
   grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N.zh.loadingCatalog));
   try {
-    const data = await api("/api/products");
-    saveCachedProducts(data.items || []);
-    renderProducts(data.items || [], { verified: true });
-    if (data.catalog_stale === true) message($("shopMessage"),"部分商品信息暂不可用，已暂时隐藏相关价格并暂停购买。","error");
-    else message($("shopMessage"),data.count?SHOP_I18N.zh.catalogUpdated:SHOP_I18N.zh.catalogEmpty,"success");
+    // Read the migrated Qingtian catalog and prices from Neon.
+    const first = await api("/api/v1/shop/products?page=1&size=60");
+    if (Number(first.code) !== 1 || !Array.isArray(first.data)) throw new Error("legacy_catalog_unavailable");
+    const pages = Math.max(1, Number(first.pages || 1));
+    const rawRows = [...first.data];
+    for (let start = 2; start <= pages; start += 6) {
+      const batch = [];
+      for (let page = start; page < Math.min(start + 6, pages + 1); page += 1) {
+        batch.push(api("/api/v1/shop/products?page=" + page + "&size=60"));
+      }
+      const results = await Promise.all(batch);
+      for (const result of results) {
+        if (Number(result.code) !== 1 || !Array.isArray(result.data)) throw new Error("legacy_catalog_page_failed");
+        rawRows.push(...result.data);
+      }
+    }
+    const items = rawRows.map(row => ({
+      product_id: String(row.id),
+      name: String(row.title || row.name || "数字商品"),
+      category: String(row.category || "未分类"),
+      description: String(row.detail || row.subtitle || ""),
+      image_url: String(row.image_url || row.image || ""),
+      icon_url: String(row.image_url || row.image || ""),
+      price_cny: Number(row.price || 0),
+      stock: Number(row.stock || 0),
+      purchasable: false,
+      price_verified: true,
+      legacy_migrated: true
+    }));
+    saveCachedProducts(items);
+    renderProducts(items, { verified: true });
+    message($("shopMessage"),"已连接 Neon 商品价格目录（" + items.length + " 件）。本次切换商品展示与价格；购买接口仍保留原业务。","success");
   } catch {
     grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
     message($("shopMessage"),SHOP_I18N.zh.catalogFailed,"error");
