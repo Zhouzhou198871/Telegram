@@ -1,0 +1,49 @@
+name: Deploy shop.lynli.me
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: shop-lynli-production
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout storefront repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull production project settings
+        run: vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_DUhm5Zk8noZ3rBL8HkuHQTgq
+          VERCEL_PROJECT_ID: prj_xFohRe9ftYCvEAtFr6XXX8LKr6k9
+
+      - name: Build production output
+        run: vercel build --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_DUhm5Zk8noZ3rBL8HkuHQTgq
+          VERCEL_PROJECT_ID: prj_xFohRe9ftYCvEAtFr6XXX8LKr6k9
+
+      - name: Deploy production output
+        run: vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_DUhm5Zk8noZ3rBL8HkuHQTgq
+          VERCEL_PROJECT_ID: prj_xFohRe9ftYCvEAtFr6XXX8LKr6k9
