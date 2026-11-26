@@ -682,7 +682,7 @@ function nodeClashYaml(proxy){
 }
 async function nodeProducts(request,env){
   let claims;try{claims=await verifyToken(request,env)}catch(e){return reply(request,env,{ok:false,error:e.message},401)}
-  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE ORDER BY display_order").all();
+  const result=await env.DB.prepare("SELECT product_id,name,protocol,description,server_ref,server_present,provisioning_ready FROM node_products WHERE active=TRUE AND server_present=TRUE AND provisioning_ready=TRUE ORDER BY display_order").all();
   const products=[];
   for(const p of result.results||[]){
     const pkgs=await env.DB.prepare("SELECT package_id,name,price_cny,duration_days,traffic_limit_bytes,max_devices FROM node_packages WHERE product_id=? AND active=TRUE ORDER BY display_order").bind(p.product_id).all();
