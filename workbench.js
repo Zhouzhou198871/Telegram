@@ -31,7 +31,7 @@
    const info=document.createElement("div"),strong=document.createElement("strong"),small=document.createElement("small"),btn=document.createElement("button");
    strong.textContent=(k.key_prefix||"qt_live_")+"••••••";small.textContent=(k.label||"API Key")+" · "+(k.revoked?"已撤销":"有效")+" · 创建于 "+date(k.created_at);
    info.append(strong,small);btn.className="wb-btn danger";btn.textContent=k.revoked?"已撤销":"撤销密钥";btn.disabled=!!k.revoked;
-   btn.addEventListener("click",async()=>{if(!confirm("确定撤销此 API 密钥？撤销后不可恢复。"))return;try{await api("/api/user/api-keys/"+encodeURIComponent(k.id),{method:"DELETE"});await load();}catch(e){alert(e.message);}});
+   btn.addEventListener("click",async()=>{if(!confirm("确定撤销此 API 密钥？撤销后不可恢复。"))return;try{await api("/api/user/api-keys/"+encodeURIComponent(k.id),{method:"DELETE"});await load();}catch{alert("操作未能完成，请稍后重试。");}});
    el.append(info,btn);keysBox.append(el);
   });
   $("wbUsage").innerHTML=table(["时间","接口","方法","HTTP 状态"],logs.map(x=>[esc(date(x.created_at)),esc(x.endpoint),esc(x.method),esc(x.status_code)]),"暂无 API 调用记录。");
@@ -46,7 +46,7 @@
  $("wbCopyNewKey").addEventListener("click",async()=>{try{await navigator.clipboard.writeText($("wbNewKeyValue").value);alert("已复制");}catch{ $("wbNewKeyValue").select();document.execCommand("copy");}});
  $("wbTestProducts").addEventListener("click",async()=>{
   const key=$("wbTestKey").value.trim(),box=$("wbProducts");if(!key){box.innerHTML='<div class="wb-empty">请先输入 API Key。</div>';return;}
-  box.innerHTML='<div class="wb-empty">正在查询上游同步商品目录…</div>';
+  box.innerHTML='<div class="wb-empty">正在读取商品目录…</div>';
   try{
    const r=await fetch("/api/v1/products",{headers:{Authorization:"Bearer "+key},cache:"no-store"}),d=await r.json();
    if(!r.ok)throw new Error(d.message||d.error||"商品查询失败");
@@ -55,8 +55,8 @@
     '<span style="display:inline-flex;align-items:center;gap:7px">'+(x.icon_url?'<img src="'+esc(x.icon_url)+'" alt="" width="24" height="24" style="object-fit:contain">':"")+'<span>'+esc(x.name)+'</span></span>',
     esc(x.product_id),money(x.price_cny),esc(x.stock),x.purchasable?"是":"否",x.price_verified?"已核验":"待同步"
    ]),"没有可展示的商品。");
-  }catch(e){box.innerHTML='<div class="wb-status warn">'+esc(e.message)+'</div>';}
+  }catch{box.innerHTML='<div class="wb-status warn">商品目录暂时无法读取，请稍后重试。</div>';}
  });
  if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
- load().catch(e=>{$("wbEligibilityNote").textContent=e.message;$("wbEligibilityNote").className="wb-status warn";});
+ load().catch(()=>{$("wbEligibilityNote").textContent="暂时无法读取工作台信息，请稍后重试。";$("wbEligibilityNote").className="wb-status warn";});
 })();
