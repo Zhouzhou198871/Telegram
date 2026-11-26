@@ -594,7 +594,7 @@ async function loadNodeProducts() {
     const data=await api("/api/node-products"),items=Array.isArray(data.products)?data.products:[];
     grid.replaceChildren();
     if(!items.length){grid.appendChild(safeText("div","empty-card","节点套餐暂未开放，请稍后刷新。"));return;}
-    const labels={vless:"VLESS Reality",vmess:"VMess",socks5:"SOCKS5",hysteria2:"Hysteria2",mtproto:"Telegram MTProto","http-connect":"HTTP / HTTPS",shadowsocks:"Shadowsocks","shadowsocks-2022":"Shadowsocks 2022",trojan:"Trojan"};
+    const labels={trojan:"Trojan TLS",shadowsocks:"Shadowsocks",mtproto:"Telegram MTProto",vless:"VLESS Reality",vmess:"VMess WebSocket",hysteria2:"Hysteria2",tuic:"TUIC",anytls:"AnyTLS",ssr:"ShadowsocksR"};
     const descriptions={
       mtproto:"专为 Telegram 客户端提供的 MTProto 代理连接。",
       socks5:"适用于支持 SOCKS5 代理设置的应用与设备。",
@@ -604,7 +604,10 @@ async function loadNodeProducts() {
       vmess:"VMess 代理协议，支持兼容客户端导入连接。",
       vless:"VLESS Reality 连接方式，支持兼容客户端导入。",
       trojan:"Trojan TLS 代理连接，支持兼容客户端导入。",
-      hysteria2:"基于 QUIC 的 Hysteria2 连接，支持兼容客户端导入。"
+      hysteria2:"基于 QUIC 的 Hysteria2 连接，支持兼容客户端导入。",
+      tuic:"基于 QUIC 的 TUIC 连接，支持兼容客户端导入。",
+      anytls:"基于 TLS 的 AnyTLS 连接，支持兼容客户端导入。",
+      ssr:"ShadowsocksR 加密代理连接，支持兼容客户端导入。"
     };
     for(const item of items){
       const card=document.createElement("article");card.className="product-card node-product-card";
@@ -640,17 +643,32 @@ async function loadNodeProducts() {
     message($("nodeShopMessage"),"节点服务暂时不可用。","error");
   }
 }
+async function waitNodeOrder(orderId){
+  for(let attempt=0;attempt<20;attempt++){
+    await new Promise(resolve=>setTimeout(resolve,2000));
+    const result=await api("/api/user/node-orders/"+encodeURIComponent(orderId));
+    if(result.status==="fulfilled"&&result.delivery)return result;
+    if(result.status==="refunded")throw new Error("node_order_refunded");
+    if(result.status!=="provisioning")throw new Error(result.error||result.status||"node_order_status_unknown");
+  }
+  return {status:"provisioning",order_id:orderId};
+}
 async function buyNodePackage(pkg,button,protocol){
   if(button.disabled)return;
   button.disabled=true;
   const old=button.innerHTML;button.textContent="正在开通…";
   message($("nodeShopMessage"),"正在扣除余额并开通节点，请勿重复提交。");
   try{
-    const result=await api("/api/user/node-orders",{
+    let result=await api("/api/user/node-orders",{
       method:"POST",
       headers:{"Idempotency-Key":crypto.randomUUID()},
       body:JSON.stringify({package_id:pkg.package_id})
     });
+    if(result.status==="provisioning"&&result.order_id)result=await waitNodeOrder(result.order_id);
+    if(result.status==="provisioning"){
+      message($("nodeShopMessage"),"订单已受理，节点仍在开通核对中。不会重复扣款，请稍后在订单详情查看。","error");
+      return;
+    }
     if(result.status!=="fulfilled"||!result.delivery)throw new Error(result.error||result.status||"node_provision_failed");
     showNodeDelivery(result.delivery);
     message($("nodeShopMessage"),"节点已开通，配置已生成。","success");
@@ -658,6 +676,7 @@ async function buyNodePackage(pkg,button,protocol){
   }catch(error){
     const text=error.status===402||error.message==="insufficient_balance"?"余额不足，请先充值。":
       error.message==="node_package_unavailable"?"该套餐暂不可购买。":
+      error.message==="node_order_refunded"?"节点开通失败，订单已退款。":
       "节点开通未完成，若余额发生变化请到账户信息查看订单状态。";
     message($("nodeShopMessage"),text,"error");
   }finally{
