@@ -388,7 +388,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
         throw new Error("supplier_purchase_response_uncertain");
       }
       if (!purchaseResponse.ok || purchaseData.success === false) {
-        await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code=$2,updated_at=$3 WHERE order_id=$1",[String(purchaseData.msg||"supplier_purchase_failed").slice(0,120),orderId,Math.floor(Date.now()/1000)]);
+        await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code=$2,updated_at=$3 WHERE order_id=$1",[orderId,String(purchaseData.msg||"supplier_purchase_failed").slice(0,120),Math.floor(Date.now()/1000)]);
         return {status:200,body:{ok:true,status:"failed",error_code:"supplier_purchase_failed"}};
       }
       const supplierOrderId = String(purchaseData.order_id || "");
