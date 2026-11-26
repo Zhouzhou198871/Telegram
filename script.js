@@ -681,6 +681,15 @@ function initShop() {
     setShopView(link.dataset.shopView,{scroll:true});
   }));
   const accountToggle=$("accountMenuToggle"),accountMenu=$("accountMenu");
+  // Make every account shortcut navigate explicitly on touch and desktop.
+  document.querySelectorAll("#accountMenu .account-card-link").forEach(link=>{
+    link.addEventListener("click",event=>{
+      event.preventDefault();
+      event.stopPropagation();
+      const href=link.getAttribute("href");
+      if(href) window.location.assign(new URL(href,document.baseURI).href);
+    });
+  });
   accountToggle?.addEventListener("click",()=>{
     const opening=accountMenu.hidden;
     accountMenu.hidden=!opening;
