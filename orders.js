@@ -1,5 +1,6 @@
 "use strict";
 const TOKEN_KEY = "qingtian_shop_token";
+const API_BASE = "https://api.lynli.me";
 const $ = id => document.getElementById(id);
 const state = { all: [], filter: "all", loading: false };
 const I18N = {
@@ -47,7 +48,7 @@ const t = key => I18N[lang()][key] || key;
 const money = value => "¥" + (Number(value || 0)).toFixed(2);
 const date = value => value ? new Date(Number(value) * 1000).toLocaleString(lang()==="zh"?"zh-CN":"en-US",{hour12:false}) : t("notAvailable");
 async function api(path) {
- const response = await fetch(path, {
+ const response = await fetch(API_BASE + path, {
   headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")},
   cache:"no-store"
  });
