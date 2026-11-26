@@ -1,183 +1,58 @@
 "use strict";
-const TOKEN_KEY = "qingtian_shop_token";
-const API_BASE = "https://api.lynli.me";
-const $ = id => document.getElementById(id);
-const state = { all: [], filter: "all", loading: false, page: 1, pageSize: 20, total: 0 };
-const TEXT = {
- title:"订单详情", subtitle:"查看你的商品订单、付款状态、发货进度与已交付卡密。",
- home:"首页", myAccount:"我的账户", loading:"正在读取订单…", empty:"当前账户暂无商品订单。",
- loadFailed:"订单读取失败，请稍后重试。", partial:"订单列表暂时不完整，请稍后重试。",
- all:"全部订单", goods:"商品订单",
- goodsType:"商品订单", orderNo:"订单号", created:"创建时间", updated:"更新时间",
- amount:"订单金额", product:"商品", quantity:"数量", unitPrice:"单价", method:"支付方式",
- paidAt:"付款时间", shippedAt:"发货时间", tracking:"物流单号", carrier:"物流公司",
- receiver:"收件人", phone:"联系电话", address:"收货地址", remark:"订单备注",
- pending:"待付款", paid:"已付款·待发货", shipped:"已发货", completed:"已完成",
- closed:"已退款", cancelled:"已取消", unknown:"状态待核实",
- details:"查看订单详情", hide:"收起详情", loadingDetail:"正在读取订单详情…",
- delivery:"交付内容", copy:"复制", copied:"已复制", deliveryEmpty:"暂无可展示的交付内容。",
- deliveryError:"订单详情读取失败，请稍后重试。", unauthorized:"登录状态已失效，请重新登录。",
- paymentMethodAlipay:"支付宝", paymentMethodWechat:"微信支付", paymentMethodUsdt:"USDT",
- copyFailed:"复制失败，请手动复制。", noDeliveryPending:"订单已付款，等待发货。", noDelivery:"暂无交付内容。", typeLabel:"订单类型",
- notAvailable:"—"
-};
-const t = key => TEXT[key] || key;
-const money = value => "¥" + (Number(value || 0)).toFixed(2);
-const date = value => value ? new Date(Number(value) * 1000).toLocaleString("zh-CN",{hour12:false}) : t("notAvailable");
-async function api(path) {
- const response = await fetch(API_BASE + path, {
-  headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")},
-  cache:"no-store"
- });
- let data={}; try { data=await response.json(); } catch {}
- // 后端统一把业务错误包装成 HTTP 200，真实状态放在 http_status 中。
- if(response.status===401 || Number(data.http_status)===401 || data.message==="unauth" || data.message==="登录已过期"){
-  localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw new Error("unauthorized");
- }
- if(!response.ok || data.status==="fail" || data.code===0) throw new Error(data.message||data.msg||"request_failed");
- return data;
+const TOKEN_KEY="qingtian_shop_token",API_BASE="https://api.lynli.me";
+const $=id=>document.getElementById(id);
+const state={rows:[],page:1,pageSize:10,total:0,loading:false};
+const labels={pending:"待付款",paid:"已付款",shipped:"已发货",completed:"已完成",cancelled:"已取消",closed:"已关闭",refunded:"已退款",failed:"失败",unknown:"状态待核实"};
+const money=v=>"¥"+Number(v||0).toFixed(2);
+const date=v=>v?new Date(Number(v)*1000).toLocaleString("zh-CN",{hour12:false}):"—";
+function node(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!==undefined)e.textContent=String(txt);return e;}
+async function api(path){
+ const r=await fetch(API_BASE+path,{headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")},cache:"no-store"});
+ let d={};try{d=await r.json()}catch{}
+ if(r.status===401||Number(d.http_status)===401||d.message==="unauth"){localStorage.removeItem(TOKEN_KEY);location.replace("./auth.html");throw Error("unauthorized")}
+ if(!r.ok||d.status==="fail"||d.code===0)throw Error(d.message||"request_failed");
+ return d;
 }
-function make(tag, cls, value) {
- const el=document.createElement(tag); if(cls)el.className=cls;
- if(value!==undefined)el.textContent=String(value); return el;
-}
-function addInfo(parent,label,value) {
- const row=make("div","order-detail-row");
- row.append(make("span","order-detail-label",label),make("span","order-detail-value",value||t("notAvailable")));
- parent.append(row);
-}
-function statusLabel(order) {
- const status=String(order.status||"unknown").toLowerCase();
- return t(status in TEXT ? status : "unknown");
-}
-function paymentMethod(value) {
- const map={alipay:t("paymentMethodAlipay"),wechat:t("paymentMethodWechat"),usdt:t("paymentMethodUsdt"),USDT_TRC20:t("paymentMethodUsdt")};
- return map[value]||value||t("notAvailable");
-}
-function deliveryPanel(parent,order) {
- const section=make("section","order-delivery-section");
- section.append(make("strong","order-detail-section-title",t("delivery")));
- const content=String(order.delivery_content||"").trim();
- if(order.delivery_available && content) {
-  const pre=make("pre","order-delivery-content",content);
-  const button=make("button","detail-action",t("copy"));button.type="button";
-  button.addEventListener("click",async()=>{
-   try{await navigator.clipboard.writeText(content);button.textContent=t("copied");}
-   catch{button.textContent=t("copyFailed");}
-  });
-  section.append(pre,button);
- } else {
-  const msg=order.status==="paid"?t("noDeliveryPending"):t("noDelivery");
-  section.append(make("p","order-detail-muted",msg));
- }
- parent.append(section);
-}
-function detailPanel(order) {
- const panel=make("section","order-detail-panel");
- panel.append(make("p","order-detail-muted",t("loadingDetail")));
- return panel;
-}
-function renderDetail(panel,order) {
- panel.replaceChildren();
- addInfo(panel,t("typeLabel"),t("goodsType"));
- addInfo(panel,t("orderNo"),order.trade_no);
- addInfo(panel,t("created"),date(order.created_at));
- addInfo(panel,t("updated"),date(order.updated_at));
- addInfo(panel,t("amount"),money(order.total_amount??order.amount));
- addInfo(panel,t("method"),paymentMethod(order.pay_method));
- if(order.paid_at)addInfo(panel,t("paidAt"),date(order.paid_at));
- if(order.shipped_at)addInfo(panel,t("shippedAt"),date(order.shipped_at));
- const items=Array.isArray(order.items)?order.items:[];
- items.forEach((item,index)=>{
-  addInfo(panel,t("product"),item.title||order.product_name||"");
-  addInfo(panel,t("quantity"),String(item.qty||1));
-  addInfo(panel,t("unitPrice"),money(item.price));
-  const credential=String(item.delivery_content||"").trim();
-  if(credential){
-   const wrap=make("section","order-delivery-section");
-   wrap.append(make("strong","order-detail-section-title","商品 "+(index+1)+" 卡密 / 账号"));
-   wrap.append(make("pre","order-delivery-content",credential));
-   const copy=make("button","detail-action",t("copy"));copy.type="button";
-   copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(credential);copy.textContent=t("copied");}catch{copy.textContent=t("copyFailed");}});
-   wrap.append(copy);panel.append(wrap);
-  }
- });
- if(order.receiver)addInfo(panel,t("receiver"),order.receiver);
- if(order.phone)addInfo(panel,t("phone"),order.phone);
- if(order.address)addInfo(panel,t("address"),order.address);
- if(order.tracking_company)addInfo(panel,t("carrier"),order.tracking_company);
- if(order.tracking_no)addInfo(panel,t("tracking"),order.tracking_no);
- if(order.remark)addInfo(panel,t("remark"),order.remark);
- deliveryPanel(panel,order);
-}
-async function load() {
- if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
- state.loading=true;
- $("ordersList").replaceChildren(make("div","orders-state",t("loading")));
- try {
-  const result=await api(`/api/v1/user/orders?page=${state.page}&limit=${state.pageSize}`);
-  const rows=Array.isArray(result.data)?result.data:[];
-  state.total=Number(result.total ?? rows.length);
-  state.all=rows.map(order=>({...order,kind:"goods",id:String(order.trade_no||order.id||"")}));
-  state.loading=false;
-  render();
- } catch(error) {
-  state.loading=false;
-  $("ordersList").replaceChildren(make("div","orders-state",error.message==="unauthorized"?t("unauthorized"):t("loadFailed")));
- }
-}
-function render() {
+function status(o){const s=String(o.status||"unknown").toLowerCase();return labels[s]||o.status_text||labels.unknown;}
+function statusClass(o){return "status-"+String(o.status||"unknown").toLowerCase();}
+function render(){
  const root=$("ordersList");root.replaceChildren();
- const list=state.all.filter(order=>state.filter==="all"||order.kind===state.filter);
  $("ordersCount").textContent=String(state.total);
- if(!list.length){root.append(make("div","orders-state",t("empty")));return;}
- for(const order of list) {
-  const card=make("article","order-card");
-  const top=make("div","order-top");
-  const left=make("div","order-heading");
-  left.append(make("span","order-kind",t("goodsType")),make("h2","order-name",order.product_name||order.title||t("goodsType")));
-  const status=String(order.status||"unknown").toLowerCase();
-  top.append(left,make("span","order-status status-"+status,statusLabel(order)));
-  const meta=make("div","order-meta",t("orderNo")+"："+(order.trade_no||"—")+"\n"+t("created")+"："+date(order.created_at));
-  const bottom=make("div","order-bottom");
-  bottom.append(make("strong","order-price",money(order.total_amount??order.amount)));
-  const toggle=make("button","detail-toggle",t("details"));toggle.type="button";
-  const panel=detailPanel(order);panel.hidden=true;
-  toggle.addEventListener("click",async()=>{
-   const opening=panel.hidden;panel.hidden=!opening;
-   toggle.textContent=opening?t("hide"):t("details");
-   if(opening&&!panel.dataset.loaded) {
-    toggle.disabled=true;
-    try {
-     const result=await api("/api/v1/user/orders/detail?trade_no="+encodeURIComponent(order.trade_no));
-     if(!result.data)throw new Error("not_found");
-     renderDetail(panel,result.data);panel.dataset.loaded="1";
-    } catch(error) {
-     panel.replaceChildren(make("p","order-detail-muted",error.message==="unauthorized"?t("unauthorized"):t("deliveryError")));
-    } finally {toggle.disabled=false;}
-   }
-  });
-  bottom.append(toggle);card.append(top,meta,bottom,panel);root.append(card);
+ if(!state.rows.length){root.append(node("div","orders-state","当前账户暂无商品订单"));$("ordersPagination").replaceChildren();return;}
+ for(const o of state.rows){
+  const card=node("article","order-card");
+  const head=node("div","order-card-head");
+  const title=node("a","order-product-title",o.product_name||o.title||(o.items&&o.items[0]&&o.items[0].title)||"商品订单");
+  title.href="./order-detail.html?trade_no="+encodeURIComponent(o.trade_no||"");
+  head.append(title,node("span","order-status "+statusClass(o),status(o)));
+  const created=node("div","order-created",date(o.created_at));
+  const body=node("div","order-card-body");
+  const left=node("div","order-fields");
+  const fields=[
+   ["订单号",o.trade_no||"—"],["支付状态",o.pay_status_text||((Number(o.status_code)>=1)?"已支付":"待支付")],
+   ["发货状态",o.ship_status_text||status(o)],["支付方式",o.pay_method||"余额"],["购买数量",String(o.item_count||((o.items||[]).reduce((n,x)=>n+Number(x.qty||1),0))||1)]
+  ];
+  for(const [k,v] of fields){const row=node("div","order-field");row.append(node("span","order-field-label",k+"："),node("strong","order-field-value",v));left.append(row);}
+  const right=node("div","order-card-right");right.append(node("span","order-amount-label","订单金额"),node("strong","order-amount",money(o.total_amount??o.amount)));
+  const btn=node("a","order-view-button","查看详情");btn.href="./order-detail.html?trade_no="+encodeURIComponent(o.trade_no||"");right.append(btn);
+  body.append(left,right);card.append(head,created,body);root.append(card);
  }
  renderPagination();
 }
-function renderPagination() {
- const root=$("ordersPagination"); if(!root)return; root.replaceChildren();
- const pages=Math.max(1,Math.ceil(state.total/state.pageSize));
- if(state.total<=state.pageSize){return;}
- root.className="orders-pagination";
- const prev=make("button","detail-toggle","上一页"); prev.type="button"; prev.disabled=state.page<=1;
- prev.addEventListener("click",()=>{if(state.page>1){state.page--;load();}});
- const info=make("span","orders-page-info",`第 ${state.page} / ${pages} 页，共 ${state.total} 条订单`);
- const next=make("button","detail-toggle","下一页"); next.type="button"; next.disabled=state.page>=pages;
- next.addEventListener("click",()=>{if(state.page<pages){state.page++;load();}});
- root.append(prev,info,next);
+function renderPagination(){
+ const root=$("ordersPagination");root.replaceChildren();
+ const pages=Math.max(1,Math.ceil(state.total/state.pageSize));if(pages<=1)return;
+ const add=(label,page,disabled=false,active=false)=>{const b=node("button","page-button"+(active?" active":""),label);b.disabled=disabled;b.addEventListener("click",()=>{if(page!==state.page){state.page=page;load()}});root.append(b)};
+ add("‹",Math.max(1,state.page-1),state.page===1);
+ let nums=[];if(pages<=8){for(let i=1;i<=pages;i++)nums.push(i)}else{nums=[1,2,3,4,5,6,"…",pages];if(state.page>5&&state.page<pages-2)nums=[1,"…",state.page-1,state.page,state.page+1,"…",pages]}
+ for(const n of nums){if(n==="…"){root.append(node("span","page-ellipsis","…"));continue}add(String(n),n,false,n===state.page)}
+ add("›",Math.min(pages,state.page+1),state.page===pages);
+ const total=node("span","page-total","Total "+state.total);root.prepend(total);
 }
-function applyLanguage() {
- document.documentElement.lang="zh-CN";
- document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.dataset.i18n;if(TEXT[key])el.textContent=t(key);});
- document.querySelectorAll("[data-filter]").forEach(btn=>{btn.textContent=t(btn.dataset.filter==="all"?"all":btn.dataset.filter);btn.classList.toggle("active",btn.dataset.filter===state.filter);});
- $("ordersTitle").textContent=t("title");$("ordersSubtitle").textContent=t("subtitle");
+async function load(){
+ if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return}
+ $("ordersList").replaceChildren(node("div","orders-state","正在读取全部订单…"));
+ try{const d=await api("/api/v1/user/orders?page="+state.page+"&limit="+state.pageSize);state.rows=Array.isArray(d.data)?d.data:[];state.total=Number(d.total??d.count??state.rows.length);render()}
+ catch(e){$("ordersList").replaceChildren(node("div","orders-state",e.message==="unauthorized"?"登录已失效，请重新登录":"订单读取失败，请稍后刷新"))}
 }
-document.querySelectorAll("[data-filter]").forEach(btn=>btn.addEventListener("click",()=>{state.filter=btn.dataset.filter;state.page=1;applyLanguage();render();}));
-applyLanguage();load();
+load();
