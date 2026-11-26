@@ -62,6 +62,16 @@ async function hashPassword(password) {
 }
 async function verifyPassword(password,stored) {
  if(typeof stored!=="string")return false;
+ // Qingtian legacy account format: SHA256("lynli$" + password). This is
+ // accepted only as a migration bridge; successful login upgrades it to PBKDF2.
+ if(/^[a-f0-9]{64}$/i.test(stored)){
+  try{
+   const digest=new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode("lynli$"+password)));
+   const actual=Array.from(digest,b=>b.toString(16).padStart(2,"0")).join("");
+   let diff=0;for(let i=0;i<64;i++)diff|=actual.charCodeAt(i)^stored.toLowerCase().charCodeAt(i);
+   return diff===0;
+  }catch{return false}
+ }
  const p=stored.split("$");
  try {
   let salt,expected,iterations;
