@@ -79,7 +79,7 @@ function formatPrice(value) {
   return Number.isFinite(n) ? "¥" + n.toFixed(2) : "价格暂不可用";
 }
 const SHOP_I18N = {
- zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",myAccount:"我的账户",shopping:"商品购买",allProducts:"全部商品",catalogHeading:"上架商品",productHeading:"商品购买",searchResults:"搜索结果",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品库存与售价实时读取，支持在线下单。下单前请核对商品信息。",tagStock:"实时库存",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品购买",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在加载商品…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogStale:"商品信息暂未完成更新，相关商品已暂停购买。",catalogEmpty:"暂无上架商品。",catalogFailed:"商品目录暂时不可用，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请稍后再试。"}
+ zh:{loggedIn:"已登录",balanceLabel:"账户余额",accountInfo:"账户信息",inviteRewards:"邀请奖励",orderHistory:"历史订单",support:"联系客服",language:"语言",logout:"退出登录",home:"首页",myAccount:"我的账户",shopping:"商品购买",allProducts:"全部商品",catalogHeading:"上架商品",productHeading:"商品购买",searchResults:"搜索结果",heroEyebrow:"晴天号铺 · 商品商城",heroTitle:"精选账号与数字商品",heroSubtitle:"安全选购 · 即时交付",heroCopy:"商品库存与售价实时读取，支持在线下单。下单前请核对商品信息。",tagStock:"实时库存",tagPrice:"明码标价",tagDelivery:"在线交付",catalogEyebrow:"商品购买",searchPlaceholder:"搜索商品名称…",category:"商品分类",allCategories:"全部分类",sort:"商品排序",defaultSort:"默认排序",priceLowHigh:"价格从低到高",priceHighLow:"价格从高到低",stockHighLow:"库存从高到低",loadingCatalog:"正在加载商品…",noProducts:"暂无上架商品",noMatches:"没有找到符合条件的商品",stockLabel:"库存",buyNow:"立即购买",notAvailable:"暂不可购买",submitting:"提交订单…",checking:"正在核验商品与余额…",delivered:"购买成功，卡密已交付。",insufficient:"余额不足，请先联系客户充值。",catalogUpdated:"商品目录已更新。",catalogStale:"商品信息暂未完成更新，相关商品已暂停购买。",catalogEmpty:"暂无上架商品。",catalogFailed:"商品暂时无法显示，请稍后重试。",temporaryError:"网络暂时不可用，已保留登录状态。请稍后再试。"}
 };
 function currentShopLanguage(){return "zh";}
 function updateShopHeading(){
@@ -460,7 +460,8 @@ function drawFilteredProducts() {
     if (description) card.appendChild(safeText("p", "product-description", description, ""));
     const meta = document.createElement("div");
     meta.className = "product-meta";
-    meta.appendChild(safeText("div","product-price",item.price_verified === true ? formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4) : item.catalog_verified === false ? "价格核验中" : "价格核验失败"));
+    const priceAvailable = item.catalog_verified !== false && item.price_verified === true && item.legacy_migrated !== true;
+    meta.appendChild(safeText("div","product-price",priceAvailable ? formatPrice(item.price_cny ?? Number(item.price_usdt || 0)*4) : "暂不可购买"));
     meta.appendChild(safeText("div","product-stock",SHOP_I18N[currentShopLanguage()].stockLabel+" "+Number(item.stock||0)));
     card.appendChild(meta);
     const stock = Number(item.stock || 0);
@@ -473,7 +474,7 @@ function drawFilteredProducts() {
     const buyButton = document.createElement("button");
     buyButton.type = "button";
     buyButton.className = "primary-button buy-button";
-    buyButton.textContent = item.legacy_migrated === true ? "价格已迁移，购买功能未切换" : item.catalog_verified === false || item.price_verified !== true ? ("价格核验中") : item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
+    buyButton.textContent = !priceAvailable || item.purchasable === false ? SHOP_I18N[currentShopLanguage()].notAvailable : SHOP_I18N[currentShopLanguage()].buyNow;
     buyButton.disabled = item.legacy_migrated === true || item.catalog_verified === false || item.price_verified !== true || item.purchasable === false;
     buyButton.addEventListener("click", () => purchase(item, buyButton));
     card.appendChild(buyButton);
@@ -556,8 +557,8 @@ async function loadProducts() {
     renderProducts(items, { verified: true });
     message($("shopMessage"), "", "");
   } catch (error) {
-    grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
-    message($("shopMessage"),SHOP_I18N.zh.catalogFailed,"error");
+    grid.replaceChildren(safeText("div", "empty-card", "商品暂时无法显示，请稍后重试。"));
+    message($("shopMessage"),"","");
   } finally {
     catalogLoadInFlight = false;
   }
