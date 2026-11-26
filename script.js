@@ -405,7 +405,7 @@ function saveCachedProducts(items) {
       saved_at: Date.now(),
       items: items.map(item => ({
         product_id: item.product_id, name: item.name, category: item.category,
-        icon: item.icon, icon_url: item.icon_url, price_cny: item.price_cny, price_usdt: item.price_usdt,
+        icon: item.icon, icon_url: item.icon_url, is_hot: item.is_hot === true, is_recommend: item.is_recommend === true, price_cny: item.price_cny, price_usdt: item.price_usdt,
         stock: item.stock, purchasable: item.purchasable
       }))
     }));
@@ -438,6 +438,7 @@ function drawFilteredProducts() {
   });
   if (sort === "default") {
     const popularity = item => {
+      const upstreamPriority = (item.is_hot === true || String(item.is_hot).toLowerCase() === "true" ? 120 : 0) + (item.is_recommend === true || String(item.is_recommend).toLowerCase() === "true" ? 60 : 0);
       const name=String(item.name||"").toLowerCase(), icon=String(item.icon||"").toLowerCase();
       const rules=[
         [/chatgpt|openai|gpt[- ]?[45]/i,100],[/claude|anthropic/i,98],[/gemini|google ai/i,96],
@@ -449,9 +450,9 @@ function drawFilteredProducts() {
         [/capcut/i,54],[/adobe|photoshop|premiere/i,52],[/textnow/i,56],[/zoom/i,50],[/yahoo/i,48],[/skype/i,46]
       ];
       const hit=rules.find(([pattern])=>pattern.test(name));
-      if(hit)return hit[1];
+      if(hit)return upstreamPriority+hit[1];
       const ranks={"shop-google":94,"shop-google-voice-logo":94,"shop-microsoft":92,"shop-apple":90,"shop-discord":88,"shop-telegram":86,"shop-whatsapp":84,"shop-instagram":82,"shop-tiktok":80,"shop-facebook":78,"shop-twitter-circle-fill":76,"shop-steam":70,"shop-amazon-circle-fill":64,"shop-youtube":94,"shop-yahoo":48};
-      return ranks[icon]||0;
+      return upstreamPriority+(ranks[icon]||0);
     };
     items.sort((a,b)=>popularity(b)-popularity(a));
   }
