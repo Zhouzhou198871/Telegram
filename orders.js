@@ -2,7 +2,7 @@
 const TOKEN_KEY = "qingtian_shop_token";
 const API_BASE = "https://api.lynli.me";
 const $ = id => document.getElementById(id);
-const state = { all: [], filter: "all", loading: false };
+const state = { all: [], filter: "all", loading: false, page: 1, pageSize: 20, total: 0 };
 const TEXT = {
  title:"订单详情", subtitle:"查看你的商品订单、付款状态、发货进度与已交付卡密。",
  home:"首页", myAccount:"我的账户", loading:"正在读取订单…", empty:"当前账户暂无商品订单。",
@@ -106,8 +106,9 @@ async function load() {
  state.loading=true;
  $("ordersList").replaceChildren(make("div","orders-state",t("loading")));
  try {
-  const result=await api("/api/v1/user/orders?page=1&limit=100");
+  const result=await api(`/api/v1/user/orders?page=${state.page}&limit=${state.pageSize}`);
   const rows=Array.isArray(result.data)?result.data:[];
+  state.total=Number(result.total ?? rows.length);
   state.all=rows.map(order=>({...order,kind:"goods",id:String(order.trade_no||order.id||"")}));
   state.loading=false;
   render();
@@ -119,7 +120,7 @@ async function load() {
 function render() {
  const root=$("ordersList");root.replaceChildren();
  const list=state.all.filter(order=>state.filter==="all"||order.kind===state.filter);
- $("ordersCount").textContent=String(list.length);
+ $("ordersCount").textContent=String(state.total);
  if(!list.length){root.append(make("div","orders-state",t("empty")));return;}
  for(const order of list) {
   const card=make("article","order-card");
@@ -149,6 +150,19 @@ function render() {
   });
   bottom.append(toggle);card.append(top,meta,bottom,panel);root.append(card);
  }
+ renderPagination();
+}
+function renderPagination() {
+ const root=$("ordersPagination"); if(!root)return; root.replaceChildren();
+ const pages=Math.max(1,Math.ceil(state.total/state.pageSize));
+ if(state.total<=state.pageSize){return;}
+ root.className="orders-pagination";
+ const prev=make("button","detail-toggle","上一页"); prev.type="button"; prev.disabled=state.page<=1;
+ prev.addEventListener("click",()=>{if(state.page>1){state.page--;load();}});
+ const info=make("span","orders-page-info",`第 ${state.page} / ${pages} 页，共 ${state.total} 条订单`);
+ const next=make("button","detail-toggle","下一页"); next.type="button"; next.disabled=state.page>=pages;
+ next.addEventListener("click",()=>{if(state.page<pages){state.page++;load();}});
+ root.append(prev,info,next);
 }
 function applyLanguage() {
  document.documentElement.lang="zh-CN";
@@ -156,5 +170,5 @@ function applyLanguage() {
  document.querySelectorAll("[data-filter]").forEach(btn=>{btn.textContent=t(btn.dataset.filter==="all"?"all":btn.dataset.filter);btn.classList.toggle("active",btn.dataset.filter===state.filter);});
  $("ordersTitle").textContent=t("title");$("ordersSubtitle").textContent=t("subtitle");
 }
-document.querySelectorAll("[data-filter]").forEach(btn=>btn.addEventListener("click",()=>{state.filter=btn.dataset.filter;applyLanguage();render();}));
+document.querySelectorAll("[data-filter]").forEach(btn=>btn.addEventListener("click",()=>{state.filter=btn.dataset.filter;state.page=1;applyLanguage();render();}));
 applyLanguage();load();
