@@ -551,39 +551,34 @@ async function loadProducts() {
   const grid = $("productGrid");
   grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N.zh.loadingCatalog));
   try {
-    // Read the migrated Qingtian catalog and prices from Neon.
-    const first = await api("/api/v1/shop/products?page=1&size=60");
-    if (Number(first.code) !== 1 || !Array.isArray(first.data)) throw new Error("legacy_catalog_unavailable");
-    const pages = Math.max(1, Number(first.pages || 1));
-    const rawRows = [...first.data];
-    for (let start = 2; start <= pages; start += 6) {
-      const batch = [];
-      for (let page = start; page < Math.min(start + 6, pages + 1); page += 1) {
-        batch.push(api("/api/v1/shop/products?page=" + page + "&size=60"));
-      }
-      const results = await Promise.all(batch);
-      for (const result of results) {
-        if (Number(result.code) !== 1 || !Array.isArray(result.data)) throw new Error("legacy_catalog_page_failed");
-        rawRows.push(...result.data);
-      }
-    }
-    const items = rawRows.map(row => ({
-      product_id: String(row.id),
-      name: String(row.title || row.name || "数字商品"),
+    // The live purchasable supplier catalog, prices and stock are all read
+    // from Neon public.shop_catalog. Its product_id is the same stable key
+    // consumed by /api/buy, so the existing balance/order/delivery flow stays intact.
+    const result = await api("/api/products");
+    if (result.ok !== true || !Array.isArray(result.items)) throw new Error("catalog_unavailable");
+    const items = result.items.map(row => ({
+      product_id: String(row.product_id),
+      supplier_product_id: String(row.supplier_product_id || row.product_id),
+      name: String(row.name || "数字商品"),
       category: String(row.category || "未分类"),
-      description: String(row.detail || row.subtitle || ""),
-      image_url: String(row.image_url || row.image || ""),
-      icon_url: String(row.image_url || row.image || ""),
-      price_cny: Number(row.price || 0),
+      description: String(row.description || ""),
+      icon: String(row.icon || ""),
+      icon_url: String(row.icon_url || ""),
+      image_url: String(row.image_url || ""),
+      is_hot: row.is_hot === true,
+      is_recommend: row.is_recommend === true,
+      price_cny: Number(row.price_cny || 0),
+      price_usdt: Number(row.price_usdt || 0),
       stock: Number(row.stock || 0),
-      purchasable: false,
-      price_verified: true,
-      legacy_migrated: true
+      purchasable: row.purchasable === true,
+      price_verified: row.price_verified === true,
+      legacy_migrated: false
     }));
     saveCachedProducts(items);
     renderProducts(items, { verified: true });
-    message($("shopMessage"),"已连接 Neon 商品价格目录（" + items.length + " 件）。本次切换商品展示与价格；购买接口仍保留原业务。","success");
-  } catch {
+    const staleText = result.catalog_stale ? "（供应商价格库存同步已过期，购买暂时锁定）" : "";
+    message($("shopMessage"),"已连接 Neon 实时商品目录（" + items.length + " 件）" + staleText,"success");
+  } catch (error) {
     grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
     message($("shopMessage"),SHOP_I18N.zh.catalogFailed,"error");
   } finally {
