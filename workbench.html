@@ -2,47 +2,99 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#f7f9fc">
-<title>账号工作台 · 晴天号铺</title><link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=subpage-header-workbench-20261126-v1">
+<title>API 工作台 · 晴天号铺</title><link rel="icon" href="./logo.jpg"><link rel="stylesheet" href="./shop.css?v=api-workbench-20261126-v1">
 <style>
 body[data-page="workbench"]{background:#f7f9fc;color:#243247;min-height:100vh}
-.wb-header{width:min(1120px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
+.wb-header{width:min(1160px,calc(100% - 32px));height:76px;margin:auto;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e5eaf1}
 .wb-brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:#243247;font-size:19px;font-weight:800}.wb-brand img{width:42px;height:42px;border-radius:12px;object-fit:cover}
-.wb-home{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#3b82f6;padding:10px 14px;text-decoration:none;font-size:14px}
-.wb-main{width:min(920px,calc(100% - 32px));margin:28px auto 60px}
-.wb-breadcrumb{font-size:13px;color:#8491a3;margin-bottom:22px}.wb-breadcrumb a{color:#3984d8;text-decoration:none}
-.wb-title{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap;margin-bottom:22px}.wb-title h1{font-size:28px;margin:0 0 7px}.wb-title p{margin:0;color:#748196;font-size:14px}
+.wb-home,.wb-btn{border:1px solid #dce3ec;border-radius:10px;background:#fff;color:#347ed1;padding:10px 14px;text-decoration:none;font-size:14px;cursor:pointer}
+.wb-btn.primary{background:#347fe0;border-color:#347fe0;color:#fff}.wb-btn.danger{color:#c94a4a;border-color:#f2dada}.wb-btn:disabled{opacity:.45;cursor:not-allowed}
+.wb-main{width:min(1160px,calc(100% - 32px));margin:26px auto 60px}
+.wb-breadcrumb{font-size:13px;color:#8491a3;margin-bottom:20px}.wb-breadcrumb a{color:#3984d8;text-decoration:none}
+.wb-title{margin-bottom:20px}.wb-title h1{font-size:28px;margin:0 0 7px}.wb-title p{margin:0;color:#748196;font-size:14px}
 .wb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
-.wb-card{padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04)}
-.wb-card span{display:block;color:#7b8797;font-size:13px}.wb-card strong{display:block;margin-top:10px;font-size:25px;color:#243247;font-variant-numeric:tabular-nums}
-.wb-section{margin-top:18px;padding:20px;border:1px solid #e0e5ec;border-radius:16px;background:#fff}
-.wb-section h2{font-size:17px;margin:0 0 14px}.wb-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.wb-link{display:block;padding:15px;border:1px solid #e3eaf3;border-radius:12px;background:#f9fbff;color:#315f9b;text-decoration:none;font-weight:700}
-.wb-link small{display:block;margin-top:5px;color:#8491a3;font-weight:400;font-size:12px}
-.wb-order{display:flex;justify-content:space-between;gap:12px;padding:13px 0;border-top:1px solid #edf1f6;font-size:13px}.wb-order div{min-width:0}.wb-order strong{display:block;overflow-wrap:anywhere;color:#334155}.wb-order small{color:#8491a3}.wb-order b{white-space:nowrap;color:#16834a}
-.wb-state{padding:20px;text-align:center;color:#8491a3}
-@media(max-width:620px){.wb-grid{grid-template-columns:1fr 1fr}.wb-links{grid-template-columns:1fr 1fr}.wb-main{margin-top:20px}.wb-title h1{font-size:24px}}
-@media(max-width:390px){.wb-grid,.wb-links{grid-template-columns:1fr}.wb-card,.wb-section{padding:16px}}
+.wb-card,.wb-section{padding:19px;border:1px solid #e0e5ec;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.035)}
+.wb-card span{display:block;color:#7b8797;font-size:13px}.wb-card strong{display:block;margin-top:8px;font-size:25px;color:#243247;font-variant-numeric:tabular-nums}
+.wb-section{margin-top:16px}.wb-section h2{font-size:18px;margin:0 0 14px}.wb-section p{font-size:13px;color:#78869a;line-height:1.65}
+.wb-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.wb-between{justify-content:space-between}
+.wb-status{padding:12px 14px;border-radius:10px;background:#f3f7fc;color:#60738c;font-size:13px;margin:12px 0}.wb-status.good{background:#edf9f1;color:#247a48}.wb-status.warn{background:#fff7e9;color:#95651b}
+.wb-input{min-width:0;flex:1;border:1px solid #dce3ec;border-radius:10px;padding:11px 12px;font:inherit;color:#243247;background:#fff}
+.wb-key{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid #edf1f6;font-size:13px}.wb-key strong{display:block;overflow-wrap:anywhere}.wb-key small{color:#8290a2}
+.wb-table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;font-size:13px;min-width:620px}th,td{text-align:left;padding:11px 9px;border-bottom:1px solid #edf1f6;white-space:nowrap}th{color:#8290a2;font-weight:600}
+.wb-code{background:#172235;color:#e4edf9;padding:15px;border-radius:12px;overflow:auto;font:12px/1.65 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre}
+.wb-endpoint{display:grid;grid-template-columns:74px minmax(0,1fr);gap:10px;padding:10px 0;border-bottom:1px solid #edf1f6;font-size:13px}.wb-method{font-weight:800;color:#267a4b}.wb-endpoint code{overflow-wrap:anywhere}
+.wb-empty{padding:18px;text-align:center;color:#8a96a6;font-size:13px}
+.wb-section details{border-top:1px solid #edf1f6;padding:12px 0}.wb-section summary{cursor:pointer;font-weight:700;font-size:14px}
+@media(max-width:680px){.wb-grid{grid-template-columns:1fr 1fr}.wb-main{margin-top:18px}.wb-title h1{font-size:24px}.wb-section,.wb-card{padding:15px}}
+@media(max-width:420px){.wb-grid{grid-template-columns:1fr}.wb-key{align-items:flex-start;flex-direction:column}}
 </style>
 </head>
 <body data-page="workbench">
 <header class="wb-header"><a class="wb-brand" href="./shop.html"><img src="./logo.jpg" alt="晴天号铺"><span>晴天号铺</span></a><a class="wb-home" href="./shop.html">返回首页</a></header>
 <main class="wb-main">
-<nav class="wb-breadcrumb"><a href="./shop.html">首页</a> / <span>账号工作台</span></nav>
-<div class="wb-title"><div><h1>账号工作台</h1><p>查看账户经营数据，快速管理账号订单与账户服务。</p></div></div>
+<nav class="wb-breadcrumb"><a href="./shop.html">首页</a> / <span>API 开放工作台</span></nav>
+<div class="wb-title"><h1>API 开放工作台</h1><p>管理 API 密钥、查询账号商品、提交购买订单，并追踪调用与扣费记录。</p></div>
 <section class="wb-grid" aria-live="polite">
 <div class="wb-card"><span>账户余额</span><strong id="wbBalance">读取中…</strong></div>
-<div class="wb-card"><span>账号商品订单</span><strong id="wbGoodsCount">—</strong></div>
-<div class="wb-card"><span>充值订单</span><strong id="wbRechargeCount">—</strong></div>
+<div class="wb-card"><span>API 调用资格</span><strong id="wbEligibility">检查中…</strong></div>
+<div class="wb-card"><span>API 调用次数</span><strong id="wbCallCount">—</strong></div>
 </section>
-<section class="wb-section"><h2>工作快捷入口</h2><div class="wb-links">
-<a class="wb-link" href="./orders.html">订单管理<small>查看账号商品订单与充值记录</small></a>
-<a class="wb-link" href="./profile.html">个人资料<small>修改昵称、头像与登录密码</small></a>
-<a class="wb-link" href="./profile.html#recharge">账户充值<small>创建充值订单并查看入账</small></a>
-<a class="wb-link" href="./invite.html">邀请奖励<small>查看邀请人数与奖励明细</small></a>
-<a class="wb-link" href="./profile.html#accountCenter">API 服务<small>管理 API 密钥与调用记录</small></a>
-<a class="wb-link" href="./shop.html">账号商城<small>返回账号商品目录</small></a>
-</div></section>
-<section class="wb-section"><h2>最近订单</h2><div id="wbRecentOrders" class="wb-state">正在读取账户订单…</div></section>
+<section class="wb-section">
+<h2>API 调用资格</h2>
+<div id="wbEligibilityNote" class="wb-status">正在检查账户余额…</div>
+<p>账户余额必须保持不低于 ¥500 才能调用 API。¥500 是资格门槛，不会单独扣除；实际下单按商品实时售价扣费。若下单后余额低于 ¥500，后续 API 请求会被拒绝，直到账户余额恢复至门槛。</p>
+</section>
+<section class="wb-section">
+<div class="wb-row wb-between"><h2>API 密钥</h2><button class="wb-btn primary" id="wbCreateKey">创建 API 密钥</button></div>
+<p>密钥只在创建时完整展示一次。请妥善保管，不要放在公开网页或提交到代码仓库。</p>
+<div id="wbNewKey" hidden><div class="wb-status good">新密钥已生成，请立即复制保存。关闭或刷新页面后无法再次查看完整密钥。</div><div class="wb-row"><input class="wb-input" id="wbNewKeyValue" readonly><button class="wb-btn" id="wbCopyNewKey">复制密钥</button></div></div>
+<div id="wbKeys"><div class="wb-empty">正在读取密钥…</div></div>
+</section>
+<section class="wb-section">
+<h2>商品 API 测试</h2>
+<p>输入 API 密钥后，可读取真实商品目录。接口返回商品 ID、名称、分类、真实图标、人民币售价、库存数量及可购买状态。</p>
+<div class="wb-row"><input class="wb-input" id="wbTestKey" type="password" autocomplete="off" placeholder="粘贴 qt_live_ 开头的 API 密钥"><button class="wb-btn primary" id="wbTestProducts">查询商品</button></div>
+<div id="wbProducts" class="wb-table-wrap" style="margin-top:14px"><div class="wb-empty">尚未查询商品。</div></div>
+</section>
+<section class="wb-section">
+<h2>API 接口文档</h2>
+<p><strong>API 基础地址：</strong> <code>https://shop.lynli.me</code></p>
+<p><strong>鉴权方式：</strong> HTTP Bearer Token，所有接口均要求有效 API Key，且账户余额至少 ¥500。</p>
+<div class="wb-endpoint"><span class="wb-method">GET</span><div><code>/api/v1/account</code><br>读取账户邮箱、昵称、余额与最低余额要求。</div></div>
+<div class="wb-endpoint"><span class="wb-method">GET</span><div><code>/api/v1/products</code><br>查询全部可售商品，返回商品详情、价格、库存、图标、价格验证状态。</div></div>
+<div class="wb-endpoint"><span class="wb-method">GET</span><div><code>/api/v1/products/{product_id}</code><br>查询单个商品详情与实时库存。</div></div>
+<div class="wb-endpoint"><span class="wb-method">POST</span><div><code>/api/v1/orders</code><br>创建商品购买订单。请求头必须携带 Idempotency-Key，避免网络重试导致重复下单。</div></div>
+<div class="wb-endpoint"><span class="wb-method">GET</span><div><code>/api/v1/orders</code><br>读取当前 API 账户最近 100 笔商品订单。</div></div>
+<h3 style="font-size:14px;margin:18px 0 8px">1. 查询商品</h3>
+<pre class="wb-code">curl "https://shop.lynli.me/api/v1/products" \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+<h3 style="font-size:14px;margin:18px 0 8px">2. 查询单个商品</h3>
+<pre class="wb-code">curl "https://shop.lynli.me/api/v1/products/PRODUCT_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+<h3 style="font-size:14px;margin:18px 0 8px">3. 提交购买订单</h3>
+<pre class="wb-code">curl -X POST "https://shop.lynli.me/api/v1/orders" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: YOUR_UNIQUE_REQUEST_ID" \
+  -d '{"product_id":"PRODUCT_ID"}'</pre>
+<h3 style="font-size:14px;margin:18px 0 8px">4. 查询订单记录</h3>
+<pre class="wb-code">curl "https://shop.lynli.me/api/v1/orders" \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+<details><summary>响应字段与错误码</summary>
+<p><strong>商品字段：</strong> product_id、name、category、icon、icon_url、price_cny、price_usdt、stock、currency、price_verified、purchasable。</p>
+<p><strong>订单状态：</strong> reserved（已扣款待处理）、pending（处理中）、delivered（交付成功）、refunded（失败已退款）。</p>
+<p><strong>常见 HTTP 状态：</strong> 200/201 成功；202 订单处理中；400 参数错误；401 密钥缺失或无效；403 余额不足 ¥500 或无 API 资格；402 商品金额余额不足；404 商品不存在；409 商品下架、库存不足、价格快照过期或幂等键冲突；503 商品价格无效或上游配置异常。</p>
+<p>商品价格与库存会在下单时再次校验；目录数据超过 180 秒未更新时，非本地库存商品不可购买。失败订单由现有购买流程退款。</p>
+</details>
+</section>
+<section class="wb-section">
+<h2>API 调用记录</h2>
+<div id="wbUsage" class="wb-table-wrap"><div class="wb-empty">正在读取调用记录…</div></div>
+</section>
+<section class="wb-section">
+<h2>API 扣费与退款明细</h2>
+<div id="wbBilling" class="wb-table-wrap"><div class="wb-empty">正在读取扣费记录…</div></div>
+</section>
 </main>
-<script src="./workbench.js?v=subpage-header-workbench-20261126-v1" defer></script>
+<script src="./workbench.js?v=api-workbench-20261126-v1" defer></script>
 </body></html>
