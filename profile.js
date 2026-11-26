@@ -90,8 +90,8 @@
       const data=await api("/api/user/api-keys");
       const eligible=Boolean(data.eligible);
       $("apiStatus").classList.toggle("ready",eligible); $("apiStatus").classList.toggle("locked",!eligible);
-      $("apiStatusText").textContent=eligible?"余额已达标，可创建 API 密钥":"余额未达到 ¥200 开通门槛";
-      $("apiBalanceHint").textContent=eligible?"当前余额满足 API 服务要求。密钥请妥善保管；泄露后立即撤销。":"当前余额："+money(currentBalance)+"；开通要求：可用余额不少于 ¥200.00。";
+      $("apiStatusText").textContent=eligible?"余额已达标，可创建 API 密钥":"余额未达到 ¥500 开通门槛";
+      $("apiBalanceHint").textContent=eligible?"当前余额满足 API 服务要求。密钥请妥善保管；泄露后立即撤销。":"当前余额："+money(currentBalance)+"；开通要求：可用余额不少于 ¥500.00。";
       $("createApiKey").disabled=!eligible;
       renderApiKeys(data.keys || []);
       await loadApiUsage();
