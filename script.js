@@ -554,7 +554,9 @@ async function loadProducts() {
     renderProducts(items, { verified: true });
     message($("shopMessage"), "", "");
   } catch (error) {
-    grid.replaceChildren(safeText("div", "empty-card", "商品暂时无法显示，请稍后重试。"));
+    // Keep the cached catalog visible when a refresh fails; cached items remain non-purchasable.
+    if (allProducts.length) drawFilteredProducts();
+    else grid.replaceChildren(safeText("div", "empty-card", "暂无可显示商品"));
     message($("shopMessage"),"","");
   } finally {
     catalogLoadInFlight = false;
