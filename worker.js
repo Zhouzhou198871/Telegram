@@ -947,11 +947,11 @@ async function publicApiOrders(request,env) {
       const balanceAfter=Number(balanceRow?.balance_units||0),amount=Number(purchase.amount_units||0),now=Math.floor(Date.now()/1000);
       if(purchase.status==="refunded"){
         await env.DB.batch([
-          env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now),
-          env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'refund',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now)
+          env.DB.prepare("INSERT INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?) ON CONFLICT(order_id,action) DO NOTHING").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now),
+          env.DB.prepare("INSERT INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'refund',?,?,?) ON CONFLICT(order_id,action) DO NOTHING").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now)
         ]);
       } else {
-        await env.DB.prepare("INSERT OR IGNORE INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?)").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now).run();
+        await env.DB.prepare("INSERT INTO api_billing_ledger(id,order_id,user_id,key_id,product_id,action,amount_units,balance_after_units,created_at) VALUES(?,?,?,?,?,'debit',?,?,?) ON CONFLICT(order_id,action) DO NOTHING").bind(crypto.randomUUID(),purchase.order_id,auth.row.user_id,auth.row.key_id,purchase.product_id,amount,balanceAfter,now).run();
       }
     }
   }
