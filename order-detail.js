@@ -16,7 +16,7 @@ function row(parent,label,value){const r=el("div","detail-row");r.append(el("spa
 function copyButton(text,label="复制卡密"){const b=el("button","blue-button",label);b.type="button";b.onclick=async()=>{try{await navigator.clipboard.writeText(text);b.textContent="已复制"}catch{b.textContent="复制失败"}};return b;}
 function section(title,icon){const s=el("section","detail-section");s.append(el("h2","detail-section-head",icon+" "+title));return s;}
 function render(order,delivery){
- $("detailTitle").textContent="订单详情";$("detailLoading").remove();
+ $("detailLoading").remove();
  const basic=section("基本信息","ⓘ"),b=el("div","detail-section-body");
  row(b,"商品名称",order.product_name||"数字商品");
  const no=el("div","detail-row");no.append(el("span","detail-label","订单号"));no.append(el("code","detail-number",order.order_id||orderId),copyButton(order.order_id||orderId,"复制"));b.append(no);
