@@ -1,22 +1,145 @@
 "use strict";
-const TOKEN_KEY="qingtian_shop_token";
-const $=id=>document.getElementById(id);
-const I18N={
- zh:{backShop:"返回商城",home:"首页",myAccount:"我的账户",title:"历史订单",subtitle:"查看你的购买记录、订单状态和交付信息。",loading:"正在读取订单…",empty:"暂无历史订单。",failed:"订单读取失败，请刷新重试。",pending:"处理中",delivered:"已交付",refunded:"已退款",reserved:"处理中",unknown:"状态未知",orderNo:"订单号",created:"下单时间",viewDelivery:"查看交付内容",hideDelivery:"收起交付内容",deliveryLoading:"正在核验交付状态…",deliveryPending:"订单仍在处理中，请稍后重试。",deliveryUnavailable:"暂未获取到交付内容。",deliveryFailed:"交付信息读取失败，请稍后重试。",currency:"¥"},
- en:{backShop:"Back to store",home:"Home",myAccount:"My account",title:"Order history",subtitle:"Review purchases, order status and delivery details.",loading:"Loading orders…",empty:"No order history yet.",failed:"Could not load orders. Refresh and try again.",pending:"Processing",delivered:"Delivered",refunded:"Refunded",reserved:"Processing",unknown:"Unknown",orderNo:"Order",created:"Placed",viewDelivery:"View delivery",hideDelivery:"Hide delivery",deliveryLoading:"Checking delivery status…",deliveryPending:"Your order is still processing. Try again later.",deliveryUnavailable:"Delivery content is not available yet.",deliveryFailed:"Could not load delivery details. Try again later.",currency:"¥"}
+const TOKEN_KEY = "qingtian_shop_token";
+const $ = id => document.getElementById(id);
+const state = { all: [], filter: "all", loading: false };
+const I18N = {
+ zh: {
+  title:"订单详情", subtitle:"集中查看商品购买、节点订阅和账户充值订单。订单状态与交付信息来自你的账户记录。",
+  backShop:"返回商城", home:"首页", myAccount:"我的账户", loading:"正在读取订单…", empty:"当前账户暂无订单记录。",
+  loadFailed:"订单读取失败，请刷新重试。", partial:"部分订单暂时无法读取，已展示成功读取的记录。",
+  all:"全部", goods:"商品订单", nodes:"节点订单", recharge:"充值订单", refresh:"刷新订单",
+  goodsType:"商品订单", nodeType:"节点订单", rechargeType:"充值订单", orderNo:"订单号", created:"创建时间", updated:"更新时间",
+  amount:"订单金额", product:"商品", package:"套餐", method:"支付方式", paidAt:"入账时间",
+  pending:"处理中", reserved:"处理中", delivered:"已交付", refunded:"已退款", failed:"失败", fulfilled:"已开通", provisioning:"开通中", expired:"已过期", active:"使用中", paid:"已入账", unknown:"状态待核实",
+  details:"订单详情", hide:"收起详情", checkDelivery:"查询交付状态", checking:"正在查询…", delivery:"交付信息",
+  noDelivery:"暂未返回交付内容；订单可能仍在处理中。", deliveryError:"交付状态查询失败，请稍后重试。",
+  protocol:"协议", connection:"连接链接", clash:"Clash 配置", instructions:"使用说明", copy:"复制", copied:"已复制",
+  paymentPending:"充值订单尚未入账。请联系官方客服获取当前有效收款方式，并提交订单号核验。", paymentPaid:"该充值订单已入账。",
+  paymentMethodUsdt:"USDT（TRC20）", typeLabel:"订单类型", loadTime:"最近更新",
+  unauthorized:"登录状态已失效，请重新登录。"
+ },
+ en: {
+  title:"Order details", subtitle:"View product purchases, node subscriptions and account top-ups in one place.",
+  backShop:"Back to store", home:"Home", myAccount:"My account", loading:"Loading orders…", empty:"No orders found for this account.",
+  loadFailed:"Could not load orders. Refresh and try again.", partial:"Some order records could not be loaded. Successfully retrieved records are shown.",
+  all:"All", goods:"Products", nodes:"Node plans", recharge:"Top-ups", refresh:"Refresh",
+  goodsType:"Product order", nodeType:"Node order", rechargeType:"Top-up order", orderNo:"Order ID", created:"Created", updated:"Updated",
+  amount:"Amount", product:"Product", package:"Plan", method:"Payment method", paidAt:"Credited at",
+  pending:"Processing", reserved:"Processing", delivered:"Delivered", refunded:"Refunded", failed:"Failed", fulfilled:"Activated", provisioning:"Provisioning", expired:"Expired", active:"Active", paid:"Credited", unknown:"Status unavailable",
+  details:"Order details", hide:"Hide details", checkDelivery:"Check delivery", checking:"Checking…", delivery:"Delivery",
+  noDelivery:"Delivery content is not available yet. The order may still be processing.", deliveryError:"Could not check delivery status. Try again later.",
+  protocol:"Protocol", connection:"Connection link", clash:"Clash config", instructions:"Instructions", copy:"Copy", copied:"Copied",
+  paymentPending:"This top-up has not been credited. Contact official support for the current payment instructions and provide the order ID.",
+  paymentPaid:"This top-up has been credited.", paymentMethodUsdt:"USDT (TRC20)", typeLabel:"Order type", loadTime:"Last updated",
+  unauthorized:"Your session has expired. Please sign in again."
+ }
 };
-function lang(){return localStorage.getItem("qingtian_shop_language")==="en"?"en":"zh"}
-function date(ts){if(!ts)return "—";try{return new Date(ts*1000).toLocaleString(lang()==="zh"?"zh-CN":"en-US")}catch{return "—"}}
-async function api(path){const response=await fetch(path,{headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")},cache:"no-store"});let data={};try{data=await response.json()}catch{}if(!response.ok)throw new Error(data.error||"request_failed");return data}
-function text(key){return I18N[lang()][key]||key}
-function applyLanguage(){document.documentElement.lang=lang()==="zh"?"zh-CN":"en";document.querySelectorAll("[data-i18n]").forEach(el=>{const k=el.dataset.i18n;if(I18N[lang()][k])el.textContent=I18N[lang()][k]});$("languageToggle").textContent=lang()==="zh"?"English":"中文"}
-function statusKey(status){return ["delivered","refunded","pending","reserved"].includes(status)?status:"unknown"}
-function render(orders){const root=$("ordersList");root.replaceChildren();if(!orders.length){const empty=document.createElement("div");empty.className="orders-state";empty.textContent=text("empty");root.append(empty);return}
-for(const order of orders){const card=document.createElement("article");card.className="order-card";const top=document.createElement("div");top.className="order-top";const name=document.createElement("div");name.className="order-name";name.textContent=order.product_name||order.product_id;const badge=document.createElement("span");const st=statusKey(order.status);badge.className="order-status"+(st==="delivered"?" done":st==="refunded"?" failed":"");badge.textContent=text(st);top.append(name,badge);
-const meta=document.createElement("div");meta.className="order-meta";meta.textContent=text("orderNo")+"："+order.order_id+"\n"+text("created")+"："+date(order.created_at);
-const bottom=document.createElement("div");bottom.className="order-bottom";const price=document.createElement("strong");price.className="order-price";price.textContent=text("currency")+Number(order.amount_cny||0).toFixed(2);const actions=document.createElement("div");actions.className="order-actions";const delivery=document.createElement("div");delivery.className="order-delivery";
-if(st!=="refunded"){const btn=document.createElement("button");btn.type="button";btn.textContent=text("viewDelivery");btn.addEventListener("click",async()=>{if(delivery.classList.contains("show")){delivery.classList.remove("show");btn.textContent=text("viewDelivery");return;}delivery.classList.add("show");delivery.textContent=text("deliveryLoading");btn.disabled=true;try{const result=await api("/api/buy/"+encodeURIComponent(order.order_id));if(result.status==="delivered"&&result.content){delivery.textContent=String(result.content);btn.textContent=text("hideDelivery")}else{delivery.textContent=result.message||text("deliveryPending");btn.textContent=text("viewDelivery")}}catch{delivery.textContent=text("deliveryFailed")}finally{btn.disabled=false}});actions.append(btn)}
-bottom.append(price,actions);card.append(top,meta,bottom,delivery);root.append(card)}}
-async function load(){if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return} $("ordersList").innerHTML='<div class="orders-state">'+text("loading")+'</div>';try{const data=await api("/api/user/orders");render(data.orders||[])}catch{$("ordersList").innerHTML='<div class="orders-state">'+text("failed")+'</div>'}}
-$("languageToggle").addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",lang()==="zh"?"en":"zh");applyLanguage();load()});
+const lang = () => localStorage.getItem("qingtian_shop_language") === "en" ? "en" : "zh";
+const t = key => I18N[lang()][key] || key;
+const money = value => "¥" + (Number(value || 0)).toFixed(2);
+const date = value => value ? new Date(Number(value) * 1000).toLocaleString(lang()==="zh"?"zh-CN":"en-US") : "—";
+async function api(path) {
+ const response = await fetch(path, { headers:{Accept:"application/json",Authorization:"Bearer "+(localStorage.getItem(TOKEN_KEY)||"")}, cache:"no-store" });
+ let data={}; try { data=await response.json(); } catch {}
+ if(response.status===401){ localStorage.removeItem(TOKEN_KEY); location.replace("./auth.html"); throw new Error("unauthorized"); }
+ if(!response.ok) throw new Error(data.error || "request_failed");
+ return data;
+}
+function statusLabel(status) {
+ const value=String(status||"unknown").toLowerCase();
+ return t(value in I18N[lang()] ? value : "unknown");
+}
+function make(tag, cls, value) {
+ const el=document.createElement(tag); if(cls)el.className=cls;
+ if(value!==undefined)el.textContent=String(value); return el;
+}
+function normalize(kind, order) {
+ return {...order, kind, id:String(order.order_id||""), created_at:Number(order.created_at||0), updated_at:Number(order.updated_at||order.created_at||0)};
+}
+async function load() {
+ if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
+ state.loading=true; $("ordersList").replaceChildren(make("div","orders-state",t("loading")));
+ const requests=await Promise.allSettled([
+  api("/api/user/orders"), api("/api/user/node-orders"), api("/api/user/recharge-orders")
+ ]);
+ const failed=requests.filter(x=>x.status==="rejected");
+ const goods=requests[0].status==="fulfilled"?(requests[0].value.orders||[]).map(x=>normalize("goods",x)):[];
+ const nodes=requests[1].status==="fulfilled"?(requests[1].value.orders||[]).map(x=>normalize("nodes",x)):[];
+ const recharges=requests[2].status==="fulfilled"?(requests[2].value.orders||[]).map(x=>normalize("recharge",x)):[];
+ state.all=[...goods,...nodes,...recharges].sort((a,b)=>b.created_at-a.created_at);
+ state.loading=false; render();
+ if(failed.length===3){$("ordersList").replaceChildren(make("div","orders-state",t("loadFailed")));return;}
+ if(failed.length){const note=make("p","orders-notice",t("partial"));$("ordersList").prepend(note);}
+}
+function addInfo(parent,label,value) {
+ const row=make("div","order-detail-row");row.append(make("span","order-detail-label",label),make("span","order-detail-value",value||"—"));parent.append(row);
+}
+function addCopy(parent,label,value) {
+ if(!value)return;
+ const row=make("div","order-copy-row");const code=make("code","",value);const btn=make("button","copy-button",t("copy"));
+ btn.type="button";btn.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(value);btn.textContent=t("copied");setTimeout(()=>btn.textContent=t("copy"),1500);}catch{btn.textContent=value;}});
+ row.append(make("span","order-detail-label",label),code,btn);parent.append(row);
+}
+function renderDelivery(parent, delivery) {
+ if(!delivery){parent.append(make("p","order-detail-muted",t("noDelivery")));return;}
+ if(typeof delivery==="string"){parent.append(make("pre","order-delivery-content",delivery));return;}
+ if(delivery.protocol)addInfo(parent,t("protocol"),delivery.protocol);
+ if(delivery.uri)addCopy(parent,t("connection"),delivery.uri);
+ if(delivery.http_uri)addCopy(parent,"HTTP",delivery.http_uri);
+ if(delivery.clash_yaml)addCopy(parent,t("clash"),delivery.clash_yaml);
+ if(delivery.instructions)addInfo(parent,t("instructions"),delivery.instructions);
+ if(!delivery.uri&&!delivery.http_uri&&!delivery.clash_yaml)parent.append(make("pre","order-delivery-content",JSON.stringify(delivery,null,2)));
+}
+function detailPanel(order) {
+ const panel=make("section","order-detail-panel");
+ addInfo(panel,t("typeLabel"),order.kind==="goods"?t("goodsType"):order.kind==="nodes"?t("nodeType"):t("rechargeType"));
+ addInfo(panel,t("orderNo"),order.id);
+ addInfo(panel,t("created"),date(order.created_at));
+ addInfo(panel,t("updated"),date(order.updated_at));
+ addInfo(panel,t("amount"),money(order.amount_cny));
+ if(order.kind==="goods") {
+  addInfo(panel,t("product"),order.product_name||order.product_id);
+  const deliveryBox=make("div","order-delivery-section");deliveryBox.append(make("strong","order-detail-section-title",t("delivery")));
+  const delivery=make("div","order-delivery-content");
+  const refresh=make("button","detail-action",t("checkDelivery"));refresh.type="button";
+  refresh.addEventListener("click",async()=>{refresh.disabled=true;refresh.textContent=t("checking");delivery.replaceChildren(make("p","order-detail-muted",t("loading")));try{const result=await api("/api/buy/"+encodeURIComponent(order.id));delivery.replaceChildren();if(result.content)renderDelivery(delivery,result.content);else delivery.append(make("p","order-detail-muted",result.message||t("noDelivery")));}catch{delivery.replaceChildren(make("p","order-detail-muted",t("deliveryError")));}finally{refresh.disabled=false;refresh.textContent=t("checkDelivery");}});
+  deliveryBox.append(refresh,delivery);panel.append(deliveryBox);
+ } else if(order.kind==="nodes") {
+  addInfo(panel,t("product"),order.product_name||"节点服务");addInfo(panel,t("package"),order.package_name||order.package_id);
+  const deliveryBox=make("div","order-delivery-section");deliveryBox.append(make("strong","order-detail-section-title",t("delivery")));renderDelivery(deliveryBox,order.delivery);panel.append(deliveryBox);
+ } else {
+  addInfo(panel,t("method"),order.payment_method==="USDT_TRC20"?t("paymentMethodUsdt"):order.payment_method);
+  if(order.paid_at)addInfo(panel,t("paidAt"),date(order.paid_at));
+  panel.append(make("p","order-detail-muted",order.status==="paid"?t("paymentPaid"):t("paymentPending")));
+ }
+ return panel;
+}
+function render() {
+ const root=$("ordersList");root.replaceChildren();
+ const list=state.all.filter(o=>state.filter==="all"||o.kind===state.filter);
+ $("ordersCount").textContent=String(list.length);
+ if(!list.length){root.append(make("div","orders-state",t("empty")));return;}
+ for(const order of list) {
+  const card=make("article","order-card");
+  const top=make("div","order-top");
+  const left=make("div","order-heading");left.append(make("span","order-kind",order.kind==="goods"?t("goodsType"):order.kind==="nodes"?t("nodeType"):t("rechargeType")),make("h2","order-name",order.kind==="goods"?(order.product_name||order.product_id):order.kind==="nodes"?((order.product_name||"节点服务")+" · "+(order.package_name||order.package_id||"")):t("rechargeType")));
+  const st=statusLabel(order.status);const badge=make("span","order-status status-"+String(order.status||"unknown"),st);top.append(left,badge);
+  const meta=make("div","order-meta",t("orderNo")+"："+order.id+"\n"+t("created")+"："+date(order.created_at));
+  const bottom=make("div","order-bottom");bottom.append(make("strong","order-price",money(order.amount_cny)));
+  const toggle=make("button","detail-toggle",t("details"));toggle.type="button";
+  const panel=detailPanel(order);panel.hidden=true;
+  toggle.addEventListener("click",()=>{panel.hidden=!panel.hidden;toggle.textContent=panel.hidden?t("details"):t("hide");});
+  bottom.append(toggle);card.append(top,meta,bottom,panel);root.append(card);
+ }
+}
+function applyLanguage() {
+ document.documentElement.lang=lang()==="zh"?"zh-CN":"en";
+ document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.dataset.i18n;if(I18N[lang()][key])el.textContent=t(key);});
+ $("languageToggle").textContent=lang()==="zh"?"English":"中文";
+ document.querySelectorAll("[data-filter]").forEach(btn=>{btn.textContent=t(btn.dataset.filter==="all"?"all":btn.dataset.filter);btn.classList.toggle("active",btn.dataset.filter===state.filter);});
+ $("ordersTitle").textContent=t("title");$("ordersSubtitle").textContent=t("subtitle");
+}
+document.querySelectorAll("[data-filter]").forEach(btn=>btn.addEventListener("click",()=>{state.filter=btn.dataset.filter;applyLanguage();render();}));
+$("languageToggle").addEventListener("click",()=>{localStorage.setItem("qingtian_shop_language",lang()==="zh"?"en":"zh");applyLanguage();render();});
+$("refreshOrders").addEventListener("click",load);
 applyLanguage();load();
