@@ -37,9 +37,8 @@ function render(order,delivery){
  if(!localStorage.getItem(TOKEN_KEY)){location.replace("./auth.html");return;}
  if(!orderId){$("detailLoading").textContent="缺少订单号";return;}
  try{
-  const [list,delivery]=await Promise.all([api("/api/user/orders"),api("/api/buy/"+encodeURIComponent(orderId))]);
-  const order=(list.orders||[]).find(x=>String(x.order_id)===orderId);
-  if(!order)throw Error("order_not_found");
-  render(order,delivery);
+  const delivery=await api("/api/buy/"+encodeURIComponent(orderId));
+  if(String(delivery.order_id||"")!==orderId)throw Error("order_not_found");
+  render(delivery,delivery);
  }catch(e){$("detailLoading").textContent=e.message==="unauthorized"?"登录已失效，请重新登录":e.message==="order_not_found"?"订单不存在或不属于当前账户":"订单详情读取失败，请刷新重试";}
 })();
