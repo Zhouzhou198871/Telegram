@@ -36,24 +36,6 @@
 })();
 
 (function () {
-  async function syncLoginAccountToNeon(email, password) {
-    const payload = { email, password };
-    try {
-      let result;
-      try {
-        result = await api("/api/v1/passport/auth/register", { method: "POST", body: JSON.stringify(payload) });
-      } catch {
-        result = await api("/api/v1/passport/auth/login", { method: "POST", body: JSON.stringify(payload) });
-      }
-      if (!result?.data?.token) throw new Error("neon_auth_sync_failed");
-      localStorage.setItem("qingtian_neon_token", result.data.token);
-      return true;
-    } catch (error) {
-      console.error("[login] Neon account sync failed:", error);
-      return false;
-    }
-  }
-
   function initLoginPage() {
     if (!document.body || document.body.dataset.page !== "login") return;
     const $ = id => document.getElementById(id);
@@ -258,7 +240,6 @@
       try {
         const result = await api("/api/auth/login", { method: "POST", body: JSON.stringify(payload) });
         if (!result.token) throw new Error(result.error || "login_failed");
-        if (mode === "password") await syncLoginAccountToNeon(email.value.trim().toLowerCase(), password.value);
         localStorage.setItem(TOKEN_KEY, result.token);
         localStorage.removeItem("qingtian_referral_code");
         window.location.replace("/shop.html");
