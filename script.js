@@ -522,28 +522,20 @@ function renderProducts(items, options = {}) {
   drawFilteredProducts();
 }
 
-async function loadProducts(options = {}) {
+async function loadProducts() {
   if (catalogLoadInFlight) return;
   catalogLoadInFlight = true;
-  const silent = options && options.silent === true;
   const grid = $("productGrid");
-  if (!silent) grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N[currentShopLanguage()].loadingCatalog));
+  grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N.zh.loadingCatalog));
   try {
     const data = await api("/api/products");
     saveCachedProducts(data.items || []);
     renderProducts(data.items || [], { verified: true });
-    const t=SHOP_I18N[currentShopLanguage()];
     if (data.catalog_stale === true) message($("shopMessage"),"部分商品信息暂不可用，已暂时隐藏相关价格并暂停购买。","error");
-    else if (!silent) message($("shopMessage"),data.count?t.catalogUpdated:t.catalogEmpty,"success");
+    else message($("shopMessage"),data.count?SHOP_I18N.zh.catalogUpdated:SHOP_I18N.zh.catalogEmpty,"success");
   } catch {
-    const t=SHOP_I18N[currentShopLanguage()];
-    if (silent && allProducts.length) {
-      allProducts = allProducts.map(item => ({...item,purchasable:false,price_verified:false,catalog_verified:true}));
-      drawFilteredProducts();
-    } else {
-      grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
-    }
-    message($("shopMessage"),t.catalogFailed,"error");
+    grid.replaceChildren(safeText("div", "empty-card", "商品目录暂时无法加载，请稍后再试。"));
+    message($("shopMessage"),SHOP_I18N.zh.catalogFailed,"error");
   } finally {
     catalogLoadInFlight = false;
   }
