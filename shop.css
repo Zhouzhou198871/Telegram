@@ -650,3 +650,50 @@ body[data-page="shop"] #accountMenu .account-card-link{
 body[data-page="shop"] #accountMenu .account-card-link span{
   pointer-events:none;
 }
+
+
+/* Unified account-page header and navigation: one brand, one aligned menu system. */
+.orders-header,.profile-header,.invite-header,.wb-header,.sub-header,.head{
+  box-sizing:border-box;min-height:76px;height:auto!important;padding:10px max(16px,calc((100% - 1120px)/2))!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;
+  flex-wrap:nowrap!important;background:#fff!important;border-bottom:1px solid #e7edf5!important;
+}
+.orders-brand,.profile-brand,.invite-brand,.wb-brand,.sub-header .brand,.head .brand{
+  display:inline-flex!important;align-items:center!important;gap:10px!important;flex:0 0 auto;
+  color:#1e293b!important;text-decoration:none!important;font-size:16px!important;font-weight:800!important;white-space:nowrap;
+}
+.orders-brand img,.profile-brand img,.invite-brand img,.wb-brand img,.sub-header .brand img,.head .brand img{
+  display:block;width:34px!important;height:34px!important;object-fit:contain;border-radius:9px!important;
+}
+.orders-header .account-subnav,.profile-header .account-subnav,.invite-header .account-subnav,.wb-header .account-subnav,.sub-header .subnav,.head .nav{
+  display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:6px!important;
+  flex:1 1 auto;min-width:0;flex-wrap:nowrap!important;margin:0!important;
+}
+.orders-header .account-subnav a,.profile-header .account-subnav a,.invite-header .account-subnav a,.wb-header .account-subnav a,.sub-header .subnav a,.head .nav a{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;min-height:38px!important;
+  padding:0 12px!important;border:1px solid transparent!important;border-radius:10px!important;
+  background:transparent!important;color:#52647b!important;text-decoration:none!important;
+  font-size:13px!important;font-weight:650!important;white-space:nowrap!important;transition:background .16s,border-color .16s,color .16s;
+}
+.orders-header .account-subnav a:hover,.profile-header .account-subnav a:hover,.invite-header .account-subnav a:hover,.wb-header .account-subnav a:hover,.sub-header .subnav a:hover,.head .nav a:hover{
+  background:#f3f7fd!important;border-color:#e4edf8!important;color:#2563eb!important;
+}
+.orders-header .account-subnav a[aria-current="page"],.profile-header .account-subnav a[aria-current="page"],.invite-header .account-subnav a[aria-current="page"],.wb-header .account-subnav a[aria-current="page"],.sub-header .subnav a[aria-current="page"],.head .nav a[aria-current="page"]{
+  background:#eaf2ff!important;border-color:#d5e5fb!important;color:#2563eb!important;font-weight:750!important;
+}
+.orders-header .orders-home{flex:0 0 auto;white-space:nowrap}
+@media(max-width:760px){
+  .orders-header,.profile-header,.invite-header,.wb-header,.sub-header,.head{
+    min-height:0!important;padding:10px 14px!important;display:flex!important;flex-wrap:wrap!important;gap:8px!important;
+  }
+  .orders-brand,.profile-brand,.invite-brand,.wb-brand,.sub-header .brand,.head .brand{min-height:38px}
+  .orders-header .account-subnav,.profile-header .account-subnav,.invite-header .account-subnav,.wb-header .account-subnav,.sub-header .subnav,.head .nav{
+    order:3;width:100%;flex:1 0 100%;justify-content:flex-start!important;overflow-x:auto!important;
+    overflow-y:hidden!important;gap:5px!important;padding:4px 0 2px!important;scrollbar-width:none!important;
+    -webkit-overflow-scrolling:touch;white-space:nowrap;
+  }
+  .orders-header .account-subnav::-webkit-scrollbar,.profile-header .account-subnav::-webkit-scrollbar,.invite-header .account-subnav::-webkit-scrollbar,.wb-header .account-subnav::-webkit-scrollbar,.sub-header .subnav::-webkit-scrollbar,.head .nav::-webkit-scrollbar{display:none}
+  .orders-header .account-subnav a,.profile-header .account-subnav a,.invite-header .account-subnav a,.wb-header .account-subnav a,.sub-header .subnav a,.head .nav a{
+    flex:0 0 auto;min-height:36px!important;padding:0 11px!important;font-size:12px!important;
+  }
+}
