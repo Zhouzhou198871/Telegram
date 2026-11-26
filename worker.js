@@ -721,6 +721,8 @@ async function userRechargeOrders(request, env) {
     let body;
     try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
     const amount = String(body.amount_cny ?? "").trim();
+    const paymentMethod = String(body.payment_method || "USDT_TRC20").toUpperCase();
+    if (!["ALIPAY","USDT_TRC20"].includes(paymentMethod)) return reply(request, env, { ok: false, error: "invalid_payment_method" }, 400);
     if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(amount)) return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
     const cents = Math.round(Number(amount) * 100);
     if (!Number.isSafeInteger(cents) || cents < 8000 || cents > 5000000) {
@@ -776,8 +778,8 @@ async function userWithdrawals(request, env) {
   const created=await env.DB.prepare("SELECT amount_units FROM user_withdrawals WHERE id=? AND user_id=? AND status='pending'").bind(id,claims.sub).first();
   if (!created) return reply(request,env,{ok:false,error:"insufficient_balance"},409);
   const units=Number(created.amount_units||0);
-  const changed=await env.DB.prepare("UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=?").bind(units,units,now,claims.sub,units).run();
-  if (Number(changed.meta?.changes||0)!==1) {
+  const changed=await env.DB.prepare("UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=? RETURNING id").bind(units,units,now,claims.sub,units).first();
+  if (!changed) {
     await env.DB.prepare("DELETE FROM user_withdrawals WHERE id=? AND status='pending'").bind(id).run();
     return reply(request,env,{ok:false,error:"insufficient_balance"},409);
   }
@@ -795,10 +797,10 @@ async function resolveUserWithdrawal(request, env) {
     const row=await env.DB.prepare("UPDATE user_withdrawals SET status='approved',updated_at=?,resolved_at=? WHERE id=? AND status='pending' RETURNING id").bind(now,now,id).first();
     return row?reply(request,env,{ok:true,id,status:"approved",note:"请完成线下转账"}):reply(request,env,{ok:false,error:"withdrawal_not_pending"},409);
   }
-  const changed=await env.DB.prepare("UPDATE user_withdrawals SET status='rejected',updated_at=?,resolved_at=? WHERE id=? AND status='pending'").bind(now,now,id).run();
-  if (Number(changed.meta?.changes||0)!==1) return reply(request,env,{ok:false,error:"withdrawal_not_pending"},409);
-  const refund=await env.DB.prepare("UPDATE users SET balance_units=balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?),balance=ROUND((balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?))/10000.0,4),updated_at=? WHERE id=(SELECT user_id FROM user_withdrawals WHERE id=?)").bind(id,id,now,id).run();
-  return reply(request,env,{ok:true,id,status:"rejected",refunded:Number(refund.meta?.changes||0)===1});
+  const changed=await env.DB.prepare("UPDATE user_withdrawals SET status='rejected',updated_at=?,resolved_at=? WHERE id=? AND status='pending' RETURNING user_id").bind(now,now,id).first();
+  if (!changed) return reply(request,env,{ok:false,error:"withdrawal_not_pending"},409);
+  const refund=await env.DB.prepare("UPDATE users SET balance_units=balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?),balance=ROUND((balance_units+(SELECT amount_units FROM user_withdrawals WHERE id=?))/10000.0,4),updated_at=? WHERE id=? RETURNING id").bind(id,id,now,changed.user_id).first();
+  return reply(request,env,{ok:true,id,status:"rejected",refunded:Boolean(refund)});
 }
 
 async function userApiKeys(request, env) {
