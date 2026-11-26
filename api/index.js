@@ -598,8 +598,39 @@ async function qingtianShopApi(method, url, headers, rawBody, res) {
   const token=(authHeader.startsWith("Bearer ")?authHeader.slice(7):String(body.token||"")).trim();
   if (!token) return send(401,{code:0,msg:"请先登录"});
   const users=await db.unsafe("SELECT id,email,role FROM qingtian_shop.users WHERE token=$1 LIMIT 1",[token]);
-  const admin=users[0];
-  if (!admin || !["admin","super"].includes(String(admin.role||""))) return send(403,{code:0,msg:"无管理权限"});
+  let admin=users[0]||null;
+  if (!admin) {
+    // Primary Neon JWT support: admin product CRUD now shares the same
+    // identity and role grants as the rest of the Neon-backed shop APIs.
+    try {
+      const parts=token.split(".");
+      if(parts.length===3&&process.env.JWT_SECRET){
+        const signed=parts[0]+"."+parts[1];
+        const expected=createHmac("sha256",process.env.JWT_SECRET).update(signed).digest();
+        const supplied=Buffer.from(parts[2],"base64url");
+        if(supplied.length===expected.length&&timingSafeEqual(supplied,expected)){
+          const claims=JSON.parse(Buffer.from(parts[1],"base64url").toString("utf8"));
+          const now=Math.floor(Date.now()/1000);
+          if(claims.sub&&Number(claims.exp)>now){
+            const primaryRows=await db.unsafe("SELECT id,email,token_version FROM public.users WHERE id=$1 LIMIT 1",[claims.sub]);
+            const primary=primaryRows[0];
+            if(primary&&String(primary.email||"").toLowerCase()===String(claims.email||"").toLowerCase()&&Number(primary.token_version||0)===Number(claims.ver||0)){
+              const isRoot=String(primary.email||"").toLowerCase()==="chulingli1988@outlook.com";
+              const grants=isRoot?[]:await db.unsafe("SELECT role,status FROM public.admin_accounts WHERE user_id=$1 LIMIT 1",[primary.id]);
+              const grant=grants[0];
+              const role=isRoot?"super_admin":String(grant?.role||"");
+              const active=isRoot||grant?.status==="active";
+              const canRead=active&&["super_admin","operations_admin","viewer"].includes(role);
+              const canManage=active&&["super_admin","operations_admin"].includes(role);
+              if(canRead)admin={id:primary.id,email:primary.email,role,primary:true,canManageProducts:canManage};
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+  if (!admin || (!admin.primary && !["admin","super"].includes(String(admin.role||"")))) return send(403,{code:0,msg:"无管理权限"});
+  if (admin.primary && (adminSave||adminDelete||adminStatus) && !admin.canManageProducts) return send(403,{code:0,msg:"无商品管理权限"});
   if (adminList) {
     const page=Math.max(1,Number.parseInt(url.searchParams.get("page")||"1",10)||1),size=Math.max(1,Math.min(60,Number.parseInt(url.searchParams.get("size")||"20",10)||20));
     const kw=(url.searchParams.get("keyword")||url.searchParams.get("kw")||"").trim();
