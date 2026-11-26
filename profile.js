@@ -161,7 +161,7 @@
         const card=document.createElement("article");card.className="node-order-card";
         const title=document.createElement("h4");title.textContent=(labels[account.protocol]||String(account.protocol||"").toUpperCase())+" · "+(account.status==="active"?"使用中":account.status==="exhausted"?"流量已用尽":account.status==="expired"?"已到期":"已停用");card.append(title);
         const limit=Number(account.traffic_limit_bytes||0),used=Number(account.traffic_used_bytes||0);
-        const trafficText=data.traffic_usage_available?"流量："+bytes(used)+" / "+(limit?bytes(limit):"不限"):"流量上限："+(limit?bytes(limit):"不限")+"\n已用流量：暂未接入实时统计";
+        const trafficText=data.traffic_usage_available?"流量："+bytes(used)+" / "+(limit?bytes(limit):"不限"):"流量上限："+(limit?bytes(limit):"不限")+"\n已用流量：统计暂未同步";
         const meta=document.createElement("div");meta.className="node-order-meta";meta.textContent="节点："+(account.server_ref||"—")+"\n到期："+dateText(account.expires_at)+"\n"+trafficText;card.append(meta);
         const order=orderMap.get(account.order_id),delivery=order?.delivery,actions=document.createElement("div");actions.className="node-order-actions";
         const config=delivery?.clash_yaml||delivery?.uri;
