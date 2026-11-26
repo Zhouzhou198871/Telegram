@@ -450,6 +450,7 @@ async function products(request, env) {
       is_recommend: String(row.is_recommend || "").toLowerCase() === "true",
       price_usdt: String(row.price_usdt),
       stock: Number(row.stock || 0),
+      quantity: Number(row.stock || 0),
       price_cny: String(row.price_cny),
       currency: "CNY",
       is_local_inventory: Boolean(row.is_local_inventory),
