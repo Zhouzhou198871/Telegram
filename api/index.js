@@ -353,6 +353,7 @@ async function handleInternal(method, url, headers, rawBody, db) {
       await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code='supplier_not_configured',updated_at=$2 WHERE order_id=$1",[orderId,now]);
       return {status:200,body:{ok:true,status:"failed",error_code:"supplier_not_configured"}};
     }
+    let supplierPurchaseSubmitted = false;
     try {
       const liveResponse = await fetch("http://167.253.96.220:8001/api/products?categoryId=0", {headers:{"x-api-key":apiKey},signal:AbortSignal.timeout(15000)});
       if (!liveResponse.ok) throw new Error("supplier_catalog_http_" + liveResponse.status);
@@ -373,6 +374,9 @@ async function handleInternal(method, url, headers, rawBody, db) {
         await db.unsafe("UPDATE shop_supplier_orders SET status='failed',error_code='supplier_price_changed',updated_at=$2 WHERE order_id=$1",[orderId,Math.floor(Date.now()/1000)]);
         return {status:200,body:{ok:true,status:"failed",error_code:"supplier_price_changed"}};
       }
+      // From this point onward the supplier may have accepted the purchase,
+      // even if the network times out before a response reaches us.
+      supplierPurchaseSubmitted = true;
       const purchaseResponse = await fetch("http://167.253.96.220:8001/api/buy", {
         method:"POST", headers:{"x-api-key":apiKey,"Content-Type":"application/json"},
         body:JSON.stringify({product_id:productId,qty:1}), signal:AbortSignal.timeout(25000)
@@ -392,8 +396,10 @@ async function handleInternal(method, url, headers, rawBody, db) {
       await db.unsafe("UPDATE shop_supplier_orders SET status='delivered',supplier_order_id=$2,delivery_ciphertext=$3,updated_at=$4 WHERE order_id=$1",[orderId,supplierOrderId,ciphertext,Math.floor(Date.now()/1000)]);
       return {status:200,body:{ok:true,status:"delivered",order_id:orderId,content}};
     } catch (error) {
-      await db.unsafe("UPDATE shop_supplier_orders SET status='pending',error_code='supplier_result_uncertain',updated_at=$2 WHERE order_id=$1",[orderId,Math.floor(Date.now()/1000)]);
-      return {status:200,body:{ok:true,status:"pending",error_code:"supplier_result_uncertain"}};
+      const status = supplierPurchaseSubmitted ? "pending" : "failed";
+      const errorCode = supplierPurchaseSubmitted ? "supplier_result_uncertain" : "supplier_precheck_failed";
+      await db.unsafe("UPDATE shop_supplier_orders SET status=$2,error_code=$3,updated_at=$4 WHERE order_id=$1",[orderId,status,errorCode,Math.floor(Date.now()/1000)]);
+      return {status:200,body:{ok:true,status,error_code:errorCode}};
     }
   }
 
