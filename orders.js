@@ -88,10 +88,19 @@ function renderDetail(panel,order) {
  if(order.paid_at)addInfo(panel,t("paidAt"),date(order.paid_at));
  if(order.shipped_at)addInfo(panel,t("shippedAt"),date(order.shipped_at));
  const items=Array.isArray(order.items)?order.items:[];
- items.forEach(item=>{
+ items.forEach((item,index)=>{
   addInfo(panel,t("product"),item.title||order.product_name||"");
   addInfo(panel,t("quantity"),String(item.qty||1));
   addInfo(panel,t("unitPrice"),money(item.price));
+  const credential=String(item.delivery_content||"").trim();
+  if(credential){
+   const wrap=make("section","order-delivery-section");
+   wrap.append(make("strong","order-detail-section-title","商品 "+(index+1)+" 卡密 / 账号"));
+   wrap.append(make("pre","order-delivery-content",credential));
+   const copy=make("button","detail-action",t("copy"));copy.type="button";
+   copy.addEventListener("click",async()=>{try{await navigator.clipboard.writeText(credential);copy.textContent=t("copied");}catch{copy.textContent=t("copyFailed");}});
+   wrap.append(copy);panel.append(wrap);
+  }
  });
  if(order.receiver)addInfo(panel,t("receiver"),order.receiver);
  if(order.phone)addInfo(panel,t("phone"),order.phone);
