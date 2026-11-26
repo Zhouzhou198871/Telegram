@@ -702,15 +702,27 @@ async function userNodeOrders(request,env){
     await env.DB.prepare("UPDATE node_accounts SET status='expired',updated_at=? WHERE user_id=? AND status='active' AND expires_at<=?").bind(currentTime,claims.sub,currentTime).run();
     const accountRows=await env.DB.prepare("SELECT account_id,order_id,product_id,protocol,server_ref,client_ref,expires_at,traffic_limit_bytes,traffic_used_bytes,status,created_at,updated_at FROM node_accounts WHERE user_id=? ORDER BY created_at DESC LIMIT 100").bind(claims.sub).all();
     let accounts=(accountRows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0)}));
-    // The node-manager API currently exposes provision/revoke only; do not
-    // present the stored zero as live traffic usage or call a nonexistent route.
+    let trafficUsageAvailable=false;
+    if(accounts.length){
+      try{
+        const usage=await originRequest(env,"POST","/api/internal/nodes/usage",{client_refs:accounts.map(x=>x.client_ref)});
+        if(Array.isArray(usage.accounts)){
+          trafficUsageAvailable=true;
+          for(const item of usage.accounts){
+            const used=Number(item.traffic_used_bytes||0),status=String(item.status||"active");
+            await env.DB.prepare("UPDATE node_accounts SET traffic_used_bytes=?,status=?,updated_at=? WHERE client_ref=? AND user_id=?").bind(used,status,currentTime,item.client_ref,claims.sub).run();
+            const local=accounts.find(x=>x.client_ref===item.client_ref);if(local){local.traffic_used_bytes=used;local.status=status;}
+          }
+        }
+      }catch{}
+    }
     const rows=await env.DB.prepare("SELECT o.order_id,o.product_id,o.package_id,o.amount_units,o.status,o.error_code,o.created_at,o.updated_at,o.delivery_ciphertext,p.name AS product_name,g.name AS package_name FROM node_orders o LEFT JOIN node_products p ON p.product_id=o.product_id LEFT JOIN node_packages g ON g.package_id=o.package_id WHERE o.user_id=? ORDER BY o.created_at DESC LIMIT 100").bind(claims.sub).all();
     const orders=[];
     for(const r of rows.results||[]){
       let delivery=null;if(r.delivery_ciphertext&&r.status==="fulfilled"){try{delivery=await decryptNodePayload(r.delivery_ciphertext,env)}catch{}}
       orders.push({order_id:r.order_id,product_id:r.product_id,package_id:r.package_id,product_name:r.product_name||"节点服务",package_name:r.package_name||"",amount_cny:(Number(r.amount_units||0)/10000*INTERNAL_CNY_PER_USDT).toFixed(2),status:r.status,error_code:r.error_code||null,created_at:Number(r.created_at),updated_at:Number(r.updated_at),delivery});
     }
-    return reply(request,env,{ok:true,orders,accounts,traffic_usage_available:false});
+    return reply(request,env,{ok:true,orders,accounts,traffic_usage_available:trafficUsageAvailable});
   }
   let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
   const packageId=String(body.package_id||"").trim();
@@ -1102,8 +1114,21 @@ async function adminNodeAccounts(request,env){
   const limit=Math.max(1,Math.min(500,Number(new URL(request.url).searchParams.get("limit")||200)));
   const rows=await env.DB.prepare("SELECT a.account_id,a.user_id,u.email,a.product_id,p.name AS product_name,a.order_id,a.protocol,a.server_ref,a.client_ref,a.expires_at,a.traffic_limit_bytes,a.traffic_used_bytes,a.status,a.created_at,a.updated_at FROM node_accounts a LEFT JOIN users u ON u.id=a.user_id LEFT JOIN node_products p ON p.product_id=a.product_id ORDER BY a.created_at DESC LIMIT ?").bind(limit).all();
   const accounts=(rows.results||[]).map(x=>({...x,expires_at:Number(x.expires_at||0),traffic_limit_bytes:Number(x.traffic_limit_bytes||0),traffic_used_bytes:Number(x.traffic_used_bytes||0),created_at:Number(x.created_at||0),updated_at:Number(x.updated_at||0)}));
-  // Live usage is unavailable until the node-manager publishes a usage endpoint.
-  return reply(request,env,{ok:true,accounts,traffic_usage_available:false});
+  let trafficUsageAvailable=false;
+  if(accounts.length){
+   try{
+    const usage=await originRequest(env,"POST","/api/internal/nodes/usage",{client_refs:accounts.map(x=>x.client_ref)});
+    if(Array.isArray(usage.accounts)){
+     trafficUsageAvailable=true;
+     for(const item of usage.accounts){
+      const used=Number(item.traffic_used_bytes||0),status=String(item.status||"active"),expires=Number(item.expires_at||0),now=Math.floor(Date.now()/1000);
+      await env.DB.prepare("UPDATE node_accounts SET traffic_used_bytes=?,status=?,expires_at=?,updated_at=? WHERE client_ref=?").bind(used,status,expires||now,item.updated_at?Number(item.updated_at):now,item.client_ref).run();
+      const local=accounts.find(x=>x.client_ref===item.client_ref);if(local){local.traffic_used_bytes=used;local.status=status;if(expires)local.expires_at=expires;}
+     }
+    }
+   }catch{}
+  }
+  return reply(request,env,{ok:true,accounts,traffic_usage_available:trafficUsageAvailable});
  }
  let body;try{body=await request.json()}catch{return reply(request,env,{ok:false,error:"invalid_json"},400)}
  const id=String(body.account_id||"").trim(),action=String(body.action||"");
