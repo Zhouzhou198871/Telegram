@@ -3,7 +3,7 @@ import { storefrontIconUrl } from "../product-icons.js";
 import { readFile } from "node:fs/promises";
 import postgres from "postgres";
 import nodemailer from "nodemailer";
-import { createHmac, timingSafeEqual, createCipheriv, createDecipheriv } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual, createCipheriv, createDecipheriv } from "node:crypto";
 
 export const config = { api: { bodyParser: false } };
 let sqlClient;
@@ -532,6 +532,116 @@ async function renderStorefront(res) {
   }
 }
 
+
+async function qingtianShopApi(method, url, headers, rawBody, res) {
+  const path = url.pathname;
+  const publicList = path === "/api/v1/shop/products" && method === "GET";
+  const publicDetail = path === "/api/v1/shop/product/detail" && method === "GET";
+  const authLogin = path === "/api/v1/passport/auth/login" && method === "POST";
+  const authRegister = path === "/api/v1/passport/auth/register" && method === "POST";
+  const adminList = path === "/api/v1/admin/shop/products" && method === "GET";
+  const adminSave = path === "/api/v1/admin/shop/product/save" && method === "POST";
+  const adminDelete = path === "/api/v1/admin/shop/product/delete" && method === "POST";
+  const adminStatus = path === "/api/v1/admin/shop/product/status" && method === "POST";
+  if (!(publicList || publicDetail || authLogin || authRegister || adminList || adminSave || adminDelete || adminStatus)) return false;
+  const db = getSql();
+  const body = rawBody?.length ? JSON.parse(rawBody.toString("utf8")) : {};
+  const send = (status, payload) => jsonResponse(res, status, payload);
+  const passwordHash = value => createHash("sha256").update("lynli$" + value, "utf8").digest("hex");
+  const issueToken = () => crypto.randomUUID().replace(/-/g, "");
+  const money = value => Math.round((Number(value) || 0) * 100) / 100;
+  if (publicList) {
+    const page = Math.max(1, Math.min(100000, Number.parseInt(url.searchParams.get("page") || "1", 10) || 1));
+    const size = Math.max(1, Math.min(60, Number.parseInt(url.searchParams.get("size") || "20", 10) || 20));
+    const kw = (url.searchParams.get("keyword") || url.searchParams.get("kw") || "").trim();
+    const category = (url.searchParams.get("category") || "").trim();
+    const where = ["COALESCE(status,1)=1"];
+    const args = [];
+    if (kw) { args.push("%"+kw+"%"); where.push("(COALESCE(title,'') ILIKE $"+args.length+" OR COALESCE(name,'') ILIKE $"+args.length+")"); }
+    if (category) { args.push(category); where.push("COALESCE(category,'')=$"+args.length); }
+    const clause = where.join(" AND ");
+    const countRows = await db.unsafe("SELECT COUNT(*)::int AS total FROM qingtian_shop.shop_products WHERE "+clause,args);
+    const rows = await db.unsafe("SELECT id,COALESCE(NULLIF(title,''),name,'') AS title,COALESCE(name,'') AS name,COALESCE(subtitle,'') AS subtitle,COALESCE(category,'') AS category,COALESCE(price,0)::float8 AS base_price,COALESCE(stock,0)::int AS stock,COALESCE(sold,0)::int AS sold,COALESCE(image,'') AS image,COALESCE(detail,'') AS detail FROM qingtian_shop.shop_products WHERE "+clause+" ORDER BY COALESCE(sort,0) DESC,id DESC LIMIT $"+(args.length+1)+" OFFSET $"+(args.length+2),[...args,size,(page-1)*size]);
+    const data = rows.map(row => ({...row,price:money(Number(row.base_price)*1.35),price_cents:Math.round(money(Number(row.base_price)*1.35)*100),image_url:row.image,cover:row.image,sold_out:Number(row.stock)<=0,in_stock:Number(row.stock)>0}));
+    return send(200,{message:"",code:1,data,total:Number(countRows[0]?.total||0),page,size,pages:Math.ceil(Number(countRows[0]?.total||0)/size),has_more:page*size<Number(countRows[0]?.total||0)});
+  }
+  if (publicDetail) {
+    const id = Number(url.searchParams.get("id") || 0);
+    if (!Number.isSafeInteger(id) || id<=0) return send(400,{message:"商品ID不正确",status:"success",code:0,data:null});
+    const rows = await db.unsafe("SELECT id,COALESCE(NULLIF(title,''),name,'') AS title,COALESCE(name,'') AS name,COALESCE(subtitle,'') AS subtitle,COALESCE(category,'') AS category,COALESCE(price,0)::float8 AS base_price,COALESCE(stock,0)::int AS stock,COALESCE(sold,0)::int AS sold,COALESCE(image,'') AS image,COALESCE(detail,'') AS detail FROM qingtian_shop.shop_products WHERE id=$1 AND COALESCE(status,1)=1",[id]);
+    if (!rows.length) return send(200,{message:"商品不存在",status:"success",code:1,data:null});
+    const row=rows[0],price=money(Number(row.base_price)*1.35);
+    return send(200,{message:"",status:"success",code:1,data:{...row,price,price_cents:Math.round(price*100),image_url:row.image,sold_out:Number(row.stock)<=0,in_stock:Number(row.stock)>0}});
+  }
+  if (authLogin || authRegister) {
+    const email=String(body.email||"").trim().toLowerCase(), password=String(body.password||"");
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length>254) return send(400,{message:"邮箱格式不正确",data:null});
+    if (password.length<8 || password.length>20 || !/[A-Za-z]/.test(password) || !/\\d/.test(password)) return send(400,{message:"密码须为8-20位，且同时包含字母和数字",data:null});
+    if (authRegister) {
+      const token=issueToken(), uuid=crypto.randomUUID(), subToken=issueToken();
+      const exists=await db.unsafe("SELECT id FROM qingtian_shop.users WHERE lower(email)=lower($1) LIMIT 1",[email]);
+      if (exists.length) return send(400,{message:"该邮箱已注册",data:null});
+      const ids=await db.unsafe("SELECT COALESCE(MAX(short_id),9999)+1 AS short_id FROM qingtian_shop.users");
+      const inserted=await db.unsafe("INSERT INTO qingtian_shop.users(email,password,uuid,token,created_at,short_id,sub_token,role) VALUES($1,$2,$3,$4,$5,$6,$7,'user') RETURNING id,email,nickname,avatar,role", [email,passwordHash(password),uuid,token,Math.floor(Date.now()/1000),Number(ids[0]?.short_id||10000),subToken]);
+      const user=inserted[0];
+      return send(200,{message:"",data:{token,isAdmin:0,role:"user",auth_data:token,user:{id:user.id,email:user.email,nickname:user.nickname||email.split("@")[0],avatar:user.avatar||"",role:"user"}}});
+    }
+    const rows=await db.unsafe("SELECT id,email,password,token,nickname,avatar,role,banned FROM qingtian_shop.users WHERE lower(email)=lower($1) LIMIT 1",[email]);
+    const user=rows[0];
+    if (!user || !user.password || user.password!==passwordHash(password) || Number(user.banned||0)!==0) return send(401,{message:"邮箱或密码错误",data:null});
+    const token=issueToken(), now=Math.floor(Date.now()/1000);
+    await db.unsafe("UPDATE qingtian_shop.users SET token=$1,last_login_at=$2,login_count=COALESCE(login_count,0)+1 WHERE id=$3",[token,now,user.id]);
+    const role=["admin","super"].includes(String(user.role||"user"))?String(user.role):"user";
+    const userInfo={id:user.id,email:user.email,nickname:user.nickname||email.split("@")[0],avatar:user.avatar||"",role};
+    return send(200,{message:"",data:{token,isAdmin:role!=="user"?1:0,role,auth_data:token,user:userInfo}});
+  }
+  const authHeader=headers.get("authorization")||"";
+  const token=(authHeader.startsWith("Bearer ")?authHeader.slice(7):String(body.token||"")).trim();
+  if (!token) return send(401,{code:0,msg:"请先登录"});
+  const users=await db.unsafe("SELECT id,email,role FROM qingtian_shop.users WHERE token=$1 LIMIT 1",[token]);
+  const admin=users[0];
+  if (!admin || !["admin","super"].includes(String(admin.role||""))) return send(403,{code:0,msg:"无管理权限"});
+  if (adminList) {
+    const page=Math.max(1,Number.parseInt(url.searchParams.get("page")||"1",10)||1),size=Math.max(1,Math.min(60,Number.parseInt(url.searchParams.get("size")||"20",10)||20));
+    const kw=(url.searchParams.get("keyword")||url.searchParams.get("kw")||"").trim();
+    const cat=(url.searchParams.get("category")||"").trim();
+    const status=url.searchParams.get("status");
+    const where=[],args=[];
+    if(kw){args.push("%"+kw+"%");where.push("(COALESCE(title,'') ILIKE $"+args.length+" OR COALESCE(name,'') ILIKE $"+args.length+")");}
+    if(cat){args.push(cat);where.push("COALESCE(category,'')=$"+args.length);}
+    if(status!==null&&status!==""){args.push(Number(status));where.push("COALESCE(status,0)=$"+args.length);}
+    const clause=where.length?" WHERE "+where.join(" AND "):"";
+    const count=await db.unsafe("SELECT COUNT(*)::int AS total FROM qingtian_shop.shop_products"+clause,args);
+    const rows=await db.unsafe("SELECT id,COALESCE(NULLIF(title,''),name,'') AS title,name,subtitle,category,cost::float8 AS cost,price::float8 AS price,stock,sold,image,detail,source_url,status,created_at,updated_at,sort FROM qingtian_shop.shop_products"+clause+" ORDER BY COALESCE(sort,0) DESC,id DESC LIMIT $"+(args.length+1)+" OFFSET $"+(args.length+2),[...args,size,(page-1)*size]);
+    return send(200,{code:1,data:{list:rows,total:Number(count[0]?.total||0),page,size},msg:"",message:"ok"});
+  }
+  if (adminSave) {
+    const id=Number(body.id||0),title=String(body.title||body.name||"").trim();
+    if(!title)return send(400,{code:0,msg:"商品标题不能为空"});
+    const now=Math.floor(Date.now()/1000),values=[title,title,String(body.subtitle||""),String(body.category||"未分类"),Number(body.cost||0),Number(body.price||0),Number(body.stock||0),String(body.image||""),String(body.detail||""),String(body.source_url||""),Number(body.status??1),Number(body.sort||0),now];
+    if(!values.slice(4,7).every(Number.isFinite))return send(400,{code:0,msg:"价格或库存格式不正确"});
+    if(id>0){
+      const updated=await db.unsafe("UPDATE qingtian_shop.shop_products SET name=$1,title=$2,subtitle=$3,category=$4,cost=$5,price=$6,stock=$7,image=$8,detail=$9,source_url=$10,status=$11,sort=$12,updated_at=$13 WHERE id=$14 RETURNING id",[...values,id]);
+      if(!updated.length)return send(404,{code:0,msg:"商品不存在"});
+      return send(200,{code:1,msg:"已保存",data:{id}});
+    }
+    const inserted=await db.unsafe("INSERT INTO qingtian_shop.shop_products(name,title,subtitle,category,cost,price,stock,image,detail,source_url,status,sort,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$13) RETURNING id",[...values.slice(0,12),now]);
+    return send(200,{code:1,msg:"上架成功",data:{id:inserted[0].id}});
+  }
+  if (adminDelete) {
+    const id=Number(body.id||0);if(!Number.isSafeInteger(id)||id<=0)return send(400,{code:0,msg:"缺少商品ID"});
+    const rows=await db.unsafe("DELETE FROM qingtian_shop.shop_products WHERE id=$1 RETURNING id",[id]);
+    return rows.length?send(200,{code:1,msg:"已删除"}):send(404,{code:0,msg:"商品不存在"});
+  }
+  if (adminStatus) {
+    const id=Number(body.id||0),status=Number(body.status??1);
+    if(!Number.isSafeInteger(id)||id<=0||![0,1].includes(status))return send(400,{code:0,msg:"参数不正确"});
+    const rows=await db.unsafe("UPDATE qingtian_shop.shop_products SET status=$1,updated_at=$2 WHERE id=$3 RETURNING id",[status,Math.floor(Date.now()/1000),id]);
+    return rows.length?send(200,{code:1,msg:status?"已上架":"已下架"}):send(404,{code:0,msg:"商品不存在"});
+  }
+  return send(404,{code:0,msg:"not_found"});
+}
+
 function makeHeaders(source) {
   const headers = new Headers();
   for (const [key, value] of Object.entries(source || {})) {
@@ -558,6 +668,7 @@ export default async function handler(req, res) {
     }
     const rawBody = chunks.length ? Buffer.concat(chunks) : undefined;
     if (url.pathname === "/api/storefront" && (method === "GET" || method === "HEAD")) return await renderStorefront(res);
+    if (await qingtianShopApi(method, url, headers, rawBody, res)) return;
     if (url.pathname === "/api/internal/catalog_snapshot_sync" && method === "POST") {
       try {
         const result = await handleInternal(method, url, headers, rawBody || Buffer.alloc(0), getSql());
