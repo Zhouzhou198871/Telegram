@@ -554,6 +554,10 @@ async function buy(request, env) {
     }
   }
 
+  if (String(purchase.product_id || "") !== productId) {
+    return reply(request, env, { ok: false, error: "idempotency_key_reused_for_different_product" }, 409);
+  }
+
   if (purchase.status === "delivered") {
     const status = await syncServerStatus(env, purchase, user).catch(() => ({ status: "pending" }));
     return reply(request, env, { ok: true, order_id: purchase.order_id, status: status.status, content: status.content || null });
