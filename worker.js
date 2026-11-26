@@ -754,7 +754,7 @@ async function userNodeOrders(request,env){
     const provisioned=await originRequest(env,"POST","/api/internal/nodes/provision",{order_id:orderId,client_ref:orderId,protocol:pkg.protocol,duration_days:Number(pkg.duration_days),server_ref:serverRef,traffic_limit_bytes:Number(pkg.traffic_limit_bytes||0)});
     account=provisioned.account;
     if(!account||!account.uri||!account.client_ref)throw new Error("node_delivery_missing");
-    const delivery={protocol:pkg.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"此链接仅用于 Telegram：在 Telegram 客户端打开即可添加代理。":"将 Clash YAML 保存为 .yaml 文件后导入 Mihomo / Clash Meta。"};
+    const delivery={protocol:pkg.protocol,uri:account.uri,http_uri:account.http_uri||null,clash_yaml:account.clash_proxy?nodeClashYaml(account.clash_proxy):null,expires_at:Number(account.expires_at),instructions:pkg.protocol==="mtproto"?"在 Telegram 客户端打开此代理链接即可添加。":"复制连接链接，在支持 "+String(pkg.protocol).toUpperCase()+" 的客户端中添加或导入。"};
     const encrypted=await encryptNodePayload(JSON.stringify(delivery),env);
     await env.DB.batch([
       env.DB.prepare("UPDATE node_orders SET status='fulfilled',delivery_ciphertext=?,updated_at=?,expires_at=? WHERE order_id=? AND status='provisioning'").bind(encrypted,Math.floor(Date.now()/1000),Number(account.expires_at),orderId),
