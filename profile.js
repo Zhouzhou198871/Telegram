@@ -118,7 +118,7 @@
       message("apiMessage","密钥创建成功。请立即复制，完整密钥只显示这一次。","success");
       await loadApiCenter();
     } catch(error) {
-      message("apiMessage",error.message==="api_balance_requirement"?"账户余额不足 ¥200，暂不能开通 API。":error.message==="api_key_limit"?"最多同时保留 5 个有效密钥，请先撤销旧密钥。":"API 密钥创建失败，请稍后重试。","error");
+      message("apiMessage",error.message==="api_balance_requirement"?"账户余额不足 ¥500，暂不能开通 API。":error.message==="api_key_limit"?"最多同时保留 5 个有效密钥，请先撤销旧密钥。":"API 密钥创建失败，请稍后重试。","error");
     } finally {button.disabled=false;}
   }
   async function revokeApiKey(id) {
