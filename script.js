@@ -530,9 +530,6 @@ async function loadProducts() {
   const grid = $("productGrid");
   grid.replaceChildren(safeText("div", "loading-card", SHOP_I18N.zh.loadingCatalog));
   try {
-    // The live purchasable supplier catalog, prices and stock are all read
-    // from Neon public.shop_catalog. Its product_id is the same stable key
-    // consumed by /api/buy, so the existing balance/order/delivery flow stays intact.
     const result = await api("/api/products");
     if (result.ok !== true || !Array.isArray(result.items)) throw new Error("catalog_unavailable");
     const items = result.items.map(row => ({
