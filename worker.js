@@ -921,8 +921,9 @@ async function publicApiProducts(request,env,productId=null) {
   let items=payload.items||[];
   if(productId) items=items.filter(x=>String(x.product_id)===productId);
   if(productId&&!items.length){await recordApiUsage(env,auth.row,endpoint,"GET",404);return reply(request,env,{ok:false,error:"product_not_found"},404);}
+  const publicItems=items.map(x=>({product_id:x.product_id,name:x.name,category:x.category,icon:x.icon,icon_url:x.icon_url,is_hot:x.is_hot,is_recommend:x.is_recommend,price_usdt:x.price_usdt,price_cny:x.price_cny,stock:x.stock,quantity:x.quantity,available_quantity:x.stock,currency:x.currency,price_verified:x.price_verified,purchasable:x.purchasable}));
   await recordApiUsage(env,auth.row,endpoint,"GET",200);
-  return reply(request,env,{ok:true,count:items.length,updated_at:payload.updated_at,catalog_stale:payload.catalog_stale,items});
+  return reply(request,env,{ok:true,count:publicItems.length,updated_at:payload.updated_at,catalog_stale:payload.catalog_stale,items:publicItems});
 }
 async function publicApiOrders(request,env) {
   const endpoint="/api/v1/orders",auth=await apiKeyContext(request,env,endpoint);if(auth.error)return auth.error;
