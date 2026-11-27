@@ -739,7 +739,70 @@ async function qingtianPayApi(env, path, options = {}) {
   }
   return data;
 }
-async function reconcileAlipayRecharge(env, row) {
+
+function alipayPemBytes(value) {
+  const raw=String(value||"").replace(/-----BEGIN [^-]+-----|-----END [^-]+-----|\\s/g,"");
+  if(!raw) throw new Error("alipay_key_not_configured");
+  return Uint8Array.from(atob(raw),c=>c.charCodeAt(0));
+}
+function alipayCanonical(params) {
+  return Object.keys(params).filter(k=>k!=="sign"&&params[k]!==""&&params[k]!==null&&params[k]!==undefined)
+    .sort().map(k=>k+"="+params[k]).join("&");
+}
+function alipayB64(bytes) {
+  let out=""; for(const b of new Uint8Array(bytes)) out+=String.fromCharCode(b); return btoa(out);
+}
+async function alipaySign(env, params) {
+  const key=await crypto.subtle.importKey("pkcs8",alipayPemBytes(env.ALIPAY_PRIVATE_KEY),
+    {name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["sign"]);
+  return alipayB64(await crypto.subtle.sign("RSASSA-PKCS1-v1_5",key,new TextEncoder().encode(alipayCanonical(params))));
+}
+async function alipayVerify(env, params) {
+  if(!params.sign||!env.ALIPAY_PUBLIC_KEY) return false;
+  const key=await crypto.subtle.importKey("spki",alipayPemBytes(env.ALIPAY_PUBLIC_KEY),
+    {name:"RSASSA-PKCS1-v1_5",hash:"SHA-256"},false,["verify"]);
+  return crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,
+    Uint8Array.from(atob(params.sign),c=>c.charCodeAt(0)),new TextEncoder().encode(alipayCanonical(params)));
+}
+async function createAlipayCheckout(env, orderNo, amount, subject) {
+  if(!env.ALIPAY_APP_ID||!env.ALIPAY_PRIVATE_KEY||!env.ALIPAY_NOTIFY_URL) throw new Error("alipay_not_configured");
+  const p={app_id:String(env.ALIPAY_APP_ID),method:"alipay.trade.wap.pay",format:"JSON",charset:"utf-8",
+    sign_type:"RSA2",timestamp:new Date().toISOString().replace("T"," ").slice(0,19),version:"1.0",
+    notify_url:String(env.ALIPAY_NOTIFY_URL),
+    biz_content:JSON.stringify({out_trade_no:orderNo,product_code:"QUICK_WAP_WAY",total_amount:amount,subject})};
+  p.sign=await alipaySign(env,p);
+  const url=new URL(env.ALIPAY_GATEWAY||"https://openapi.alipay.com/gateway.do");
+  for(const [k,v] of Object.entries(p)) url.searchParams.set(k,v);
+  return url.toString();
+}
+async function alipayNotify(request,env) {
+  const form=await request.formData(), p={};
+  for(const [k,v] of form.entries()) p[k]=String(v);
+  try {
+    if(!await alipayVerify(env,p)) return new Response("fail",{status:400});
+    if(String(p.app_id||"")!==String(env.ALIPAY_APP_ID||"")) return new Response("fail",{status:400});
+    if(env.ALIPAY_SELLER_ID && String(p.seller_id||"")!==String(env.ALIPAY_SELLER_ID)) return new Response("fail",{status:400});
+    if(!["TRADE_SUCCESS","TRADE_FINISHED"].includes(String(p.trade_status||""))) return new Response("success");
+    const orderNo=String(p.out_trade_no||""), tradeNo=String(p.trade_no||"");
+    const amount=String(p.total_amount||"");
+    if(!orderNo||!tradeNo||!/^\\d{1,12}\\.\\d{2}$/.test(amount)) return new Response("fail",{status:400});
+    const now=Math.floor(Date.now()/1000);
+    const paid=await env.DB.prepare("WITH paid AS (UPDATE recharge_orders SET status='paid',paid_at=?,updated_at=? WHERE order_id=? AND status='pending' AND payment_method='ALIPAY' AND amount_cny=? RETURNING user_id,credit_units) UPDATE users SET balance_units=users.balance_units+paid.credit_units,balance=ROUND((users.balance_units+paid.credit_units)/10000.0,4),updated_at=? FROM paid WHERE users.id=paid.user_id RETURNING users.id")
+      .bind(now,now,orderNo,amount,now).first();
+    if(!paid) {
+      const existing=await env.DB.prepare("SELECT status,amount_cny FROM recharge_orders WHERE order_id=? AND payment_method='ALIPAY'").bind(orderNo).first();
+      if(!existing||String(existing.status)!=="paid"||Number(existing.amount_cny).toFixed(2)!==amount) return new Response("fail",{status:400});
+    }
+    return new Response("success");
+  } catch(error) {
+    console.error("[alipay_notify_failed]",String(error?.message||error));
+    return new Response("fail",{status:500});
+  }
+}
+
+async function reconcileAlipayRecharge(env, row) { return; }
+/* legacy polling implementation removed */
+async function _legacyReconcileAlipayRecharge(env, row) {
   const link = await env.DB.prepare("SELECT qingtianpay_order_no FROM qingtianpay_recharge_links WHERE order_id=?").bind(row.order_id).first();
   if (!link?.qingtianpay_order_no) return;
   try {
@@ -775,46 +838,12 @@ async function userRechargeOrders(request, env) {
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
     let checkout = null;
     if (paymentMethod === "ALIPAY") {
-      if (!String(env.QINGTIANPAY_API_KEY || "").trim()) return reply(request, env, { ok:false, error:"alipay_not_configured" }, 503);
       try {
-        const created = await qingtianPayApi(env, "/api/v1/payments", {
-          method: "POST",
-          body: JSON.stringify({
-            external_order_no: orderId,
-            amount: (cents/100).toFixed(2),
-            subject: "晴天号铺账户充值",
-            payment_method: "alipay_jsapi",
-            buyer_ref: String(claims.sub),
-            metadata: { source: "shop.lynli.me", recharge_order_id: orderId }
-          })
-        });
-        const payment = created.order || created.data?.order || created.data || created;
-        const orderNo = String(payment.order_no || "").trim();
-        const checkoutUrl = String(payment.checkout_url || "").trim();
-        if (!orderNo || !/^https:\/\//i.test(checkoutUrl)) {
-          return reply(request, env, {ok:false,error:"alipay_order_response_invalid"},502);
-        }
-        checkout = { order_no: orderNo, checkout_url: checkoutUrl, qr_image_url: payment.qr_image_url ? String(payment.qr_image_url) : null };
-      } catch (error) {
-        const upstreamStatus = Number(error?.status) || 0;
-        const errorCode = upstreamStatus === 401 || upstreamStatus === 403
-          ? "qingtianpay_api_key_rejected"
-          : upstreamStatus === 400 || upstreamStatus === 422
-            ? "qingtianpay_request_invalid"
-            : upstreamStatus
-              ? "qingtianpay_unavailable"
-              : (String(error?.name || "").toLowerCase().includes("timeout") ? "qingtianpay_timeout" : "qingtianpay_network_error");
-        console.error("[alipay_recharge_create_failed]", JSON.stringify({
-          status: upstreamStatus,
-          code: errorCode,
-          upstream_code: String(error?.upstreamCode || "").slice(0, 80)
-        }));
-        return reply(request, env, {
-          ok:false,
-          error:errorCode,
-          upstream_status:upstreamStatus || null,
-          upstream_code:String(error?.upstreamCode || "").slice(0, 80) || null
-        }, upstreamStatus === 401 || upstreamStatus === 403 ? 502 : 503);
+        const checkoutUrl=await createAlipayCheckout(env,orderId,(cents/100).toFixed(2),"晴天号铺账户充值");
+        checkout={order_no:orderId,checkout_url:checkoutUrl,qr_image_url:null};
+      } catch(error) {
+        console.error("[alipay_recharge_create_failed]",String(error?.message||error));
+        return reply(request,env,{ok:false,error:error?.message==="alipay_not_configured"?"alipay_not_configured":"alipay_signing_failed"},503);
       }
     }
     await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
@@ -1419,6 +1448,7 @@ export default {
       if (url.pathname === "/api/user/info" && request.method === "GET") return await userInfo(request, env);
       if (url.pathname === "/api/user/profile" && request.method === "POST") return await updateUserProfile(request, env);
       if (url.pathname === "/api/user/change-password" && request.method === "POST") return await changeUserPassword(request, env);
+      if (url.pathname === "/api/alipay/notify" && request.method === "POST") return await alipayNotify(request, env);
       if (url.pathname === "/api/user/recharge-orders" && ["GET","POST"].includes(request.method)) return await userRechargeOrders(request, env);
       if (url.pathname === "/api/user/withdrawals" && ["GET","POST"].includes(request.method)) return await userWithdrawals(request, env);
       if (url.pathname === "/api/admin/withdrawals/resolve" && request.method === "POST") return await resolveUserWithdrawal(request, env);
