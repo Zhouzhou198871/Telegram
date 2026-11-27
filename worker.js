@@ -764,11 +764,13 @@ async function userRechargeOrders(request, env) {
     if (!["ALIPAY","USDT_TRC20"].includes(paymentMethod)) return reply(request, env, { ok: false, error: "invalid_payment_method" }, 400);
     if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(amount)) return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
     const cents = Math.round(Number(amount) * 100);
-    if (!Number.isSafeInteger(cents) || cents < 8000 || cents > 5000000) {
-      return reply(request, env, { ok: false, error: "amount_out_of_range" }, 400);
+    const bonusCents = Math.floor(cents / 1000) * 50;
+    const creditedCents = cents + bonusCents;
+    const creditUnits = creditedCents * 25;
+    if (!Number.isSafeInteger(cents) || cents <= 0 || !Number.isSafeInteger(creditUnits) || creditUnits <= 0) {
+      return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
     }
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
-    const creditUnits = Math.round(cents * 25);
     let checkout = null;
     if (paymentMethod === "ALIPAY") {
       if (!env.QINGTIANPAY_API_KEY) return reply(request, env, { ok:false, error:"alipay_not_configured" }, 503);
