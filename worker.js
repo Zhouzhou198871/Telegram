@@ -1460,7 +1460,15 @@ export default {
       if (url.pathname === "/api/admin/api-logs" && request.method === "GET") return await adminApiLogs(request,env);
       if (url.pathname === "/api/admin/credit" && request.method === "POST") return await adminCredit(request, env);
       return reply(request, env, { ok: false, error: "not_found" }, 404);
-    } catch {
+    } catch (error) {
+      console.error("[worker_unhandled_error]", JSON.stringify({
+        method: request.method,
+        path: url.pathname,
+        name: String(error?.name || "Error").slice(0, 80),
+        code: String(error?.code || error?.cause?.code || "").slice(0, 80),
+        message: String(error?.message || "unknown_error").slice(0, 240),
+        stack: String(error?.stack || "").split("\n").slice(0, 6).join("\n").slice(0, 1200)
+      }));
       return reply(request, env, { ok: false, error: "internal_error" }, 500);
     }
   }
