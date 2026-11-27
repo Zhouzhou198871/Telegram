@@ -783,7 +783,7 @@ async function userRechargeOrders(request, env) {
             external_order_no: orderId,
             amount: (cents/100).toFixed(2),
             subject: "晴天号铺账户充值",
-            payment_method: "alipay_jsapi",
+            payment_method: "alipay_wap",
             buyer_ref: String(claims.sub),
             metadata: { source: "shop.lynli.me", recharge_order_id: orderId }
           })
