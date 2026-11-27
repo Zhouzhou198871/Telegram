@@ -96,10 +96,6 @@
     });
 
     setMode("password");
-      }
-    });
-    setMode("password");
-    paintSlider(0);
 
     sendButton.addEventListener("click", async () => {
       if (cooldown > 0 || sendButton.disabled) return;
