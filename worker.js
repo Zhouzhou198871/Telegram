@@ -733,6 +733,8 @@ async function qingtianPayApi(env, path, options = {}) {
   if (!response.ok) {
     const error = new Error("qingtianpay_request_failed");
     error.status = response.status;
+    const upstreamCode = data && (data.error || data.code || data.detail);
+    error.upstreamCode = typeof upstreamCode === "string" ? upstreamCode.slice(0, 80) : "";
     throw error;
   }
   return data;
@@ -794,8 +796,25 @@ async function userRechargeOrders(request, env) {
         }
         checkout = { order_no: orderNo, checkout_url: checkoutUrl, qr_image_url: payment.qr_image_url ? String(payment.qr_image_url) : null };
       } catch (error) {
-        const status = Number(error?.status) === 401 || Number(error?.status) === 403 ? 502 : 503;
-        return reply(request, env, {ok:false,error:"alipay_order_creation_failed"},status);
+        const upstreamStatus = Number(error?.status) || 0;
+        const errorCode = upstreamStatus === 401 || upstreamStatus === 403
+          ? "qingtianpay_api_key_rejected"
+          : upstreamStatus === 400 || upstreamStatus === 422
+            ? "qingtianpay_request_invalid"
+            : upstreamStatus
+              ? "qingtianpay_unavailable"
+              : (String(error?.name || "").toLowerCase().includes("timeout") ? "qingtianpay_timeout" : "qingtianpay_network_error");
+        console.error("[alipay_recharge_create_failed]", JSON.stringify({
+          status: upstreamStatus,
+          code: errorCode,
+          upstream_code: String(error?.upstreamCode || "").slice(0, 80)
+        }));
+        return reply(request, env, {
+          ok:false,
+          error:errorCode,
+          upstream_status:upstreamStatus || null,
+          upstream_code:String(error?.upstreamCode || "").slice(0, 80) || null
+        }, upstreamStatus === 401 || upstreamStatus === 403 ? 502 : 503);
       }
     }
     await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
