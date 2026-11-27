@@ -9,6 +9,7 @@
     return Number.isSafeInteger(cents) && cents > 0 ? Math.floor(cents / 1000) * 0.5 : 0;
   };
   let method = "ALIPAY";
+  let activeOrderId = "";
 
   async function api(path, options = {}) {
     const response = await fetch(path, {
@@ -50,6 +51,16 @@
       $("balance").textContent = money(account.user?.balance_cny);
       const data = await api("/api/user/recharge-orders");
       const rows = data.orders || [];
+      if (activeOrderId) {
+        const active = rows.find(item => String(item.order_id) === activeOrderId);
+        if (active && active.status === "paid") {
+          $("resultTitle").textContent = "支付成功，充值已入账";
+          $("resultText").textContent = "订单 " + activeOrderId + " 已确认付款，余额已自动更新。";
+          $("paymentQr").hidden = true;
+          $("checkoutLink").hidden = true;
+          $("contact").hidden = true;
+        }
+      }
       const body = $("history");
       body.replaceChildren();
       if (!rows.length) {
@@ -115,11 +126,32 @@
       const order = data.order;
       if (method === "ALIPAY") {
         if (!order?.checkout_url) throw Error("alipay_checkout_missing");
-        msg("支付宝订单已创建，正在跳转安全支付页面…", "success");
-        location.assign(order.checkout_url);
+        activeOrderId = String(order.order_id || "");
+        $("resultTitle").textContent = "支付宝扫码付款";
+        $("resultText").textContent = "订单号：" + activeOrderId + "；付款金额：" + money(order.amount_cny) + "。请使用支付宝扫描下方二维码，在支付宝页面确认付款。付款后本页会自动核对并更新余额。";
+        const qr = $("paymentQr");
+        const qrUrl = String(order.qr_image_url || "").trim();
+        const safeQr = qrUrl.startsWith("https://") || qrUrl.startsWith("data:image/png;base64,") || qrUrl.startsWith("data:image/jpeg;base64,") || qrUrl.startsWith("data:image/webp;base64,");
+        if (safeQr) {
+          qr.src = qrUrl;
+          qr.hidden = false;
+        } else {
+          qr.removeAttribute("src");
+          qr.hidden = true;
+        }
+        $("checkoutLink").href = order.checkout_url;
+        $("checkoutLink").hidden = false;
+        $("contact").hidden = true;
+        $("result").hidden = false;
+        msg("支付宝订单已创建，二维码已显示在本页。", "success");
+        await load();
         return;
       }
       const bonus = bonusFor(order.amount_cny);
+      activeOrderId = "";
+      $("paymentQr").hidden = true;
+      $("checkoutLink").hidden = true;
+      $("contact").hidden = false;
       $("resultTitle").textContent = "充值订单已创建 · 待付款";
       $("resultText").textContent = "订单号：" + order.order_id + "；充值金额：" + money(order.amount_cny) + "；赠送：" + money(bonus) + "；预计到账：" + money(Number(order.amount_cny) + bonus) + "；方式：USDT（TRC20）。请联系官方客服获取当前收款信息，付款后提交订单号与凭证，核验通过后余额入账。";
       $("contact").href = "https://t.me/qingtian_Boss?text=" + encodeURIComponent("你好，我已创建充值订单：" + order.order_id + "，金额：" + money(order.amount_cny) + "，预计赠送：" + money(bonus) + "，付款方式：USDT（TRC20），请提供当前收款指引。");
