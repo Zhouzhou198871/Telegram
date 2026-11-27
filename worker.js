@@ -713,10 +713,49 @@ async function changeUserPassword(request, env) {
   return reply(request, env, { ok: true, message: "password_changed", relogin_required: true });
 }
 
+async function ensureQingtianPayRechargeSchema(env) {
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS qingtianpay_recharge_links (order_id TEXT PRIMARY KEY, qingtianpay_order_no TEXT NOT NULL UNIQUE, checkout_url TEXT NOT NULL, qr_image_url TEXT, created_at BIGINT NOT NULL)").run();
+}
+async function qingtianPayApi(env, path, options = {}) {
+  const apiKey = String(env.QINGTIANPAY_API_KEY || "").trim();
+  if (!apiKey) throw new Error("qingtianpay_not_configured");
+  const response = await fetch("https://pay-api.lynli.me" + path, {
+    ...options,
+    headers: {
+      "Authorization": "Bearer " + apiKey,
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    },
+    signal: AbortSignal.timeout(20000)
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error("qingtianpay_request_failed");
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+async function reconcileAlipayRecharge(env, row) {
+  const link = await env.DB.prepare("SELECT qingtianpay_order_no FROM qingtianpay_recharge_links WHERE order_id=?").bind(row.order_id).first();
+  if (!link?.qingtianpay_order_no) return;
+  try {
+    const remote = await qingtianPayApi(env, "/api/v1/orders/" + encodeURIComponent(String(link.qingtianpay_order_no)));
+    const order = remote.order || remote.data?.order || remote.data || remote;
+    if (String(order.status || "").toLowerCase() !== "paid") return;
+    const now = Math.floor(Date.now()/1000);
+    await env.DB.prepare("WITH paid AS (UPDATE recharge_orders SET status='paid',paid_at=?,updated_at=? WHERE order_id=? AND status='pending' RETURNING user_id,credit_units) UPDATE users SET balance_units=users.balance_units+paid.credit_units,balance=ROUND((users.balance_units+paid.credit_units)/10000.0,4),updated_at=? FROM paid WHERE users.id=paid.user_id RETURNING users.id")
+      .bind(now, now, row.order_id, now).first();
+  } catch (error) {
+    // Temporary payment-center failures leave the recharge pending for the next poll.
+  }
+}
 async function userRechargeOrders(request, env) {
   let claims;
   try { claims = await verifyToken(request, env); }
   catch (e) { return reply(request, env, { ok: false, error: e.message }, 401); }
+  await ensureQingtianPayRechargeSchema(env);
   if (request.method === "POST") {
     let body;
     try { body = await request.json(); } catch { return reply(request, env, { ok: false, error: "invalid_json" }, 400); }
@@ -729,17 +768,60 @@ async function userRechargeOrders(request, env) {
       return reply(request, env, { ok: false, error: "amount_out_of_range" }, 400);
     }
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
-    const creditUnits = Math.round(cents * 25); // ¥4 = 1 USDT; balance is stored in 1/10000 USDT.
+    const creditUnits = Math.round(cents * 25);
+    let checkout = null;
+    if (paymentMethod === "ALIPAY") {
+      if (!env.QINGTIANPAY_API_KEY) return reply(request, env, { ok:false, error:"alipay_not_configured" }, 503);
+      try {
+        const created = await qingtianPayApi(env, "/api/v1/payments", {
+          method: "POST",
+          body: JSON.stringify({
+            external_order_no: orderId,
+            amount: (cents/100).toFixed(2),
+            subject: "晴天号铺账户充值",
+            payment_method: "alipay_jsapi",
+            buyer_ref: String(claims.sub),
+            metadata: { source: "shop.lynli.me", recharge_order_id: orderId }
+          })
+        });
+        const payment = created.order || created.data?.order || created.data || created;
+        const orderNo = String(payment.order_no || "").trim();
+        const checkoutUrl = String(payment.checkout_url || "").trim();
+        if (!orderNo || !/^https:\/\//i.test(checkoutUrl)) {
+          return reply(request, env, {ok:false,error:"alipay_order_response_invalid"},502);
+        }
+        checkout = { order_no: orderNo, checkout_url: checkoutUrl, qr_image_url: payment.qr_image_url ? String(payment.qr_image_url) : null };
+      } catch (error) {
+        const status = Number(error?.status) === 401 || Number(error?.status) === 403 ? 502 : 503;
+        return reply(request, env, {ok:false,error:"alipay_order_creation_failed"},status);
+      }
+    }
     await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
       .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, paymentMethod, now, now).run();
-    return reply(request, env, { ok: true, order: { order_id: orderId, amount_cny: (cents/100).toFixed(2), payment_method: paymentMethod, status: "pending", created_at: now }, payment_instructions: "请先联系官方客服获取实时收款地址；付款后提交订单号与凭证，由客服核验入账。" }, 201);
+    if (checkout) {
+      await env.DB.prepare("INSERT INTO qingtianpay_recharge_links(order_id,qingtianpay_order_no,checkout_url,qr_image_url,created_at) VALUES(?,?,?,?,?)")
+        .bind(orderId, checkout.order_no, checkout.checkout_url, checkout.qr_image_url, now).run();
+    }
+    return reply(request, env, {
+      ok: true,
+      order: {
+        order_id: orderId, amount_cny: (cents/100).toFixed(2), payment_method: paymentMethod,
+        status: "pending", created_at: now,
+        ...(checkout ? { qingtianpay_order_no: checkout.order_no, checkout_url: checkout.checkout_url, qr_image_url: checkout.qr_image_url } : {})
+      },
+      ...(paymentMethod === "ALIPAY" ? { payment_provider: "qingtianpay" } : { payment_instructions: "请联系官方客服获取 USDT（TRC20）收款信息；付款后提交订单号与凭证，由客服核验入账。" })
+    }, 201);
   }
-  const result = await env.DB.prepare("SELECT order_id,amount_cny,payment_method,status,created_at,updated_at,paid_at FROM recharge_orders WHERE user_id=? ORDER BY created_at DESC LIMIT 100")
+  const pending = await env.DB.prepare("SELECT r.order_id,r.amount_cny,r.payment_method,r.status,r.created_at,r.updated_at,r.paid_at FROM recharge_orders r WHERE r.user_id=? AND r.status='pending' AND r.payment_method='ALIPAY' ORDER BY r.created_at DESC LIMIT 20")
+    .bind(claims.sub).all();
+  for (const row of pending.results || []) await reconcileAlipayRecharge(env, row);
+  const result = await env.DB.prepare("SELECT r.order_id,r.amount_cny,r.payment_method,r.status,r.created_at,r.updated_at,r.paid_at,p.checkout_url FROM recharge_orders r LEFT JOIN qingtianpay_recharge_links p ON p.order_id=r.order_id WHERE r.user_id=? ORDER BY r.created_at DESC LIMIT 100")
     .bind(claims.sub).all();
   return reply(request, env, { ok: true, orders: (result.results || []).map(row => ({
     order_id: String(row.order_id), amount_cny: Number(row.amount_cny).toFixed(2),
     payment_method: String(row.payment_method), status: String(row.status),
-    created_at: Number(row.created_at), updated_at: Number(row.updated_at), paid_at: row.paid_at ? Number(row.paid_at) : null
+    created_at: Number(row.created_at), updated_at: Number(row.updated_at), paid_at: row.paid_at ? Number(row.paid_at) : null,
+    checkout_url: row.checkout_url ? String(row.checkout_url) : null
   })) });
 }
 
