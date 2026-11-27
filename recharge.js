@@ -127,7 +127,18 @@
       msg("充值订单已创建并写入账户记录。", "success");
       await load();
     } catch (error) {
-      msg(error.message === "invalid_amount" ? "请输入大于 ¥0 的有效金额。" : "充值订单创建失败，请稍后重试。", "error");
+      const messages = {
+        invalid_amount: "充值金额无效，请检查金额。",
+        alipay_not_configured: "支付宝接口密钥未加载，请检查生产环境配置。",
+        qingtianpay_api_key_rejected: "支付中心拒绝了商城 API Key，当前密钥未通过鉴权。",
+        qingtianpay_request_invalid: "支付中心拒绝了订单参数，请检查接口字段。",
+        qingtianpay_unavailable: "支付中心暂时不可用（上游 HTTP " + (error.upstream_status || "未知") + "）。",
+        qingtianpay_timeout: "连接支付中心超时，请稍后重试。",
+        qingtianpay_network_error: "连接支付中心失败，请检查支付中心网络。",
+        alipay_order_response_invalid: "支付中心已响应，但返回的订单号或支付链接格式不正确。",
+        alipay_checkout_missing: "订单返回成功，但缺少支付宝收银台链接。"
+      };
+      msg(messages[error.message] || ("创建失败：" + String(error.message || "unknown_error")), "error");
     } finally {
       button.disabled = false;
       button.textContent = "创建充值订单";
