@@ -775,7 +775,7 @@ async function userRechargeOrders(request, env) {
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
     let checkout = null;
     if (paymentMethod === "ALIPAY") {
-      if (!env.QINGTIANPAY_API_KEY) return reply(request, env, { ok:false, error:"alipay_not_configured" }, 503);
+      if (!String(env.QINGTIANPAY_API_KEY || "").trim()) return reply(request, env, { ok:false, error:"alipay_not_configured" }, 503);
       try {
         const created = await qingtianPayApi(env, "/api/v1/payments", {
           method: "POST",
