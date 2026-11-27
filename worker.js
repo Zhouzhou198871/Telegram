@@ -764,16 +764,14 @@ async function alipayVerify(env, params) {
   return crypto.subtle.verify("RSASSA-PKCS1-v1_5",key,
     Uint8Array.from(atob(params.sign),c=>c.charCodeAt(0)),new TextEncoder().encode(alipayCanonical(params)));
 }
-async function createAlipayCheckout(env, orderNo, amount, subject) {
-  if(!env.ALIPAY_APP_ID||!env.ALIPAY_PRIVATE_KEY||!env.ALIPAY_NOTIFY_URL) throw new Error("alipay_not_configured");
-  const p={app_id:String(env.ALIPAY_APP_ID),method:"alipay.trade.wap.pay",format:"JSON",charset:"utf-8",
-    sign_type:"RSA2",timestamp:new Date().toISOString().replace("T"," ").slice(0,19),version:"1.0",
-    notify_url:String(env.ALIPAY_NOTIFY_URL),
-    biz_content:JSON.stringify({out_trade_no:orderNo,product_code:"QUICK_WAP_WAY",total_amount:amount,subject})};
-  p.sign=await alipaySign(env,p);
-  const url=new URL(env.ALIPAY_GATEWAY||"https://openapi.alipay.com/gateway.do");
-  for(const [k,v] of Object.entries(p)) url.searchParams.set(k,v);
-  return url.toString();
+async function createAlipayCheckout(env, orderNo, amount, subject, buyerRef) {
+  const remote=await qingtianPayApi(env,"/api/v1/payments",{
+    method:"POST",
+    body:JSON.stringify({external_order_no:orderNo,amount,subject,payment_method:"alipay_jsapi",buyer_ref:buyerRef||""})
+  });
+  const order=remote.order||remote.data?.order||remote;
+  if(!order.order_no||!order.checkout_url) throw new Error("alipay_checkout_response_invalid");
+  return {order_no:String(order.order_no),checkout_url:String(order.checkout_url),qr_image_url:order.qr_image_url?String(order.qr_image_url):null};
 }
 async function alipayNotify(request,env) {
   const form=await request.formData(), p={};
@@ -836,21 +834,19 @@ async function userRechargeOrders(request, env) {
       return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
     }
     const orderId = crypto.randomUUID(), now = Math.floor(Date.now()/1000);
+    await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
+      .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, paymentMethod, now, now).run();
     let checkout = null;
     if (paymentMethod === "ALIPAY") {
       try {
-        const checkoutUrl=await createAlipayCheckout(env,orderId,(cents/100).toFixed(2),"晴天号铺账户充值");
-        checkout={order_no:orderId,checkout_url:checkoutUrl,qr_image_url:null};
+        checkout=await createAlipayCheckout(env,orderId,(cents/100).toFixed(2),"晴天号铺账户充值",claims.sub);
+        await env.DB.prepare("INSERT INTO qingtianpay_recharge_links(order_id,qingtianpay_order_no,checkout_url,qr_image_url,created_at) VALUES(?,?,?,?,?)")
+          .bind(orderId,checkout.order_no,checkout.checkout_url,checkout.qr_image_url,now).run();
       } catch(error) {
+        await env.DB.prepare("UPDATE recharge_orders SET status='failed',updated_at=? WHERE order_id=? AND status='pending'").bind(Math.floor(Date.now()/1000),orderId).run();
         console.error("[alipay_recharge_create_failed]",String(error?.message||error));
-        return reply(request,env,{ok:false,error:error?.message==="alipay_not_configured"?"alipay_not_configured":"alipay_signing_failed"},503);
+        return reply(request,env,{ok:false,error:error?.message==="qingtianpay_not_configured"?"payment_service_not_configured":"alipay_checkout_create_failed"},503);
       }
-    }
-    await env.DB.prepare("INSERT INTO recharge_orders(order_id,user_id,amount_cny,credit_units,payment_method,status,created_at,updated_at) VALUES(?,?,?,?,?,'pending',?,?)")
-      .bind(orderId, claims.sub, (cents/100).toFixed(2), creditUnits, paymentMethod, now, now).run();
-    if (checkout) {
-      await env.DB.prepare("INSERT INTO qingtianpay_recharge_links(order_id,qingtianpay_order_no,checkout_url,qr_image_url,created_at) VALUES(?,?,?,?,?)")
-        .bind(orderId, checkout.order_no, checkout.checkout_url, checkout.qr_image_url, now).run();
     }
     return reply(request, env, {
       ok: true,
