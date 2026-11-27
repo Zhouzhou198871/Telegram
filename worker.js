@@ -762,7 +762,7 @@ async function userRechargeOrders(request, env) {
     const amount = String(body.amount_cny ?? "").trim();
     const paymentMethod = String(body.payment_method || "USDT_TRC20").toUpperCase();
     if (!["ALIPAY","USDT_TRC20"].includes(paymentMethod)) return reply(request, env, { ok: false, error: "invalid_payment_method" }, 400);
-    if (!/^\d{1,6}(?:\.\d{1,2})?$/.test(amount)) return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
+    if (!/^\d{1,12}(?:\.\d{1,2})?$/.test(amount)) return reply(request, env, { ok: false, error: "invalid_amount" }, 400);
     const cents = Math.round(Number(amount) * 100);
     const bonusCents = Math.floor(cents / 1000) * 50;
     const creditedCents = cents + bonusCents;
