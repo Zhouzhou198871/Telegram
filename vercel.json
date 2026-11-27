@@ -17,5 +17,12 @@
       "src": "^/api/(.*)$",
       "dest": "/api?path=$1"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/recharge.html",
+      "destination": "/recharge.html/",
+      "permanent": false
+    }
   ]
 }
