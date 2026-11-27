@@ -37,7 +37,7 @@
     const valid = Number.isFinite(amount) && amount > 0;
     $("bonusPreview").textContent = valid
       ? "本次预计赠送 " + money(bonus) + "，预计到账 " + money(amount + bonus) + "（每满 ¥10 赠送 ¥0.50）"
-      : "每满 ¥10 赠送 ¥0.50，不足 ¥10 的部分不参与赠送。";
+      : "请输入充值金额，系统将自动计算赠送金额。";
   }
 
   async function load() {
@@ -93,14 +93,6 @@
     button.addEventListener("click", () => {
       method = button.dataset.method;
       document.querySelectorAll("[data-method]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
-    });
-  });
-
-  document.querySelectorAll("[data-amount]").forEach(button => {
-    button.addEventListener("click", () => {
-      $("amount").value = button.dataset.amount;
-      document.querySelectorAll("[data-amount]").forEach(item => item.setAttribute("aria-pressed", String(item === button)));
-      updateBonusPreview();
     });
   });
 
