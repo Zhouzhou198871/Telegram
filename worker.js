@@ -769,14 +769,14 @@ async function userWithdrawals(request, env) {
   if (!["ALIPAY","USDT_TRC20"].includes(method) || !account || account.length>120 || holder.length>80 || (method==="ALIPAY"&&!holder) || (method==="USDT_TRC20"&&!/^T[1-9A-HJ-NP-Za-km-z]{33}$/.test(account))) return reply(request,env,{ok:false,error:"invalid_withdrawal_details"},400);
   const id=crypto.randomUUID(), now=Math.floor(Date.now()/1000);
   try {
-    await env.DB.prepare("INSERT INTO user_withdrawals(id,user_id,amount_units,payment_method,account_value,holder_name,status,created_at,updated_at) SELECT ?,id,balance_units,?,?,?,'pending',?,? FROM users WHERE id=? AND balance_units>0 AND NOT EXISTS (SELECT 1 FROM user_withdrawals WHERE user_id=? AND status='pending')")
+    await env.DB.prepare("INSERT INTO user_withdrawals(id,user_id,amount_units,payment_method,account_value,holder_name,status,created_at,updated_at) SELECT ?,id,balance_units,?,?,?,'pending',?,? FROM users WHERE id=? AND balance_units>=250000 AND NOT EXISTS (SELECT 1 FROM user_withdrawals WHERE user_id=? AND status='pending')")
       .bind(id,method,account,holder,now,now,claims.sub,claims.sub).run();
   } catch {
     const pending=await env.DB.prepare("SELECT id FROM user_withdrawals WHERE user_id=? AND status='pending' LIMIT 1").bind(claims.sub).first();
     return reply(request,env,{ok:false,error:pending?"withdrawal_pending":"withdrawal_create_failed"},409);
   }
   const created=await env.DB.prepare("SELECT amount_units FROM user_withdrawals WHERE id=? AND user_id=? AND status='pending'").bind(id,claims.sub).first();
-  if (!created) return reply(request,env,{ok:false,error:"insufficient_balance"},409);
+  if (!created) { const current=await findUserById(env,claims.sub); const currentCny=Number(current?.balance_units||0)/10000*INTERNAL_CNY_PER_USDT; return reply(request,env,{ok:false,error:currentCny<100?"withdrawal_minimum_not_met":"insufficient_balance",minimum_withdrawal_cny:"100.00"},409); }
   const units=Number(created.amount_units||0);
   const changed=await env.DB.prepare("UPDATE users SET balance_units=balance_units-?,balance=ROUND((balance_units-?)/10000.0,4),updated_at=? WHERE id=? AND balance_units>=? RETURNING id").bind(units,units,now,claims.sub,units).first();
   if (!changed) {
