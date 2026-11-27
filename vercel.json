@@ -6,6 +6,10 @@
   },
   "routes": [
     {
+      "src": "^/recharge\\.html$",
+      "dest": "/recharge.html/"
+    },
+    {
       "src": "^/shop\\.html$",
       "dest": "/api?path=storefront"
     },
